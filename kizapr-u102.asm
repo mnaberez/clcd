@@ -14881,7 +14881,7 @@ LF48F:  stx     $63                             ; F48F 86 63                    
         stx     $9F                             ; F498 86 9F                    ..
         lda     $0AB1                           ; F49A AD B1 0A                 ...
         .byte   $20                             ; F49D 20
-LOAD__: eor     LAEB6,y                         ; F49E 59 B6 AE                 Y..
+LF49E:  eor     LAEB6,y                         ; F49E 59 B6 AE                 Y..
         tax                                     ; F4A1 AA                       .
         asl     a                               ; F4A2 0A                       .
         stx     $64                             ; F4A3 86 64                    .d
