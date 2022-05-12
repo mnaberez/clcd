@@ -1,9 +1,12 @@
+;
+;Based on this disassembly by Gábor Lénárt:
+;https://web.archive.org/web/20170419205827/http://commodore-lcd.lgb.hu/sk/
+;
 
 ; da65 V2.13.3 - (C) Copyright 2000-2009,  Ullrich von Bassewitz
 ; Created:    2014-01-21 00:08:01
 ; Input file: kizapr-u102.bin
 ; Page:       1
-
 
         .setcpu "65C02"
 
