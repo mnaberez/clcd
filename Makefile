@@ -10,7 +10,7 @@ diff:
 $(NAME).bin: $(NAME).o
 	ld65 -C $(NAME).ld -o $(NAME).bin $(NAME).o
 
-kizapr-u102.o: $(NAME).asm
+$(NAME).o: $(NAME).asm
 	ca65 -l $(NAME).lst $(NAME).asm
 
 clean:

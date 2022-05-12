@@ -1,0 +1,19 @@
+name: Run all tests
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Install cc65
+      run: sudo apt-get install cc65
+
+    - name: Assemble the original binary
+      run: make
+
+    - name: Show the listing
+      run: cat kizapr-u102.lst
