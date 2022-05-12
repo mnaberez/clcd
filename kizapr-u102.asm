@@ -7,6 +7,8 @@
 
         .setcpu "65C02"
 
+        .org $8000
+
 ; ----------------------------------------------------------------------------
 L004E           := $004E
 L0081           := $0081
@@ -1439,7 +1441,7 @@ L8A1A:  pha                                     ; 8A1A 48                       
 L8A20:  .byte   $02                             ; 8A20 02                       .
         .byte   $8D                             ; 8A21 8D                       .
         brk                                     ; 8A22 00                       .
-L8A23:  bbs7    $68,$68                         ; 8A23 FF 68 91                 .h.
+L8A23:  bbs7    $68,L89B8-1                     ; 8A23 FF 68 91                 .h.
         cpx     $C8                             ; 8A26 E4 C8                    ..
         bne     L8A10                           ; 8A28 D0 E6                    ..
         pla                                     ; 8A2A 68                       h
@@ -2193,7 +2195,7 @@ L8FAD:  jsr     FROM_C67B                       ; 8FAD 20 4A 03                 
         iny                                     ; 8FB0 C8                       .
 L8FB1:  ldx     #$03                            ; 8FB1 A2 03                    ..
 L8FB3:  .byte   $DD                             ; 8FB3 DD                       .
-L8FB4:  bbs3    $8F,$8F                         ; 8FB4 BF 8F D0                 ...
+L8FB4:  bbs3    $8F,L8F86+1                     ; 8FB4 BF 8F D0                 ...
         .byte   $02                             ; 8FB7 02                       .
         clc                                     ; 8FB8 18                       .
         rts                                     ; 8FB9 60                       `
@@ -2278,7 +2280,7 @@ L9041:  jsr     L8C92                           ; 9041 20 92 8C                 
         stz     $0239                           ; 904C 9C 39 02                 .9.
         stz     $024C                           ; 904F 9C 4C 02                 .L.
         lda     $03A5                           ; 9052 AD A5 03                 ...
-        bit     #$80                            ; 9055 89 80                    ..
+L9055:  bit     #$80                            ; 9055 89 80                    ..
         beq     L907D                           ; 9057 F0 24                    .$
         ldx     #$00                            ; 9059 A2 00                    ..
         ldy     $03A1                           ; 905B AC A1 03                 ...
@@ -2335,7 +2337,7 @@ L90A7:  jsr     L8EAF                           ; 90A7 20 AF 8E                 
         cmp     #$40                            ; 90BE C9 40                    .@
         bne     L90DA                           ; 90C0 D0 18                    ..
 L90C2:  .byte   $20                             ; 90C2 20
-L90C3:  bbs1    $8D,$8D                         ; 90C3 9F 8D 90                 ...
+L90C3:  bbs1    $8D,L9055+1                     ; 90C3 9F 8D 90                 ...
         and     StopKeyFlag                     ; 90C6 25 AD                    %.
         ldy     #$03                            ; 90C8 A0 03                    ..
         .byte   $D0                             ; 90CA D0                       .
@@ -2500,7 +2502,7 @@ L91F0:  ldy     #$00                            ; 91F0 A0 00                    
         jsr     FROM_C68D                       ; 91F5 20 5C 03                  \.
         inc     $E0                             ; 91F8 E6 E0                    ..
         bne     L91FE                           ; 91FA D0 02                    ..
-        inc     $E1                             ; 91FC E6 E1                    ..
+L91FC:  inc     $E1                             ; 91FC E6 E1                    ..
 L91FE:  inc     $B6                             ; 91FE E6 B6                    ..
         bne     L9204                           ; 9200 D0 02                    ..
         inc     $B7                             ; 9202 E6 B7                    ..
@@ -2519,6 +2521,7 @@ L9214:  jsr     L921A                           ; 9214 20 1A 92                 
 ; ----------------------------------------------------------------------------
 L921A:  jsr     L8C36                           ; 921A 20 36 8C                  6.
         bcs     L9221                           ; 921D B0 02                    ..
+L921F:
         sec                                     ; 921F 38                       8
         rts                                     ; 9220 60                       `
 ; ----------------------------------------------------------------------------
@@ -2568,8 +2571,8 @@ L926E:  clc                                     ; 926E 18                       
         jsr     L8C36                           ; 926F 20 36 8C                  6.
         .byte   $20                             ; 9272 20
         .byte   $41                             ; 9273 41                       A
-L9274:  bcc     $921F                           ; 9274 90 A9                    ..
-        bvc     $91FD                           ; 9276 50 85                    P.
+L9274:  bcc     L921F                           ; 9274 90 A9                    ..
+        bvc     L91FC+1                         ; 9276 50 85                    P.
         smb6    $38                             ; 9278 E7 38                    .8
 L927A:  rts                                     ; 927A 60                       `
 ; ----------------------------------------------------------------------------
@@ -2684,11 +2687,11 @@ L9358:  clc                                     ; 9358 18                       
 L935A:  jsr     L8C36                           ; 935A 20 36 8C                  6.
         jsr     L902D                           ; 935D 20 2D 90                  -.
         .byte   $A9                             ; 9360 A9                       .
-L9361:  bpl     $9367                           ; 9361 10 04                    ..
+L9361:  bpl     L9367                           ; 9361 10 04                    ..
         smb6    $AC                             ; 9363 E7 AC                    ..
         .byte   $A3                             ; 9365 A3                       .
         .byte   $03                             ; 9366 03                       .
-        cpy     #$4D                            ; 9367 C0 4D                    .M
+L9367:  cpy     #$4D                            ; 9367 C0 4D                    .M
         beq     L9378                           ; 9369 F0 0D                    ..
         cpy     #$52                            ; 936B C0 52                    .R
         bne     L937A                           ; 936D D0 0B                    ..
@@ -3210,7 +3213,7 @@ L9792:  .byte   $53                             ; 9792 53                       
         lsr     $76,x                           ; 9794 56 76                    Vv
 L9796:  bbr6    $8C,L97A7                       ; 9796 6F 8C 0E                 o..
         tya                                     ; 9799 98                       .
-        dec     $97,x                           ; 979A D6 97                    ..
+L979A:  dec     $97,x                           ; 979A D6 97                    ..
         .byte   $42                             ; 979C 42                       B
         tya                                     ; 979D 98                       .
 L979E:  ldy     $02D5                           ; 979E AC D5 02                 ...
@@ -3266,7 +3269,7 @@ L97F5           := * + 2
         and     #$80                            ; 97FC 29 80                    ).
         bne     L97ED                           ; 97FE D0 ED                    ..
         jsr     L89E2                           ; 9800 20 E2 89                  ..
-        bra     L97ED                           ; 9803 80 E8                    ..
+L9803:  bra     L97ED                           ; 9803 80 E8                    ..
 L9805:  pla                                     ; 9805 68                       h
         ldx     #$01                            ; 9806 A2 01                    ..
         ldy     #$00                            ; 9808 A0 00                    ..
@@ -3274,8 +3277,8 @@ L9805:  pla                                     ; 9805 68                       
         jmp     L9964                           ; 980B 4C 64 99                 Ld.
 ; ----------------------------------------------------------------------------
         .byte   $90                             ; 980E 90                       .
-L980F:  bmi     $979A                           ; 980F 30 89                    0.
-        bra     $9803                           ; 9811 80 F0                    ..
+L980F:  bmi     L979A                           ; 980F 30 89                    0.
+        bra     L9803                           ; 9811 80 F0                    ..
         rol     a                               ; 9813 2A                       *
         and     #$40                            ; 9814 29 40                    )@
         ora     $03A0                           ; 9816 0D A0 03                 ...
@@ -3559,7 +3562,7 @@ L9ACD:  bit     #$10                            ; 9ACD 89 10                    
         sta     $E0                             ; 9AD1 85 E0                    ..
         and     #$03                            ; 9AD3 29 03                    ).
 L9AD5:  tax                                     ; 9AD5 AA                       .
-        lda     $020F,x                         ; 9AD6 BD 0F 02                 ...
+L9AD6:  lda     $020F,x                         ; 9AD6 BD 0F 02                 ...
         jsr     L886A                           ; 9AD9 20 6A 88                  j.
         bit     $E0                             ; 9ADC 24 E0                    $.
         bmi     L9AE4                           ; 9ADE 30 04                    0.
@@ -3616,7 +3619,7 @@ L9B23:  ldy     $6B                             ; 9B23 A4 6B                    
         .byte   $BE                             ; 9B30 BE                       .
 L9B31:  stz     L9F60                           ; 9B31 9C 60 9F                 .`.
         .byte   $63                             ; 9B34 63                       c
-        bbs1    $F6,$F6                         ; 9B35 9F F6 A0                 ...
+        bbs1    $F6,L9AD6+2                     ; 9B35 9F F6 A0                 ...
         sbc     LF0A0,y                         ; 9B38 F9 A0 F0                 ...
         stz     LA369,x                         ; 9B3B 9E 69 A3                 .i.
         adc     (CurMaxY_,x)                    ; 9B3E 61 A6                    a.
@@ -4076,7 +4079,7 @@ L9E7D:  clc                                     ; 9E7D 18                       
         brk                                     ; 9E84 00                       .
         brk                                     ; 9E85 00                       .
         brk                                     ; 9E86 00                       .
-        php                                     ; 9E87 08                       .
+L9E87:  php                                     ; 9E87 08                       .
         ror     LCD2D,x                         ; 9E88 7E 2D CD                 ~-.
         stz     $DB                             ; 9E8B 64 DB                    d.
         lda     ($F8,x)                         ; 9E8D A1 F8                    ..
@@ -4094,7 +4097,7 @@ L9EA1:  asl     $4D                             ; 9EA1 06 4D                    
         .byte   $42                             ; 9EA3 42                       B
         jmp     L11A0                           ; 9EA4 4C A0 11                 L..
 ; ----------------------------------------------------------------------------
-        ror     $7F                             ; 9EA7 66 7F                    f.
+L9EA7:  ror     $7F                             ; 9EA7 66 7F                    f.
         bit     $25                             ; 9EA9 24 25                    $%
         bit     #$EB                            ; 9EAB 89 EB                    ..
         cpx     #$15                            ; 9EAD E0 15                    ..
@@ -4137,16 +4140,16 @@ L9EA1:  asl     $4D                             ; 9EA1 06 4D                    
         .byte   $CF                             ; 9EEE CF                       .
         .byte   $7C                             ; 9EEF 7C                       |
 L9EF0:  jsr     LA29A                           ; 9EF0 20 9A A2                  ..
-        beq     $9EF7                           ; 9EF3 F0 02                    ..
+        beq     L9EF7                           ; 9EF3 F0 02                    ..
         bpl     L9EFA                           ; 9EF5 10 03                    ..
-        jmp     L9C05                           ; 9EF7 4C 05 9C                 L..
+L9EF7:  jmp     L9C05                           ; 9EF7 4C 05 9C                 L..
 ; ----------------------------------------------------------------------------
 L9EFA:  .byte   $A5                             ; 9EFA A5                       .
 L9EFB:  and     $E9                             ; 9EFB 25 E9                    %.
-        bbr7    $48,$48                         ; 9EFD 7F 48 A9                 .H.
-        bra     $9E87                           ; 9F00 80 85                    ..
+        bbr7    $48,L9EA7+2                     ; 9EFD 7F 48 A9                 .H.
+        bra     L9E87                           ; 9F00 80 85                    ..
         and     $A9                             ; 9F02 25 A9                    %.
-        bne     $9EA6                           ; 9F04 D0 A0                    ..
+        bne     L9EA7-1                         ; 9F04 D0 A0                    ..
         .byte   $9E                             ; 9F06 9E                       .
 L9F07:  jsr     L9F3C                           ; 9F07 20 3C 9F                  <.
         lda     #$D8                            ; 9F0A A9 D8                    ..
@@ -4993,7 +4996,7 @@ LA539:  bmi     LA500                           ; A539 30 C5                    
 LA53B:  txa                                     ; A53B 8A                       .
         bcc     LA542                           ; A53C 90 04                    ..
         .byte   $49                             ; A53E 49                       I
-LA53F:  bbs7    $69,$69                         ; A53F FF 69 0A                 .i.
+LA53F:  bbs7    $69,LA54B+1                     ; A53F FF 69 0A                 .i.
 LA542:  adc     #$2F                            ; A542 69 2F                    i/
         iny                                     ; A544 C8                       .
         iny                                     ; A545 C8                       .
@@ -5002,7 +5005,7 @@ LA542:  adc     #$2F                            ; A542 69 2F                    
         iny                                     ; A548 C8                       .
         iny                                     ; A549 C8                       .
         iny                                     ; A54A C8                       .
-        sty     $3D                             ; A54B 84 3D                    .=
+LA54B:  sty     $3D                             ; A54B 84 3D                    .=
         ldy     $3B                             ; A54D A4 3B                    .;
         iny                                     ; A54F C8                       .
         tax                                     ; A550 AA                       .
@@ -5096,7 +5099,7 @@ LA5E3:  bbs7    $FF,LA5E3                       ; A5E3 FF FF FD                 
         .byte   $AB                             ; A5E6 AB                       .
         .byte   $F4                             ; A5E7 F4                       .
         trb     a:$00                           ; A5E8 1C 00 00                 ...
-        brk                                     ; A5EB 00                       .
+LA5EB:  brk                                     ; A5EB 00                       .
         brk                                     ; A5EC 00                       .
         .byte   $3B                             ; A5ED 3B                       ;
         txs                                     ; A5EE 9A                       .
@@ -5104,7 +5107,7 @@ LA5EF:  dex                                     ; A5EF CA                       
         brk                                     ; A5F0 00                       .
         .byte   $FF                             ; A5F1 FF                       .
 LA5F2:  .byte   $FF                             ; A5F2 FF                       .
-LA5F3:  bbs7    $FA,$FA                         ; A5F3 FF FA 0A                 ...
+LA5F3:  bbs7    $FA,LA5FF+1                     ; A5F3 FF FA 0A                 ...
         .byte   $1F                             ; A5F6 1F                       .
 LA5F7:  brk                                     ; A5F7 00                       .
         brk                                     ; A5F8 00                       .
@@ -5113,9 +5116,9 @@ LA5F9:  brk                                     ; A5F9 00                       
 LA5FB:  brk                                     ; A5FB 00                       .
 LA5FC:  tya                                     ; A5FC 98                       .
         stx     $80,y                           ; A5FD 96 80                    ..
-        .byte   $FF                             ; A5FF FF                       .
+LA5FF:  .byte   $FF                             ; A5FF FF                       .
         .byte   $FF                             ; A600 FF                       .
-LA601:  bbs7    $FF,$FF                         ; A601 FF FF F0                 ...
+LA601:  bbs7    $FF,LA5F3+1                     ; A601 FF FF F0                 ...
 LA604:  lda     a:$C0,x                         ; A604 BD C0 00                 ...
         brk                                     ; A607 00                       .
         brk                                     ; A608 00                       .
@@ -5124,7 +5127,7 @@ LA604:  lda     a:$C0,x                         ; A604 BD C0 00                 
         ldy     #$FF                            ; A60C A0 FF                    ..
         .byte   $FF                             ; A60E FF                       .
         .byte   $FF                             ; A60F FF                       .
-LA610:  bbs7    $FF,$FF                         ; A610 FF FF D8                 ...
+LA610:  bbs7    $FF,LA5EB                       ; A610 FF FF D8                 ...
         .byte   $F0                             ; A613 F0                       .
 LA614:  brk                                     ; A614 00                       .
         brk                                     ; A615 00                       .
@@ -5135,9 +5138,11 @@ LA614:  brk                                     ; A614 00                       
         inx                                     ; A61A E8                       .
         .byte   $FF                             ; A61B FF                       .
         .byte   $FF                             ; A61C FF                       .
-LA61D:  bbs7    $FF,$FF                         ; A61D FF FF FF                 ...
-LA620:  bbs7    $9C,$9C                         ; A620 FF 9C 00                 ...
-        brk                                     ; A623 00                       .
+LA61D:  .byte $FF
+        .byte $FF
+        .byte $FF
+LA620:  bbs7    $9C,LA623                       ; A620 FF 9C 00                 ...
+LA623:  brk                                     ; A623 00                       .
         brk                                     ; A624 00                       .
         brk                                     ; A625 00                       .
         brk                                     ; A626 00                       .
@@ -5145,10 +5150,10 @@ LA620:  bbs7    $9C,$9C                         ; A620 FF 9C 00                 
         asl     a                               ; A628 0A                       .
         .byte   $FF                             ; A629 FF                       .
         .byte   $FF                             ; A62A FF                       .
-LA62B:  bbs7    $FF,$FF                         ; A62B FF FF FF                 ...
-LA62E:  bbs7    $FF,$FF                         ; A62E FF FF FF                 ...
-LA631:  bbs7    $FF,$FF                         ; A631 FF FF FF                 ...
-        bbs5    $0A,$0A                         ; A634 DF 0A 80                 ...
+LA62B:  .byte $FF, $FF, $FF                     ; A62B FF FF FF                 ...
+LA62E:  .byte $FF, $FF, $FF                     ; A62E FF FF FF                 ...
+LA631:  .byte $FF, $FF, $FF                     ; A631 FF FF FF                 ...
+        .byte $DF, $0A, $80                     ; A634 DF 0A 80                 ...
         brk                                     ; A637 00                       .
 LA638:  brk                                     ; A638 00                       .
         brk                                     ; A639 00                       .
@@ -5158,7 +5163,7 @@ LA63C:  .byte   $4B                             ; A63C 4B                       
         cpy     #$FF                            ; A63D C0 FF                    ..
         .byte   $FF                             ; A63F FF                       .
         .byte   $FF                             ; A640 FF                       .
-LA641:  bbs7    $FF,$FF                         ; A641 FF FF 73                 ..s
+LA641:  .byte $FF, $FF, $73
         rts                                     ; A644 60                       `
 ; ----------------------------------------------------------------------------
         brk                                     ; A645 00                       .
@@ -5235,7 +5240,7 @@ LA6B1:  rts                                     ; A6B1 60                       
         brk                                     ; A6C2 00                       .
         eor     LDE61,x                         ; A6C3 5D 61 DE                 ]a.
         lda     ($87)                           ; A6C6 B2 87                    ..
-        sbc     ($4C,x)                         ; A6C8 E1 4C                    .L
+LA6C8:  sbc     ($4C,x)                         ; A6C8 E1 4C                    .L
         trb     $7461                           ; A6CA 1C 61 74                 .at
         adc     $63                             ; A6CD 65 63                    ec
         txs                                     ; A6CF 9A                       .
@@ -5291,7 +5296,7 @@ LA72F:  .byte   $20                             ; A72F 20
 LA730:  rol     $A59F                           ; A730 2E 9F A5                 ...
         dec     a                               ; A733 3A                       :
         .byte   $69                             ; A734 69                       i
-LA735:  bvc     $A6C7                           ; A735 50 90                    P.
+LA735:  bvc     LA6C8-1                         ; A735 50 90                    P.
         .byte   $03                             ; A737 03                       .
         jsr     LA292                           ; A738 20 92 A2                  ..
 LA73B:  sta     $14                             ; A73B 85 14                    ..
@@ -5639,7 +5644,7 @@ LA9BA:  stx     LB07D                           ; A9BA 8E 7D B0                 
         cpy     #$80                            ; A9BD C0 80                    ..
         .byte   $7F                             ; A9BF 7F                       .
         .byte   $FF                             ; A9C0 FF                       .
-LA9C1:  bbs7    $FF,$FF                         ; A9C1 FF FF F5                 ...
+LA9C1:  .byte $ff, $ff, $f5
         lda     $202C,y                         ; A9C4 B9 2C 20                 .,
         .byte   $2B                             ; A9C7 2B                       +
         ldy     #$20                            ; A9C8 A0 20                    .
@@ -10628,7 +10633,7 @@ LCF74:  jsr     LCAFD                           ; CF74 20 FD CA                 
         cmp     #$30                            ; CF85 C9 30                    .0
         bcc     LCFBC                           ; CF87 90 33                    .3
         cmp     #$3A                            ; CF89 C9 3A                    .:
-        bcc     LCF93                           ; CF8B 90 06                    ..
+LCF8B:  bcc     LCF93                           ; CF8B 90 06                    ..
         cmp     #$41                            ; CF8D C9 41                    .A
         bcc     LCFBC                           ; CF8F 90 2B                    .+
         adc     #$08                            ; CF91 69 08                    i.
@@ -10686,7 +10691,7 @@ LCFF5:  lda     $03B4                           ; CFF5 AD B4 03                 
         bcs     LD02F                           ; CFFC B0 31                    .1
         .byte   $20                             ; CFFE 20
         .byte   $B1                             ; CFFF B1                       .
-LD000:  bne     $CF8A                           ; D000 D0 88                    ..
+LD000:  bne     LCF8B-1                         ; D000 D0 88                    ..
         bne     LCFF5                           ; D002 D0 F1                    ..
 LD004:  asl     $03B4                           ; D004 0E B4 03                 ...
         bcc     LD01D                           ; D007 90 14                    ..
@@ -13195,7 +13200,7 @@ LE388:  lda     stack+27                        ; E388 AD 1B 01                 
 ; ----------------------------------------------------------------------------
         .byte   $FF                             ; E38F FF                       .
         .byte   $FF                             ; E390 FF                       .
-LE391:  bbs7    $FF,$FF                         ; E391 FF FF 00                 ...
+LE391:  .byte $ff, $ff, $00                     ; E391 FF FF 00                 ...
         php                                     ; E394 08                       .
         bbr6    $A9,LE398                       ; E395 6F A9 00                 o..
 LE398:  ldx     #$FF                            ; E398 A2 FF                    ..
