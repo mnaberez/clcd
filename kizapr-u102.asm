@@ -73,6 +73,7 @@ MemTopHiByte    := $039B
 L03AB           := $03AB
 L03B7           := $03B7
 L03C0           := $03C0
+VERCHK          := $0406
 BSOUR           := $0408
 BSOUR1          := $0409
 R2D2            := $040A
@@ -2911,7 +2912,7 @@ L9526:  ldy     $0218,x                         ; 9526 BC 18 02                 
         sta     $0237                           ; 9534 8D 37 02                 .7.
         rts                                     ; 9537 60                       `
 ; ----------------------------------------------------------------------------
-LOAD__: sta     $0406                           ; 9538 8D 06 04                 ...
+LOAD__: sta     VERCHK                          ; 9538 8D 06 04                 ...
         stz     ST                              ; 953B 64 BA                    d.
         lda     LFSDevNum                       ; 953D A5 C5                    ..
         bne     L9544                           ; 953F D0 03                    ..
@@ -2968,7 +2969,7 @@ L9592:  jsr     L9661                           ; 9592 20 61 96                 
         sta     $B2                             ; 95A9 85 B2                    ..
         lda     $B5                             ; 95AB A5 B5                    ..
         sta     $B3                             ; 95AD 85 B3                    ..
-L95AF:  lda     $0406                           ; 95AF AD 06 04                 ...
+L95AF:  lda     VERCHK                          ; 95AF AD 06 04                 ...
         bne     L95E4                           ; 95B2 D0 30                    .0
         jsr     ShowInLineText80                ; 95B4 20 56 FB                  V.
         .byte   "LOADING"                       ; 95B7 4C 4F 41 44 49 4E 47     LOADING
@@ -3009,7 +3010,7 @@ L95F9:  jsr     L9661                           ; 95F9 20 61 96                 
         lsr     a                               ; 9600 4A                       J
         bcs     L95F9                           ; 9601 B0 F6                    ..
         txa                                     ; 9603 8A                       .
-        ldy     $0406                           ; 9604 AC 06 04                 ...
+        ldy     VERCHK                          ; 9604 AC 06 04                 ...
         beq     L9622                           ; 9607 F0 19                    ..
         ldy     #$00                            ; 9609 A0 00                    ..
         sta     $0407                           ; 960B 8D 07 04                 ...
@@ -9900,7 +9901,7 @@ LC9B9:  ldy     #$01                            ; C9B9 A0 01                    
         dey                                     ; C9BF 88                       .
         sty     FNlength                        ; C9C0 8C 87 03                 ...
         sty     ST                              ; C9C3 84 BA                    ..
-        sty     $0406                           ; C9C5 8C 06 04                 ...
+        sty     VERCHK                          ; C9C5 8C 06 04                 ...
         lda     #$04                            ; C9C8 A9 04                    ..
         sta     FNptr_hi                        ; C9CA 85 AF                    ..
         lda     #$50                            ; C9CC A9 50                    .P
