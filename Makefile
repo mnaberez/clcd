@@ -14,4 +14,4 @@ $(NAME).o: $(NAME).asm
 	ca65 -l $(NAME).lst $(NAME).asm
 
 clean:
-	rm -f $(NAME).bin $(NAME).lst $(NAME).o original.sha1
+	rm -f $(NAME).bin $(NAME).lst $(NAME).o $(NAME).sha1 original.sha1
