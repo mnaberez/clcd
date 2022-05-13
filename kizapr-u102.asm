@@ -21,14 +21,13 @@ CursorY         := $00A2
 CurMaxX_        := $00A4
 CurMaxY_        := $00A6
 StopKeyFlag     := $00AD
-FNptr_lo        := $00AE
-FNptr_hi        := $00AF
+FNADR           := $00AE
 ST              := $00BA
 VidPtrLo        := $00C1
 VidPtrHi        := $00C2
-LFS2ndAddr      := $00C4
-LFSDevNum       := $00C5
-LFSLogNum       := $00C6
+SA      := $00C4
+FA       := $00C5
+LA       := $00C6
 stack           := $0100
 L0300           := $0300
 RAMVEC_IRQ      := $0314
@@ -61,7 +60,7 @@ L0380           := $0380
 CurMaxX         := $0381
 KernMsg         := $0383
 L0386           := $0386
-FNlength        := $0387
+FNLEN        := $0387
 TOD_60HZ        := $038F
 TOD_SECS        := $0390
 TOD_MINS        := $0391
@@ -167,11 +166,11 @@ L8049:  jmp     LC6DF                           ; 8049 4C DF C6                 
         lda     #$7E                            ; 8050 A9 7E                    .~
 L8052:  ldx     #$01                            ; 8052 A2 01                    ..
         ldy     #$0E                            ; 8054 A0 0E                    ..
-        jsr     SetLFS                          ; 8056 20 CF FC                  ..
+        jsr     SETLFS                          ; 8056 20 CF FC                  ..
         lda     $0423                           ; 8059 AD 23 04                 .#.
         ldx     #$24                            ; 805C A2 24                    .$
         ldy     #$04                            ; 805E A0 04                    ..
-        jsr     SetNam                          ; 8060 20 D6 FC                  ..
+        jsr     SETNAM                          ; 8060 20 D6 FC                  ..
         jsr     Open_                           ; 8063 20 DE FC                  ..
 L8066:  rts                                     ; 8066 60                       `
 ; ----------------------------------------------------------------------------
@@ -401,7 +400,7 @@ L821C:  rts                                     ; 821C 60                       
 ; ----------------------------------------------------------------------------
 L821D:  lda     #$AE                            ; 821D A9 AE                    ..
         sta     $034E                           ; 821F 8D 4E 03                 .N.
-        ldx     FNlength                        ; 8222 AE 87 03                 ...
+        ldx     FNLEN                        ; 8222 AE 87 03                 ...
         beq     L826E                           ; 8225 F0 47                    .G
         ldy     #$01                            ; 8227 A0 01                    ..
 L8229:  lda     #$7F                            ; 8229 A9 7F                    ..
@@ -410,7 +409,7 @@ L8229:  lda     #$7F                            ; 8229 A9 7F                    
         pha                                     ; 8230 48                       H
         phx                                     ; 8231 DA                       .
         phy                                     ; 8232 5A                       Z
-        ldx     FNlength                        ; 8233 AE 87 03                 ...
+        ldx     FNLEN                        ; 8233 AE 87 03                 ...
         beq     L826E                           ; 8236 F0 36                    .6
         lda     ($DB)                           ; 8238 B2 DB                    ..
         tay                                     ; 823A A8                       .
@@ -431,7 +430,7 @@ L8251:  jsr     L826F                           ; 8251 20 6F 82                 
         bne     L8265                           ; 8256 D0 0D                    ..
         inx                                     ; 8258 E8                       .
         iny                                     ; 8259 C8                       .
-        cpx     FNlength                        ; 825A EC 87 03                 ...
+        cpx     FNLEN                        ; 825A EC 87 03                 ...
         bne     L8251                           ; 825D D0 F2                    ..
         lda     ($DB),y                         ; 825F B1 DB                    ..
         cmp     #$2E                            ; 8261 C9 2E                    ..
@@ -793,7 +792,7 @@ L84C5:  php                                     ; 84C5 08                       
         .byte   $20                             ; 84CF 20
 L84D0:  sbc     $2084                           ; 84D0 ED 84 20                 ..
         .byte   $CB                             ; 84D3 CB                       .
-        dec     FNptr_lo                        ; 84D4 C6 AE                    ..
+        dec     FNADR                        ; 84D4 C6 AE                    ..
         .byte   $02                             ; 84D6 02                       .
         .byte   $02                             ; 84D7 02                       .
         bra     L84E0                           ; 84D8 80 06                    ..
@@ -1741,7 +1740,7 @@ L8C2B:  .byte   $3B                             ; 8C2B 3B                       
 L8C30:  jsr     L8C3E                           ; 8C30 20 3E 8C                  >.
         jmp     L8C89                           ; 8C33 4C 89 8C                 L..
 ; ----------------------------------------------------------------------------
-L8C36:  lda     LFS2ndAddr                      ; 8C36 A5 C4                    ..
+L8C36:  lda     SA                      ; 8C36 A5 C4                    ..
         and     #$0F                            ; 8C38 29 0F                    ).
 L8C3A:  .byte   $2C                             ; 8C3A 2C                       ,
 L8C3B:  lda     #$11                            ; 8C3B A9 11                    ..
@@ -2079,9 +2078,9 @@ L8EA7:  jsr     L8A39                           ; 8EA7 20 39 8A                 
         lda     #$01                            ; 8EAC A9 01                    ..
 L8EAE:  rts                                     ; 8EAE 60                       `
 ; ----------------------------------------------------------------------------
-L8EAF:  lda     FNptr_lo                        ; 8EAF A5 AE                    ..
-        ldx     FNptr_hi                        ; 8EB1 A6 AF                    ..
-        ldy     FNlength                        ; 8EB3 AC 87 03                 ...
+L8EAF:  lda     FNADR                        ; 8EAF A5 AE                    ..
+        ldx     FNADR+1                        ; 8EB1 A6 AF                    ..
+        ldy     FNLEN                        ; 8EB3 AC 87 03                 ...
         sta     $E2                             ; 8EB6 85 E2                    ..
         stx     $E3                             ; 8EB8 86 E3                    ..
         sty     $039F                           ; 8EBA 8C 9F 03                 ...
@@ -2914,7 +2913,7 @@ L9526:  ldy     $0218,x                         ; 9526 BC 18 02                 
 ; ----------------------------------------------------------------------------
 LOAD__: sta     VERCHK                          ; 9538 8D 06 04                 ...
         stz     ST                              ; 953B 64 BA                    d.
-        lda     LFSDevNum                       ; 953D A5 C5                    ..
+        lda     FA                       ; 953D A5 C5                    ..
         bne     L9544                           ; 953F D0 03                    ..
 L9541:  jmp     LBC68                           ; 9541 4C 68 BC                 Lh.
 ; ----------------------------------------------------------------------------
@@ -2924,23 +2923,23 @@ L9544:  cmp     #$01                            ; 9544 C9 01                    
         bcc     L9541                           ; 954A 90 F5                    ..
         cmp     #$1E                            ; 954C C9 1E                    ..
         bcs     L9541                           ; 954E B0 F1                    ..
-L9550:  ldy     FNlength                        ; 9550 AC 87 03                 ...
+L9550:  ldy     FNLEN                        ; 9550 AC 87 03                 ...
         bne     L9558                           ; 9553 D0 03                    ..
         jmp     LBC65                           ; 9555 4C 65 BC                 Le.
 ; ----------------------------------------------------------------------------
 L9558:  jsr     LBB8D                           ; 9558 20 8D BB                  ..
-        ldx     LFS2ndAddr                      ; 955B A6 C4                    ..
+        ldx     SA                      ; 955B A6 C4                    ..
         stx     $0407                           ; 955D 8E 07 04                 ...
-        stz     LFS2ndAddr                      ; 9560 64 C4                    d.
-        lda     LFSDevNum                       ; 9562 A5 C5                    ..
+        stz     SA                      ; 9560 64 C4                    d.
+        lda     FA                       ; 9562 A5 C5                    ..
         dec     a                               ; 9564 3A                       :
         beq     L957A                           ; 9565 F0 13                    ..
         lda     #$60                            ; 9567 A9 60                    .`
-        sta     LFS2ndAddr                      ; 9569 85 C4                    ..
+        sta     SA                      ; 9569 85 C4                    ..
         jsr     LBB40                           ; 956B 20 40 BB                  @.
-        lda     LFSDevNum                       ; 956E A5 C5                    ..
+        lda     FA                       ; 956E A5 C5                    ..
         jsr     TALK__                        ; 9570 20 91 BC                  ..
-        lda     LFS2ndAddr                      ; 9573 A5 C4                    ..
+        lda     SA                      ; 9573 A5 C4                    ..
         jsr     TKSA                        ; 9575 20 55 BD                  U.
         bra     L9592                           ; 9578 80 18                    ..
 L957A:  phx                                     ; 957A DA                       .
@@ -2951,7 +2950,7 @@ L957A:  phx                                     ; 957A DA                       
         beq     L9592                           ; 9583 F0 0D                    ..
 L9585:  jmp     LBC59                           ; 9585 4C 59 BC                 LY.
 ; ----------------------------------------------------------------------------
-L9588:  lda     LFS2ndAddr                      ; 9588 A5 C4                    ..
+L9588:  lda     SA                      ; 9588 A5 C4                    ..
         beq     L958F                           ; 958A F0 03                    ..
         jsr     LBC36                           ; 958C 20 36 BC                  6.
 L958F:  jmp     LBC6B                           ; 958F 4C 6B BC                 Lk.
@@ -2984,7 +2983,7 @@ L95AF:  lda     VERCHK                          ; 95AF AD 06 04                 
         bcc     L95D4                           ; 95CD 90 05                    ..
         lda     $020B                           ; 95CF AD 0B 02                 ...
         beq     L9588                           ; 95D2 F0 B4                    ..
-L95D4:  lda     LFS2ndAddr                      ; 95D4 A5 C4                    ..
+L95D4:  lda     SA                      ; 95D4 A5 C4                    ..
         bne     L95F0                           ; 95D6 D0 18                    ..
         .byte   $AD                             ; 95D8 AD                       .
         .byte   $A0                             ; 95D9 A0                       .
@@ -3039,7 +3038,7 @@ L963D:  inc     $B2                             ; 963D E6 B2                    
         inc     $B3                             ; 9641 E6 B3                    ..
 L9643:  bit     ST                              ; 9643 24 BA                    $.
         bvc     L95F9                           ; 9645 50 B2                    P.
-        lda     LFS2ndAddr                      ; 9647 A5 C4                    ..
+        lda     SA                      ; 9647 A5 C4                    ..
         beq     L9651                           ; 9649 F0 06                    ..
         jsr     UNTLK                        ; 964B 20 81 BD                  ..
         jsr     LBC36                           ; 964E 20 36 BC                  6.
@@ -3048,12 +3047,12 @@ L9651:  ldx     $B2                             ; 9651 A6 B2                    
         clc                                     ; 9655 18                       .
         rts                                     ; 9656 60                       `
 ; ----------------------------------------------------------------------------
-L9657:  lda     LFS2ndAddr                      ; 9657 A5 C4                    ..
+L9657:  lda     SA                      ; 9657 A5 C4                    ..
         bne     L965E                           ; 9659 D0 03                    ..
         jsr     LBC36                           ; 965B 20 36 BC                  6.
 L965E:  jmp     LBC4D                           ; 965E 4C 4D BC                 LM.
 ; ----------------------------------------------------------------------------
-L9661:  lda     LFS2ndAddr                      ; 9661 A5 C4                    ..
+L9661:  lda     SA                      ; 9661 A5 C4                    ..
         beq     L9668                           ; 9663 F0 03                    ..
         jmp     ACPTR                         ; 9665 4C A5 BD                 L..
 ; ----------------------------------------------------------------------------
@@ -3170,7 +3169,7 @@ L9732:  rol     a                               ; 9732 2A                       
 L9737:  jsr     L8C36                           ; 9737 20 36 8C                  6.
         lda     #$10                            ; 973A A9 10                    ..
         tsb     $E7                             ; 973C 04 E7                    ..
-        ldy     FNlength                        ; 973E AC 87 03                 ...
+        ldy     FNLEN                        ; 973E AC 87 03                 ...
         sty     $02D5                           ; 9741 8C D5 02                 ...
         jsr     L972E                           ; 9744 20 2E 97                  ..
         bcs     L974A                           ; 9747 B0 01                    ..
@@ -7692,7 +7691,7 @@ LB937:  cmp     #$02                            ; B937 C9 02                    
         bne     LB948                           ; B939 D0 0D                    ..
         .byte   $20                             ; B93B 20
 LB93C:  asl     $48BF,x                         ; B93C 1E BF 48                 ..H
-        lda     LFS2ndAddr                      ; B93F A5 C4                    ..
+        lda     SA                      ; B93F A5 C4                    ..
         and     #$0F                            ; B941 29 0F                    ).
         tax                                     ; B943 AA                       .
         pla                                     ; B944 68                       h
@@ -7751,9 +7750,9 @@ LB988:  cpx     #$03                            ; B988 E0 03                    
 ; ----------------------------------------------------------------------------
 LB994:  cpx     #$1E                            ; B994 E0 1E                    ..
         bne     LB9A7                           ; B996 D0 0F                    ..
-        ldx     LFS2ndAddr                      ; B998 A6 C4                    ..
+        ldx     SA                      ; B998 A6 C4                    ..
         pha                                     ; B99A 48                       H
-        lda     LFS2ndAddr                      ; B99B A5 C4                    ..
+        lda     SA                      ; B99B A5 C4                    ..
         and     #$0F                            ; B99D 29 0F                    ).
         tax                                     ; B99F AA                       .
         pla                                     ; B9A0 68                       h
@@ -7767,7 +7766,7 @@ LB9AC:  sec                                     ; B9AC 38                       
         jmp     CIOUT                        ; B9AD 4C 6C BD                 Ll.
 ; ----------------------------------------------------------------------------
 LB9B0:  pha                                     ; B9B0 48                       H
-LB9B1:  lda     LFS2ndAddr                      ; B9B1 A5 C4                    ..
+LB9B1:  lda     SA                      ; B9B1 A5 C4                    ..
         and     #$0F                            ; B9B3 29 0F                    ).
         tax                                     ; B9B5 AA                       .
         pla                                     ; B9B6 68                       h
@@ -7788,7 +7787,7 @@ LB9C2:  jsr     LBAC4                           ; B9C2 20 C4 BA                 
         bcs     LB9E1                           ; B9D3 B0 0C                    ..
         jsr     LBF4D                           ; B9D5 20 4D BF                  M.
         bcs     LB9E0                           ; B9D8 B0 06                    ..
-        lda     LFSDevNum                       ; B9DA A5 C5                    ..
+        lda     FA                       ; B9DA A5 C5                    ..
 LB9DC:  sta     $0385                           ; B9DC 8D 85 03                 ...
         clc                                     ; B9DF 18                       .
 LB9E0:  rts                                     ; B9E0 60                       `
@@ -7797,7 +7796,7 @@ LB9E1:  tax                                     ; B9E1 AA                       
         jsr     TALK__                        ; B9E2 20 91 BC                  ..
         bit     ST                              ; B9E5 24 BA                    $.
         bmi     LB9FB                           ; B9E7 30 12                    0.
-        lda     LFS2ndAddr                      ; B9E9 A5 C4                    ..
+        lda     SA                      ; B9E9 A5 C4                    ..
         bpl     LB9F3                           ; B9EB 10 06                    ..
         jsr     LBD5B                           ; B9ED 20 5B BD                  [.
         jmp     LB9F6                           ; B9F0 4C F6 B9                 L..
@@ -7834,7 +7833,7 @@ LBA25:  cmp     #$03                            ; BA25 C9 03                    
         bne     LBA37                           ; BA29 D0 0C                    ..
 LBA2B:  jsr     LBF4D                           ; BA2B 20 4D BF                  M.
         bcs     LBA36                           ; BA2E B0 06                    ..
-        lda     LFSDevNum                       ; BA30 A5 C5                    ..
+        lda     FA                       ; BA30 A5 C5                    ..
 LBA32:  sta     L0386                           ; BA32 8D 86 03                 ...
         clc                                     ; BA35 18                       .
 LBA36:  rts                                     ; BA36 60                       `
@@ -7843,7 +7842,7 @@ LBA37:  tax                                     ; BA37 AA                       
         jsr     LISTN                        ; BA38 20 94 BC                  ..
         bit     ST                              ; BA3B 24 BA                    $.
         bmi     LBA50                           ; BA3D 30 11                    0.
-        lda     LFS2ndAddr                      ; BA3F A5 C4                    ..
+        lda     SA                      ; BA3F A5 C4                    ..
         bpl     LBA48                           ; BA41 10 05                    ..
         jsr     SCATN               ; BA43 20 4C BD                  L.
         bne     LBA4B                           ; BA46 D0 03                    ..
@@ -7862,7 +7861,7 @@ CLOSE__:ror     $0407                           ; BA53 6E 07 04                 
 LBA5D:  jsr     LBAC4                           ; BA5D 20 C4 BA                  ..
         txa                                     ; BA60 8A                       .
         pha                                     ; BA61 48                       H
-        lda     LFSDevNum                       ; BA62 A5 C5                    ..
+        lda     FA                       ; BA62 A5 C5                    ..
         beq     LBA94                           ; BA64 F0 2E                    ..
         cmp     #$1E                            ; BA66 C9 1E                    ..
         bcs     LBA94                           ; BA68 B0 2A                    .*
@@ -7877,10 +7876,10 @@ LBA79:  jsr     L9214                           ; BA79 20 14 92                 
         bra     LBA94                           ; BA7C 80 16                    ..
 LBA7E:  bit     $0407                           ; BA7E 2C 07 04                 ,..
         bpl     LBA91                           ; BA81 10 0E                    ..
-        lda     LFSDevNum                       ; BA83 A5 C5                    ..
+        lda     FA                       ; BA83 A5 C5                    ..
         cmp     #$08                            ; BA85 C9 08                    ..
         bcc     LBA91                           ; BA87 90 08                    ..
-        lda     LFS2ndAddr                      ; BA89 A5 C4                    ..
+        lda     SA                      ; BA89 A5 C4                    ..
         and     #$0F                            ; BA8B 29 0F                    ).
         cmp     #$0F                            ; BA8D C9 0F                    ..
         beq     LBA94                           ; BA8F F0 03                    ..
@@ -7910,11 +7909,11 @@ LBABB:  dex                                     ; BABB CA                       
         rts                                     ; BAC3 60                       `
 ; ----------------------------------------------------------------------------
 LBAC4:  lda     $02DB,x                         ; BAC4 BD DB 02                 ...
-        sta     LFSLogNum                       ; BAC7 85 C6                    ..
+        sta     LA                       ; BAC7 85 C6                    ..
         lda     $02F3,x                         ; BAC9 BD F3 02                 ...
-        sta     LFS2ndAddr                      ; BACC 85 C4                    ..
+        sta     SA                      ; BACC 85 C4                    ..
         lda     $02E7,x                         ; BACE BD E7 02                 ...
-        sta     LFSDevNum                       ; BAD1 85 C5                    ..
+        sta     FA                       ; BAD1 85 C5                    ..
 LBAD3:  rts                                     ; BAD3 60                       `
 ; ----------------------------------------------------------------------------
 LBAD4:  stz     $0405                           ; BAD4 9C 05 04                 ...
@@ -7930,7 +7929,7 @@ LBAE9:  stx     L0386                           ; BAE9 8E 86 03                 
         stz     $0385                           ; BAEC 9C 85 03                 ...
         rts                                     ; BAEF 60                       `
 ; ----------------------------------------------------------------------------
-Open__: ldx     LFSLogNum                       ; BAF0 A6 C6                    ..
+Open__: ldx     LA                       ; BAF0 A6 C6                    ..
         jsr     LBAB5                           ; BAF2 20 B5 BA                  ..
         bne     LBAFA                           ; BAF5 D0 03                    ..
         jmp     LBC53                           ; BAF7 4C 53 BC                 LS.
@@ -7941,13 +7940,13 @@ LBAFA:  ldx     $0405                           ; BAFA AE 05 04                 
         jmp     LBC50                           ; BB01 4C 50 BC                 LP.
 ; ----------------------------------------------------------------------------
 LBB04:  inc     $0405                           ; BB04 EE 05 04                 ...
-        lda     LFSLogNum                       ; BB07 A5 C6                    ..
+        lda     LA                       ; BB07 A5 C6                    ..
         sta     $02DB,x                         ; BB09 9D DB 02                 ...
-        lda     LFS2ndAddr                      ; BB0C A5 C4                    ..
+        lda     SA                      ; BB0C A5 C4                    ..
         ora     #$60                            ; BB0E 09 60                    .`
-        sta     LFS2ndAddr                      ; BB10 85 C4                    ..
+        sta     SA                      ; BB10 85 C4                    ..
         sta     $02F3,x                         ; BB12 9D F3 02                 ...
-        lda     LFSDevNum                       ; BB15 A5 C5                    ..
+        lda     FA                       ; BB15 A5 C5                    ..
         sta     $02E7,x                         ; BB17 9D E7 02                 ...
         beq     LBB2F                           ; BB1A F0 13                    ..
         cmp     #$1E                            ; BB1C C9 1E                    ..
@@ -7973,16 +7972,16 @@ LBB3B:  jmp     L9243                           ; BB3B 4C 43 92                 
 LBB3E:  clc                                     ; BB3E 18                       .
         rts                                     ; BB3F 60                       `
 ; ----------------------------------------------------------------------------
-LBB40:  lda     LFS2ndAddr                      ; BB40 A5 C4                    ..
+LBB40:  lda     SA                      ; BB40 A5 C4                    ..
         bmi     LBB3E                           ; BB42 30 FA                    0.
-        ldy     FNlength                        ; BB44 AC 87 03                 ...
+        ldy     FNLEN                        ; BB44 AC 87 03                 ...
         beq     LBB3E                           ; BB47 F0 F5                    ..
         stz     ST                              ; BB49 64 BA                    d.
-        lda     LFSDevNum                       ; BB4B A5 C5                    ..
+        lda     FA                       ; BB4B A5 C5                    ..
         jsr     LISTN                        ; BB4D 20 94 BC                  ..
         bit     ST                              ; BB50 24 BA                    $.
         bmi     LBB5F                           ; BB52 30 0B                    0.
-        lda     LFS2ndAddr                      ; BB54 A5 C4                    ..
+        lda     SA                      ; BB54 A5 C4                    ..
         ora     #$F0                            ; BB56 09 F0                    ..
         jsr     SECND                        ; BB58 20 46 BD                  F.
         lda     ST                              ; BB5B A5 BA                    ..
@@ -7991,7 +7990,7 @@ LBB5F:  pla                                     ; BB5F 68                       
         pla                                     ; BB60 68                       h
         jmp     LBC5C                           ; BB61 4C 5C BC                 L\.
 ; ----------------------------------------------------------------------------
-LBB64:  lda     FNlength                        ; BB64 AD 87 03                 ...
+LBB64:  lda     FNLEN                        ; BB64 AD 87 03                 ...
         beq     LBB7C                           ; BB67 F0 13                    ..
         ldy     #$00                            ; BB69 A0 00                    ..
 LBB6B:  lda     #$AE                            ; BB6B A9 AE                    ..
@@ -7999,7 +7998,7 @@ LBB6B:  lda     #$AE                            ; BB6B A9 AE                    
         jsr     FROM_C67B                       ; BB70 20 4A 03                  J.
         jsr     CIOUT                        ; BB73 20 6C BD                  l.
         iny                                     ; BB76 C8                       .
-        cpy     FNlength                        ; BB77 CC 87 03                 ...
+        cpy     FNLEN                        ; BB77 CC 87 03                 ...
         bne     LBB6B                           ; BB7A D0 EF                    ..
 LBB7C:  jmp     LBC48                           ; BB7C 4C 48 BC                 LH.
 ; ----------------------------------------------------------------------------
@@ -8016,7 +8015,7 @@ LBB8D:  jsr     ShowInLineText80                ; BB8D 20 56 FB                 
 ; ----------------------------------------------------------------------------
 LBB9F:  bit     KernMsg                         ; BB9F 2C 83 03                 ,..
         bpl     LBBBF                           ; BBA2 10 1B                    ..
-        ldy     FNlength                        ; BBA4 AC 87 03                 ...
+        ldy     FNLEN                        ; BBA4 AC 87 03                 ...
         beq     LBBBC                           ; BBA7 F0 13                    ..
         ldy     #$00                            ; BBA9 A0 00                    ..
 LBBAB:  lda     #$AE                            ; BBAB A9 AE                    ..
@@ -8024,13 +8023,13 @@ LBBAB:  lda     #$AE                            ; BBAB A9 AE                    
         jsr     FROM_C67B                       ; BBB0 20 4A 03                  J.
         jsr     ShowChar_                       ; BBB3 20 B3 AB                  ..
         iny                                     ; BBB6 C8                       .
-        cpy     FNlength                        ; BBB7 CC 87 03                 ...
+        cpy     FNLEN                        ; BBB7 CC 87 03                 ...
         bne     LBBAB                           ; BBBA D0 EF                    ..
 LBBBC:  jmp     PrintNewLine                    ; BBBC 4C D3 CA                 L..
 ; ----------------------------------------------------------------------------
 LBBBF:  rts                                     ; BBBF 60                       `
 ; ----------------------------------------------------------------------------
-LBBC0:  lda     LFSDevNum                       ; BBC0 A5 C5                    ..
+LBBC0:  lda     FA                       ; BBC0 A5 C5                    ..
         bne     LBBC7                           ; BBC2 D0 03                    ..
 LBBC4:  jmp     LBC68                           ; BBC4 4C 68 BC                 Lh.
 ; ----------------------------------------------------------------------------
@@ -8038,7 +8037,7 @@ LBBC7:  cmp     #$03                            ; BBC7 C9 03                    
         beq     LBBC4                           ; BBC9 F0 F9                    ..
         cmp     #$02                            ; BBCB C9 02                    ..
         beq     LBBC4                           ; BBCD F0 F5                    ..
-        ldy     FNlength                        ; BBCF AC 87 03                 ...
+        ldy     FNLEN                        ; BBCF AC 87 03                 ...
         bne     LBBD7                           ; BBD2 D0 03                    ..
         jmp     LBC65                           ; BBD4 4C 65 BC                 Le.
 ; ----------------------------------------------------------------------------
@@ -8048,12 +8047,12 @@ LBBD7:  cmp     #$01                            ; BBD7 C9 01                    
         jmp     L9085                           ; BBDE 4C 85 90                 L..
 ; ----------------------------------------------------------------------------
 LBBE1:  lda     #$61                            ; BBE1 A9 61                    .a
-        sta     LFS2ndAddr                      ; BBE3 85 C4                    ..
+        sta     SA                      ; BBE3 85 C4                    ..
         jsr     LBB40                           ; BBE5 20 40 BB                  @.
         jsr     LBB7F                           ; BBE8 20 7F BB                  ..
-        lda     LFSDevNum                       ; BBEB A5 C5                    ..
+        lda     FA                       ; BBEB A5 C5                    ..
         jsr     LISTN                        ; BBED 20 94 BC                  ..
-        lda     LFS2ndAddr                      ; BBF0 A5 C4                    ..
+        lda     SA                      ; BBF0 A5 C4                    ..
         jsr     SECND                        ; BBF2 20 46 BD                  F.
         ldy     #$00                            ; BBF5 A0 00                    ..
         lda     $B7                             ; BBF7 A5 B7                    ..
@@ -8086,11 +8085,11 @@ LBC2B:  inc     $B8                             ; BC2B E6 B8                    
         inc     $B9                             ; BC2F E6 B9                    ..
         bne     LBC09                           ; BC31 D0 D6                    ..
 LBC33:  jsr     UNLSN                        ; BC33 20 90 BD                  ..
-LBC36:  bit     LFS2ndAddr                      ; BC36 24 C4                    $.
+LBC36:  bit     SA                      ; BC36 24 C4                    $.
         bmi     LBC4B                           ; BC38 30 11                    0.
-        lda     LFSDevNum                       ; BC3A A5 C5                    ..
+        lda     FA                       ; BC3A A5 C5                    ..
         jsr     LISTN                        ; BC3C 20 94 BC                  ..
-        lda     LFS2ndAddr                      ; BC3F A5 C4                    ..
+        lda     SA                      ; BC3F A5 C4                    ..
         and     #$EF                            ; BC41 29 EF                    ).
         ora     #$E0                            ; BC43 09 E0                    ..
         jsr     SECND                        ; BC45 20 46 BD                  F.
@@ -8675,7 +8674,7 @@ LC075:  dec     a                               ; C075 3A                       
 ; ----------------------------------------------------------------------------
 LC082:  lda     #$AE                            ; C082 A9 AE                    ..
         sta     $034E                           ; C084 8D 4E 03                 .N.
-        ldx     FNlength                        ; C087 AE 87 03                 ...
+        ldx     FNLEN                        ; C087 AE 87 03                 ...
         beq     LC0A6                           ; C08A F0 1A                    ..
         stz     ACIA_ST                         ; C08C 9C 81 F9                 ...
         ldy     #$00                            ; C08F A0 00                    ..
@@ -8716,7 +8715,7 @@ LC0CE:  jsr     LC1BB                           ; C0CE 20 BB C1                 
         bcs     LC0E3                           ; C0DE B0 03                    ..
         jmp     LC1B4                           ; C0E0 4C B4 C1                 L..
 ; ----------------------------------------------------------------------------
-LC0E3:  lda     LFSLogNum                       ; C0E3 A5 C6                    ..
+LC0E3:  lda     LA                       ; C0E3 A5 C6                    ..
         jmp     LFCF1                           ; C0E5 4C F1 FC                 L..
 ; ----------------------------------------------------------------------------
 LC0E8:  php                                     ; C0E8 08                       .
@@ -8727,7 +8726,7 @@ LC0E8:  php                                     ; C0E8 08                       
 ; ----------------------------------------------------------------------------
 LC0F1:  pha                                     ; C0F1 48                       H
         and     #$7F                            ; C0F2 29 7F                    ).
-        cmp     FNlength                        ; C0F4 CD 87 03                 ...
+        cmp     FNLEN                        ; C0F4 CD 87 03                 ...
         bcc     LC0FC                           ; C0F7 90 03                    ..
         pla                                     ; C0F9 68                       h
         clc                                     ; C0FA 18                       .
@@ -8881,7 +8880,7 @@ LC200:  jsr     LC1B4                           ; C200 20 B4 C1                 
 LC211:  .byte   $04,$02,$00,$04,$06,$07,$09,$0B ; C211 04 02 00 04 06 07 09 0B  ........
 ; ----------------------------------------------------------------------------
 LC219:  stz     $0411                           ; C219 9C 11 04                 ...
-        lda     FNlength                        ; C21C AD 87 03                 ...
+        lda     FNLEN                        ; C21C AD 87 03                 ...
         beq     LC22A                           ; C21F F0 09                    ..
         cmp     #$08                            ; C221 C9 08                    ..
         beq     LC22C                           ; C223 F0 07                    ..
@@ -9520,8 +9519,8 @@ KL_RESTOR:
 KL_VECTOR:
         php                                     ; C69B 08                       .
         sei                                     ; C69C 78                       x
-        stx     FNptr_lo                        ; C69D 86 AE                    ..
-        sty     FNptr_hi                        ; C69F 84 AF                    ..
+        stx     FNADR                        ; C69D 86 AE                    ..
+        sty     FNADR+1                        ; C69F 84 AF                    ..
 ; This copies the routines from $C669 into the RAM from $338.
         ldx     #$2C                            ; C6A1 A2 2C                    .,
 LC6A3:  lda     LC669,x                         ; C6A3 BD 69 C6                 .i.
@@ -9896,16 +9895,16 @@ LC9B3:  jmp     LC767                           ; C9B3 4C 67 C7                 
 LC9B6:  jmp     LC759                           ; C9B6 4C 59 C7                 LY.
 ; ----------------------------------------------------------------------------
 LC9B9:  ldy     #$01                            ; C9B9 A0 01                    ..
-        sty     LFSDevNum                       ; C9BB 84 C5                    ..
-        sty     LFS2ndAddr                      ; C9BD 84 C4                    ..
+        sty     FA                       ; C9BB 84 C5                    ..
+        sty     SA                      ; C9BD 84 C4                    ..
         dey                                     ; C9BF 88                       .
-        sty     FNlength                        ; C9C0 8C 87 03                 ...
+        sty     FNLEN                        ; C9C0 8C 87 03                 ...
         sty     ST                              ; C9C3 84 BA                    ..
         sty     VERCHK                          ; C9C5 8C 06 04                 ...
         lda     #$04                            ; C9C8 A9 04                    ..
-        sta     FNptr_hi                        ; C9CA 85 AF                    ..
+        sta     FNADR+1                        ; C9CA 85 AF                    ..
         lda     #$50                            ; C9CC A9 50                    .P
-        sta     FNptr_lo                        ; C9CE 85 AE                    ..
+        sta     FNADR                        ; C9CE 85 AE                    ..
 LC9D0:  jsr     LCAFD                           ; C9D0 20 FD CA                  ..
         beq     LCA33                           ; C9D3 F0 5E                    .^
         cmp     #$20                            ; C9D5 C9 20                    .
@@ -9919,8 +9918,8 @@ LC9DF:  cpx     $CE                             ; C9DF E4 CE                    
         inx                                     ; C9E6 E8                       .
         cmp     #$22                            ; C9E7 C9 22                    ."
         beq     LC9F8                           ; C9E9 F0 0D                    ..
-        sta     (FNptr_lo),y                    ; C9EB 91 AE                    ..
-        inc     FNlength                        ; C9ED EE 87 03                 ...
+        sta     (FNADR),y                    ; C9EB 91 AE                    ..
+        inc     FNLEN                        ; C9ED EE 87 03                 ...
         iny                                     ; C9F0 C8                       .
         cpy     #$11                            ; C9F1 C0 11                    ..
         bcc     LC9DF                           ; C9F3 90 EA                    ..
@@ -9934,7 +9933,7 @@ LC9F8:  stx     $CD                             ; C9F8 86 CD                    
         beq     LC9F5                           ; CA04 F0 EF                    ..
         cmp     #$03                            ; CA06 C9 03                    ..
         beq     LC9F5                           ; CA08 F0 EB                    ..
-        sta     LFSDevNum                       ; CA0A 85 C5                    ..
+        sta     FA                       ; CA0A 85 C5                    ..
         jsr     LCA75                           ; CA0C 20 75 CA                  u.
         bcs     LCA33                           ; CA0F B0 22                    ."
         jsr     LCB19                           ; CA11 20 19 CB                  ..
@@ -9947,7 +9946,7 @@ LC9F8:  stx     $CD                             ; C9F8 86 CD                    
         cmp     #$53                            ; CA23 C9 53                    .S
         bne     LC9F5                           ; CA25 D0 CE                    ..
         lda     #$00                            ; CA27 A9 00                    ..
-        sta     LFS2ndAddr                      ; CA29 85 C4                    ..
+        sta     SA                      ; CA29 85 C4                    ..
         lda     #$CB                            ; CA2B A9 CB                    ..
         jsr     LFD82                           ; CA2D 20 82 FD                  ..
 LCA30:  jmp     LC767                           ; CA30 4C 67 C7                 Lg.
@@ -10507,7 +10506,7 @@ LCE25:  ora     ($48),y                         ; CE25 11 48                    
         adc     #$74                            ; CE65 69 74                    it
         adc     $7C26                           ; CE67 6D 26 7C                 m&|
         .byte   $22                             ; CE6A 22                       "
-        sty     LFS2ndAddr                      ; CE6B 84 C4                    ..
+        sty     SA                      ; CE6B 84 C4                    ..
         txa                                     ; CE6D 8A                       .
         .byte   $44                             ; CE6E 44                       D
         txa                                     ; CE6F 8A                       .
@@ -10538,7 +10537,7 @@ LCE25:  ora     ($48),y                         ; CE25 11 48                    
         ldy     $AC,x                           ; CE98 B4 AC                    ..
         dec     StopKeyFlag                     ; CE9A C6 AD                    ..
         asl     StopKeyFlag                     ; CE9C 06 AD                    ..
-        and     (FNptr_lo)                      ; CE9E 32 AE                    2.
+        and     (FNADR)                      ; CE9E 32 AE                    2.
         .byte   $44                             ; CEA0 44                       D
         ldx     LAE68                           ; CEA1 AE 68 AE                 .h.
         sty     $00                             ; CEA4 84 00                    ..
@@ -10791,7 +10790,7 @@ LD063:  dex                                     ; D063 CA                       
         txa                                     ; D065 8A                       .
         ldy     $CF                             ; D066 A4 CF                    ..
         bne     LD06D                           ; D068 D0 03                    ..
-LD06A:  lda     LFSLogNum,y                     ; D06A B9 C6 00                 ...
+LD06A:  lda     LA,y                     ; D06A B9 C6 00                 ...
 LD06D:  jsr     LCC4B                           ; D06D 20 4B CC                  K.
         dey                                     ; D070 88                       .
         bne     LD06A                           ; D071 D0 F7                    ..
@@ -14763,7 +14762,7 @@ LF334:  jmp     LB0BC                           ; F334 4C BC B0                 
         sty     ST                              ; F339 84 BA                    ..
         sty     $B9                             ; F33B 84 B9                    ..
         dey                                     ; F33D 88                       .
-        sty     LFSLogNum                       ; F33E 84 C6                    ..
+        sty     LA                       ; F33E 84 C6                    ..
         sty     $B7                             ; F340 84 B7                    ..
         sty     $C7                             ; F342 84 C7                    ..
         sty     $90                             ; F344 84 90                    ..
@@ -14800,7 +14799,7 @@ LF373:  stx     $7A                             ; F373 86 7A                    
         jsr     LB7A7                           ; F383 20 A7 B7                  ..
         bcs     LF3AB                           ; F386 B0 23                    .#
         jsr     LB901                           ; F388 20 01 B9                  ..
-        sta     LFSLogNum                       ; F38B 85 C6                    ..
+        sta     LA                       ; F38B 85 C6                    ..
         jsr     LB7A7                           ; F38D 20 A7 B7                  ..
         bcs     LF3D1                           ; F390 B0 3F                    .?
         jsr     LB8B4                           ; F392 20 B4 B8                  ..
@@ -15525,7 +15524,7 @@ LFA8A:  sta     MMU_MODE_APPL                   ; FA8A 8D 80 FA                 
 ; vector in the gap seems to be "monitor" entry (according to C128's ROM) but
 ; points to RTS in CLCD. The the last two vectors are unknown, not exists on
 ; C128.
-        .addr   DEFVEC_IRQ                      ; FA90 31 FA                    1.
+VECTSS: .addr   DEFVEC_IRQ                      ; FA90 31 FA                    1.
         .addr   DEFVEC_BRK                      ; FA92 2B FA                    +.
         .addr   DEFVEC_NMI                      ; FA94 5C FA                    \.
         .addr   DEFVEC_OPEN                     ; FA96 E7 FC                    ..
@@ -15847,19 +15846,19 @@ TALK_:  sta     MMU_MODE_KERN                   ; FCBE 8D 00 FA                 
         sta     MMU_MODE_APPL                   ; FCC4 8D 80 FA                 ...
         rts                                     ; FCC7 60                       `
 ; ----------------------------------------------------------------------------
-ReadST: lda     ST                              ; FCC8 A5 BA                    ..
+READST: lda     ST                              ; FCC8 A5 BA                    ..
 UDST:  ora     ST                              ; FCCA 05 BA                    ..
         sta     ST                              ; FCCC 85 BA                    ..
         rts                                     ; FCCE 60                       `
 ; ----------------------------------------------------------------------------
-SetLFS: sta     LFSLogNum                       ; FCCF 85 C6                    ..
-        stx     LFSDevNum                       ; FCD1 86 C5                    ..
-        sty     LFS2ndAddr                      ; FCD3 84 C4                    ..
+SETLFS: sta     LA                       ; FCCF 85 C6                    ..
+        stx     FA                       ; FCD1 86 C5                    ..
+        sty     SA                      ; FCD3 84 C4                    ..
         rts                                     ; FCD5 60                       `
 ; ----------------------------------------------------------------------------
-SetNam: sta     FNlength                        ; FCD6 8D 87 03                 ...
-        stx     FNptr_lo                        ; FCD9 86 AE                    ..
-        sty     FNptr_hi                        ; FCDB 84 AF                    ..
+SETNAM: sta     FNLEN                        ; FCD6 8D 87 03                 ...
+        stx     FNADR                        ; FCD9 86 AE                    ..
+        sty     FNADR+1                        ; FCDB 84 AF                    ..
         rts                                     ; FCDD 60                       `
 ; ----------------------------------------------------------------------------
 Open_:  sta     MMU_MODE_APPL                   ; FCDE 8D 80 FA                 ...
@@ -16222,15 +16221,15 @@ TALK:   jmp     TALK_                           ; FFB4 4C BE FC                 
 ; ??READST. Fetch status of current input/output device, value of ST
 ; variable. (For RS232, status is cleared.)
 ; Output: A = Device status.
-        jmp     ReadST                          ; FFB7 4C C8 FC                 L..
+        jmp     READST                          ; FFB7 4C C8 FC                 L..
 ; ----------------------------------------------------------------------------
 ; ??SETLFS. Set file parameters.
 ; Input: A = Logical number; X = Device number; Y = Secondary address.
-        jmp     SetLFS                          ; FFBA 4C CF FC                 L..
+        jmp     SETLFS                          ; FFBA 4C CF FC                 L..
 ; ----------------------------------------------------------------------------
 ; SETNAM. Set file name parameters.
 ; Input: A = File name length; X/Y = Pointer to file name.
-        jmp     SetNam                          ; FFBD 4C D6 FC                 L..
+        jmp     SETNAM                          ; FFBD 4C D6 FC                 L..
 ; ----------------------------------------------------------------------------
 ; "OPEN". Must call SETLFS and SETNAM beforehands.
 ; RAMVEC_OPEN points to $FCE7 in RAM by default.
