@@ -25,9 +25,9 @@ FNADR           := $00AE
 ST              := $00BA
 VidPtrLo        := $00C1
 VidPtrHi        := $00C2
-SA      := $00C4
-FA       := $00C5
-LA       := $00C6
+SA              := $00C4
+FA              := $00C5
+LA              := $00C6
 stack           := $0100
 L0300           := $0300
 RAMVEC_IRQ      := $0314
@@ -58,9 +58,9 @@ L035F           := $035F
 CurMaxY         := $037E
 L0380           := $0380
 CurMaxX         := $0381
-KernMsg         := $0383
+MSGFLG          := $0383
 L0386           := $0386
-FNLEN        := $0387
+FNLEN           := $0387
 TOD_60HZ        := $038F
 TOD_SECS        := $0390
 TOD_MINS        := $0391
@@ -1087,7 +1087,7 @@ L874F:  stz     $0393,x                         ; 874F 9E 93 03                 
         lda     #$03                            ; 8758 A9 03                    ..
         sta     L0386                           ; 875A 8D 86 03                 ...
         lda     #$FF                            ; 875D A9 FF                    ..
-        sta     KernMsg                         ; 875F 8D 83 03                 ...
+        sta     MSGFLG                         ; 875F 8D 83 03                 ...
         rts                                     ; 8762 60                       `
 ; ----------------------------------------------------------------------------
 InitIOhw:
@@ -2915,7 +2915,7 @@ LOAD__: sta     VERCHK                          ; 9538 8D 06 04                 
         stz     ST                              ; 953B 64 BA                    d.
         lda     FA                       ; 953D A5 C5                    ..
         bne     L9544                           ; 953F D0 03                    ..
-L9541:  jmp     LBC68                           ; 9541 4C 68 BC                 Lh.
+L9541:  jmp     ERROR9 ;BAD DEVICE #                          ; 9541 4C 68 BC                 Lh.
 ; ----------------------------------------------------------------------------
 L9544:  cmp     #$01                            ; 9544 C9 01                    ..
         beq     L9550                           ; 9546 F0 08                    ..
@@ -2925,7 +2925,7 @@ L9544:  cmp     #$01                            ; 9544 C9 01                    
         bcs     L9541                           ; 954E B0 F1                    ..
 L9550:  ldy     FNLEN                        ; 9550 AC 87 03                 ...
         bne     L9558                           ; 9553 D0 03                    ..
-        jmp     LBC65                           ; 9555 4C 65 BC                 Le.
+        jmp     ERROR8 ;MISSING FILE NAME                          ; 9555 4C 65 BC                 Le.
 ; ----------------------------------------------------------------------------
 L9558:  jsr     LBB8D                           ; 9558 20 8D BB                  ..
         ldx     SA                      ; 955B A6 C4                    ..
@@ -2948,12 +2948,12 @@ L957A:  phx                                     ; 957A DA                       
         lda     ST                              ; 957F A5 BA                    ..
         bit     #$0C                            ; 9581 89 0C                    ..
         beq     L9592                           ; 9583 F0 0D                    ..
-L9585:  jmp     LBC59                           ; 9585 4C 59 BC                 LY.
+L9585:  jmp     ERROR4 ;FILE NOT FOUND                          ; 9585 4C 59 BC                 LY.
 ; ----------------------------------------------------------------------------
 L9588:  lda     SA                      ; 9588 A5 C4                    ..
         beq     L958F                           ; 958A F0 03                    ..
         jsr     LBC36                           ; 958C 20 36 BC                  6.
-L958F:  jmp     LBC6B                           ; 958F 4C 6B BC                 Lk.
+L958F:  jmp     ERROR16 ;OUT OF MEMORY                          ; 958F 4C 6B BC                 Lk.
 ; ----------------------------------------------------------------------------
 L9592:  jsr     L9661                           ; 9592 20 61 96                  a.
         sta     $B2                             ; 9595 85 B2                    ..
@@ -3050,7 +3050,7 @@ L9651:  ldx     $B2                             ; 9651 A6 B2                    
 L9657:  lda     SA                      ; 9657 A5 C4                    ..
         bne     L965E                           ; 9659 D0 03                    ..
         jsr     LBC36                           ; 965B 20 36 BC                  6.
-L965E:  jmp     LBC4D                           ; 965E 4C 4D BC                 LM.
+L965E:  jmp     ERROR0  ;OK                     ; 965E 4C 4D BC                 LM.
 ; ----------------------------------------------------------------------------
 L9661:  lda     SA                      ; 9661 A5 C4                    ..
         beq     L9668                           ; 9663 F0 03                    ..
@@ -7367,7 +7367,7 @@ LB6E8:  lda     StopKeyFlag                     ; B6E8 A5 AD                    
         and     #$01                            ; B6EC 29 01                    ).
         bne     LB6F8                           ; B6EE D0 08                    ..
         php                                     ; B6F0 08                       .
-        jsr     LFD2A                           ; B6F1 20 2A FD                  *.
+        jsr     CLRCH                           ; B6F1 20 2A FD                  *.
         jsr     LB4FB                           ; B6F4 20 FB B4                  ..
         plp                                     ; B6F7 28                       (
 LB6F8:  rts                                     ; B6F8 60                       `
@@ -7708,7 +7708,7 @@ LB952:  .byte   $19                             ; B952 19                       
         .byte   $B3                             ; B953 B3                       .
 LB954:  cmp     #$1E                            ; B954 C9 1E                    ..
         bne     LB95B                           ; B956 D0 03                    ..
-        jmp     LBC5F                           ; B958 4C 5F BC                 L_.
+        jmp     ERROR6 ;NOT INPUT FILE                          ; B958 4C 5F BC                 L_.
 ; ----------------------------------------------------------------------------
 LB95B:  bcc     LB960                           ; B95B 90 03                    ..
         jmp     LC2AD                           ; B95D 4C AD C2                 L..
@@ -7774,7 +7774,7 @@ LB9B1:  lda     SA                      ; B9B1 A5 C4                    ..
 ; ----------------------------------------------------------------------------
 CHKIN__:jsr     LBAB5                           ; B9BA 20 B5 BA                  ..
         beq     LB9C2                           ; B9BD F0 03                    ..
-        jmp     LBC56                           ; B9BF 4C 56 BC                 LV.
+        jmp     ERROR3 ;FILE NOT OPEN                          ; B9BF 4C 56 BC                 LV.
 ; ----------------------------------------------------------------------------
 LB9C2:  jsr     LBAC4                           ; B9C2 20 C4 BA                  ..
         beq     LB9DC                           ; B9C5 F0 15                    ..
@@ -7805,7 +7805,7 @@ LB9F3:  jsr     TKSA                        ; B9F3 20 55 BD                  U.
 LB9F6:  txa                                     ; B9F6 8A                       .
         bit     ST                              ; B9F7 24 BA                    $.
         bpl     LB9DC                           ; B9F9 10 E1                    ..
-LB9FB:  jmp     LBC5C                           ; B9FB 4C 5C BC                 L\.
+LB9FB:  jmp     ERROR5 ;DEVICE NOT PRESENT                          ; B9FB 4C 5C BC                 L\.
 ; ----------------------------------------------------------------------------
 LB9FE:  jsr     L9962                           ; B9FE 20 62 99                  b.
         bcc     LB9DC                           ; BA01 90 D9                    ..
@@ -7813,11 +7813,11 @@ LB9FE:  jsr     L9962                           ; B9FE 20 62 99                 
 CHKOUT__:
         jsr     LBAB5                           ; BA05 20 B5 BA                  ..
         beq     LBA0D                           ; BA08 F0 03                    ..
-        jmp     LBC56                           ; BA0A 4C 56 BC                 LV.
+        jmp     ERROR3 ;FILE NOT OPEN                          ; BA0A 4C 56 BC                 LV.
 ; ----------------------------------------------------------------------------
 LBA0D:  jsr     LBAC4                           ; BA0D 20 C4 BA                  ..
         bne     LBA15                           ; BA10 D0 03                    ..
-        jmp     LBC62                           ; BA12 4C 62 BC                 Lb.
+        jmp     ERROR7 ;NOT OUTPUT FILE                          ; BA12 4C 62 BC                 Lb.
 ; ----------------------------------------------------------------------------
 LBA15:  cmp     #$1E                            ; BA15 C9 1E                    ..
         bcs     LBA32                           ; BA17 B0 19                    ..
@@ -7850,7 +7850,7 @@ LBA48:  jsr     SECND                        ; BA48 20 46 BD                  F.
 LBA4B:  txa                                     ; BA4B 8A                       .
         bit     ST                              ; BA4C 24 BA                    $.
         bpl     LBA32                           ; BA4E 10 E2                    ..
-LBA50:  jmp     LBC5C                           ; BA50 4C 5C BC                 L\.
+LBA50:  jmp     ERROR5 ;DEVICE NOT PRESENT                          ; BA50 4C 5C BC                 L\.
 ; ----------------------------------------------------------------------------
 CLOSE__:ror     $0407                           ; BA53 6E 07 04                 n..
         jsr     LBAB8                           ; BA56 20 B8 BA                  ..
@@ -7929,15 +7929,16 @@ LBAE9:  stx     L0386                           ; BAE9 8E 86 03                 
         stz     $0385                           ; BAEC 9C 85 03                 ...
         rts                                     ; BAEF 60                       `
 ; ----------------------------------------------------------------------------
+;NOPEN
 Open__: ldx     LA                       ; BAF0 A6 C6                    ..
         jsr     LBAB5                           ; BAF2 20 B5 BA                  ..
         bne     LBAFA                           ; BAF5 D0 03                    ..
-        jmp     LBC53                           ; BAF7 4C 53 BC                 LS.
+        jmp     ERROR2 ;FILE OPEN                          ; BAF7 4C 53 BC                 LS.
 ; ----------------------------------------------------------------------------
 LBAFA:  ldx     $0405                           ; BAFA AE 05 04                 ...
         cpx     #$0C                            ; BAFD E0 0C                    ..
         bcc     LBB04                           ; BAFF 90 03                    ..
-        jmp     LBC50                           ; BB01 4C 50 BC                 LP.
+        jmp     ERROR1 ;TOO MANY FILES                          ; BB01 4C 50 BC                 LP.
 ; ----------------------------------------------------------------------------
 LBB04:  inc     $0405                           ; BB04 EE 05 04                 ...
         lda     LA                       ; BB07 A5 C6                    ..
@@ -7988,7 +7989,7 @@ LBB40:  lda     SA                      ; BB40 A5 C4                    ..
         bpl     LBB64                           ; BB5D 10 05                    ..
 LBB5F:  pla                                     ; BB5F 68                       h
         pla                                     ; BB60 68                       h
-        jmp     LBC5C                           ; BB61 4C 5C BC                 L\.
+        jmp     ERROR5 ;DEVICE NOT PRESENT                          ; BB61 4C 5C BC                 L\.
 ; ----------------------------------------------------------------------------
 LBB64:  lda     FNLEN                        ; BB64 AD 87 03                 ...
         beq     LBB7C                           ; BB67 F0 13                    ..
@@ -8013,7 +8014,7 @@ LBB8D:  jsr     ShowInLineText80                ; BB8D 20 56 FB                 
                                                 ; BB98 47 20 46 4F 52 20        G FOR
         .byte   $00                             ; BB9E 00                       .
 ; ----------------------------------------------------------------------------
-LBB9F:  bit     KernMsg                         ; BB9F 2C 83 03                 ,..
+LBB9F:  bit     MSGFLG                         ; BB9F 2C 83 03                 ,..
         bpl     LBBBF                           ; BBA2 10 1B                    ..
         ldy     FNLEN                        ; BBA4 AC 87 03                 ...
         beq     LBBBC                           ; BBA7 F0 13                    ..
@@ -8031,7 +8032,7 @@ LBBBF:  rts                                     ; BBBF 60                       
 ; ----------------------------------------------------------------------------
 LBBC0:  lda     FA                       ; BBC0 A5 C5                    ..
         bne     LBBC7                           ; BBC2 D0 03                    ..
-LBBC4:  jmp     LBC68                           ; BBC4 4C 68 BC                 Lh.
+LBBC4:  jmp     ERROR9 ;BAD DEVICE #                          ; BBC4 4C 68 BC                 Lh.
 ; ----------------------------------------------------------------------------
 LBBC7:  cmp     #$03                            ; BBC7 C9 03                    ..
         beq     LBBC4                           ; BBC9 F0 F9                    ..
@@ -8039,7 +8040,7 @@ LBBC7:  cmp     #$03                            ; BBC7 C9 03                    
         beq     LBBC4                           ; BBCD F0 F5                    ..
         ldy     FNLEN                        ; BBCF AC 87 03                 ...
         bne     LBBD7                           ; BBD2 D0 03                    ..
-        jmp     LBC65                           ; BBD4 4C 65 BC                 Le.
+        jmp     ERROR8 ;MISSING FILE NAME                          ; BBD4 4C 65 BC                 Le.
 ; ----------------------------------------------------------------------------
 LBBD7:  cmp     #$01                            ; BBD7 C9 01                    ..
         bne     LBBE1                           ; BBD9 D0 06                    ..
@@ -8097,31 +8098,31 @@ LBC48:  jsr     UNLSN                        ; BC48 20 90 BD                  ..
 LBC4B:  clc                                     ; BC4B 18                       .
         rts                                     ; BC4C 60                       `
 ; ----------------------------------------------------------------------------
-LBC4D:  lda     #$00                            ; BC4D A9 00                    ..
+ERROR0: lda     #$00  ;OK                       ; BC4D A9 00                    ..
         .byte   $2C                             ; BC4F 2C                       ,
-LBC50:  lda     #$01                            ; BC50 A9 01                    ..
+ERROR1: lda     #$01  ;TOO MANY OPEN FILES      ; BC50 A9 01                    ..
         .byte   $2C                             ; BC52 2C                       ,
-LBC53:  lda     #$02                            ; BC53 A9 02                    ..
+ERROR2: lda     #$02  ;FILE OPEN                ; BC53 A9 02                    ..
         .byte   $2C                             ; BC55 2C                       ,
-LBC56:  lda     #$03                            ; BC56 A9 03                    ..
+ERROR3: lda     #$03  ;FILE NOT OPEN            ; BC56 A9 03                    ..
         .byte   $2C                             ; BC58 2C                       ,
-LBC59:  lda     #$04                            ; BC59 A9 04                    ..
+ERROR4: lda     #$04  ;FILE NOT FOUND           ; BC59 A9 04                    ..
         .byte   $2C                             ; BC5B 2C                       ,
-LBC5C:  lda     #$05                            ; BC5C A9 05                    ..
+ERROR5: lda     #$05  ;DEVICE NOT PRESENT       ; BC5C A9 05                    ..
         .byte   $2C                             ; BC5E 2C                       ,
-LBC5F:  lda     #$06                            ; BC5F A9 06                    ..
+ERROR6: lda     #$06  ;NOT INPUT FILE           ; BC5F A9 06                    ..
         .byte   $2C                             ; BC61 2C                       ,
-LBC62:  lda     #$07                            ; BC62 A9 07                    ..
+ERROR7: lda     #$07  ;NOT OUTPUT FILE          ; BC62 A9 07                    ..
         .byte   $2C                             ; BC64 2C                       ,
-LBC65:  lda     #$08                            ; BC65 A9 08                    ..
+ERROR8: lda     #$08  ;MISSING FILE NAME        ; BC65 A9 08                    ..
         .byte   $2C                             ; BC67 2C                       ,
-LBC68:  lda     #$09                            ; BC68 A9 09                    ..
+ERROR9: lda     #$09  ;BAD DEVICE #             ; BC68 A9 09                    ..
         .byte   $2C                             ; BC6A 2C                       ,
-LBC6B:  lda     #$0A                            ; BC6B A9 0A                    ..
+ERROR16:lda     #$0A  ;OUT OF MEMORY            ; BC6B A9 0A                    ..
         pha                                     ; BC6D 48                       H
-        jsr     LFD2A                           ; BC6E 20 2A FD                  *.
-        bit     KernMsg                         ; BC71 2C 83 03                 ,..
-        bvc     LBC8E                           ; BC74 50 18                    P.
+        jsr     CLRCH                           ; BC6E 20 2A FD                  *.
+        bit     MSGFLG                          ; BC71 2C 83 03                 ,..
+        bvc     EREXIT                          ; BC74 50 18                    P.
         jsr     ShowInLineText                  ; BC76 20 5B FB                  [.
         .byte   $0D                             ; BC79 0D                       .
         .byte   "I/O ERROR #"                   ; BC7A 49 2F 4F 20 45 52 52 4F  I/O ERRO
@@ -8132,7 +8133,7 @@ LBC6B:  lda     #$0A                            ; BC6B A9 0A                    
         pha                                     ; BC87 48                       H
         jsr     L8850                           ; BC88 20 50 88                  P.
         jsr     PrintNewLine                    ; BC8B 20 D3 CA                  ..
-LBC8E:  pla                                     ; BC8E 68                       h
+EREXIT: pla                                    ; BC8E 68                       h
         sec                                     ; BC8F 38                       8
         rts                                     ; BC90 60                       `
 
@@ -8177,10 +8178,10 @@ ISOURA: sei                                     ; BCC0 78                       
 ISOUR:  sei                                     ; BCCA 78                       x
         jsr     DATAHI               ; BCCB 20 2C BE                  ,.
         jsr     DEBPIA              ; BCCE 20 3E BE                  >.
-        bcs     NOTPRES                           ; BCD1 B0 67                    .g
+        bcs     NODEV                           ; BCD1 B0 67                    .g
         jsr     CLKHI               ; BCD3 20 1A BE                  ..
         bit     VIA1_PORTB                      ; BCD6 2C 00 F8                 ,..
-        bvs     NOTPRES                           ; BCD9 70 5F                    p_
+        bvs     NODEV                           ; BCD9 70 5F                    p_
         bit     R2D2                           ; BCDB 2C 0A 04                 ,..
         bpl     NOEOI                           ; BCDE 10 0A                    ..
 
@@ -8232,7 +8233,7 @@ ISR04:  lda     VIA1_IFR                        ; BD2C AD 0D F8                 
         cli                                     ; BD38 58                       X
         rts                                     ; BD39 60                       `
 ; ----------------------------------------------------------------------------
-NOTPRES: lda     #$80                            ; BD3A A9 80                    ..
+NODEV:  lda     #$80                            ; BD3A A9 80                    ..
         .byte   $2C                             ; BD3C 2C                       ,
 
 FRMERR: lda     #$03                            ; BD3D A9 03                    ..
@@ -9576,7 +9577,7 @@ LC70F:  pla                                     ; C70F 68                       
         bpl     LC70F                           ; C714 10 F9                    ..
         jsr     LB2E4                           ; C716 20 E4 B2                  ..
         jsr     KL_RESTOR                       ; C719 20 96 C6                  ..
-        jsr     LFD2A                           ; C71C 20 2A FD                  *.
+        jsr     CLRCH                           ; C71C 20 2A FD                  *.
         tsx                                     ; C71F BA                       .
         stx     $03BB                           ; C720 8E BB 03                 ...
         cpx     #$0A                            ; C723 E0 0A                    ..
@@ -9597,7 +9598,7 @@ LC72A:  php                                     ; C72A 08                       
         .byte   $00                             ; C747 00                       .
 ; ----------------------------------------------------------------------------
 LC748:  lda     #$C0                            ; C748 A9 C0                    ..
-        sta     KernMsg                         ; C74A 8D 83 03                 ...
+        sta     MSGFLG                         ; C74A 8D 83 03                 ...
         lda     #$00                            ; C74D A9 00                    ..
         sta     $CB                             ; C74F 85 CB                    ..
         sta     $CC                             ; C751 85 CC                    ..
@@ -9605,7 +9606,7 @@ LC748:  lda     #$C0                            ; C748 A9 C0                    
 LC754:  jsr     LCC13                           ; C754 20 13 CC                  ..
         bra     LC767                           ; C757 80 0E                    ..
 LC759:  jsr     KL_RESTOR                       ; C759 20 96 C6                  ..
-        jsr     LFD2A                           ; C75C 20 2A FD                  *.
+        jsr     CLRCH                           ; C75C 20 2A FD                  *.
         jsr     ShowInLineText                  ; C75F 20 5B FB                  [.
         .byte   $1D,$1D                         ; C762 1D 1D                    ..
         .byte   ":?"                            ; C764 3A 3F                    :?
@@ -15645,7 +15646,7 @@ LFB5E:  phx                                     ; FB5E DA                       
 LFB62:  plx                                     ; FB62 FA                       .
         phx                                     ; FB63 DA                       .
         bpl     LFB6B                           ; FB64 10 05                    ..
-        bit     KernMsg                         ; FB66 2C 83 03                 ,..
+        bit     MSGFLG                         ; FB66 2C 83 03                 ,..
         bpl     LFB71                           ; FB69 10 06                    ..
 LFB6B:  sta     MMU_MODE_KERN                   ; FB6B 8D 00 FA                 ...
         jsr     ShowChar_                       ; FB6E 20 B3 AB                  ..
@@ -15784,7 +15785,7 @@ KR_VECTOR:
         sta     MMU_MODE_APPL                   ; FC52 8D 80 FA                 ...
         rts                                     ; FC55 60                       `
 ; ----------------------------------------------------------------------------
-SetMsg_:sta     KernMsg                         ; FC56 8D 83 03                 ...
+SetMsg_:sta     MSGFLG                         ; FC56 8D 83 03                 ...
         rts                                     ; FC59 60                       `
 ; ----------------------------------------------------------------------------
 LSTNSA_:sta     MMU_MODE_KERN                   ; FC5A 8D 00 FA                 ...
@@ -15902,7 +15903,7 @@ DEFVEC_CHKOUT:
         sta     MMU_MODE_APPL                   ; FD26 8D 80 FA                 ...
         rts                                     ; FD29 60                       `
 ; ----------------------------------------------------------------------------
-LFD2A:  sta     MMU_MODE_APPL                   ; FD2A 8D 80 FA                 ...
+CLRCH:  sta     MMU_MODE_APPL                   ; FD2A 8D 80 FA                 ...
         jsr     LFFCC                           ; FD2D 20 CC FF                  ..
         jmp     LFD66                           ; FD30 4C 66 FD                 Lf.
 ; ----------------------------------------------------------------------------
