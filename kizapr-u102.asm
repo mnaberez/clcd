@@ -73,6 +73,11 @@ MemTopHiByte    := $039B
 L03AB           := $03AB
 L03B7           := $03B7
 L03C0           := $03C0
+BSOUR           := $0408
+BSOUR1          := $0409
+R2D2            := $040A
+C3P0            := $040B
+IECCNT          := $040C
 L0470           := $0470
 L066A           := $066A
 L0810           := $0810
@@ -2933,9 +2938,9 @@ L9558:  jsr     LBB8D                           ; 9558 20 8D BB                 
         sta     LFS2ndAddr                      ; 9569 85 C4                    ..
         jsr     LBB40                           ; 956B 20 40 BB                  @.
         lda     LFSDevNum                       ; 956E A5 C5                    ..
-        jsr     SendTalk                        ; 9570 20 91 BC                  ..
+        jsr     TALK__                        ; 9570 20 91 BC                  ..
         lda     LFS2ndAddr                      ; 9573 A5 C4                    ..
-        jsr     TALKSA__                        ; 9575 20 55 BD                  U.
+        jsr     TKSA                        ; 9575 20 55 BD                  U.
         bra     L9592                           ; 9578 80 18                    ..
 L957A:  phx                                     ; 957A DA                       .
         jsr     L966B                           ; 957B 20 6B 96                  k.
@@ -3014,7 +3019,7 @@ L95F9:  jsr     L9661                           ; 95F9 20 61 96                 
         cmp     $0407                           ; 9616 CD 07 04                 ...
         beq     L963D                           ; 9619 F0 22                    ."
         lda     #$10                            ; 961B A9 10                    ..
-        jsr     SetST                           ; 961D 20 CA FC                  ..
+        jsr     UDST                           ; 961D 20 CA FC                  ..
         bra     L963D                           ; 9620 80 1B                    ..
 L9622:  ldx     #$B2                            ; 9622 A2 B2                    ..
         stx     $0360                           ; 9624 8E 60 03                 .`.
@@ -3035,7 +3040,7 @@ L9643:  bit     ST                              ; 9643 24 BA                    
         bvc     L95F9                           ; 9645 50 B2                    P.
         lda     LFS2ndAddr                      ; 9647 A5 C4                    ..
         beq     L9651                           ; 9649 F0 06                    ..
-        jsr     UNTALK__                        ; 964B 20 81 BD                  ..
+        jsr     UNTLK                        ; 964B 20 81 BD                  ..
         jsr     LBC36                           ; 964E 20 36 BC                  6.
 L9651:  ldx     $B2                             ; 9651 A6 B2                    ..
         ldy     $B3                             ; 9653 A4 B3                    ..
@@ -3049,7 +3054,7 @@ L965E:  jmp     LBC4D                           ; 965E 4C 4D BC                 
 ; ----------------------------------------------------------------------------
 L9661:  lda     LFS2ndAddr                      ; 9661 A5 C4                    ..
         beq     L9668                           ; 9663 F0 03                    ..
-        jmp     IECIN__                         ; 9665 4C A5 BD                 L..
+        jmp     ACPTR                         ; 9665 4C A5 BD                 L..
 ; ----------------------------------------------------------------------------
 L9668:  jmp     L971F                           ; 9668 4C 1F 97                 L..
 ; ----------------------------------------------------------------------------
@@ -7711,7 +7716,7 @@ LB95B:  bcc     LB960                           ; B95B 90 03                    
 LB960:  lda     ST                              ; B960 A5 BA                    ..
         bne     LB968                           ; B962 D0 04                    ..
         sec                                     ; B964 38                       8
-        jmp     IECIN__                         ; B965 4C A5 BD                 L..
+        jmp     ACPTR                         ; B965 4C A5 BD                 L..
 ; ----------------------------------------------------------------------------
 LB968:  lda     #$0D                            ; B968 A9 0D                    ..
         clc                                     ; B96A 18                       .
@@ -7758,7 +7763,7 @@ LB9A7:  bcc     LB9AC                           ; B9A7 90 03                    
         jmp     LC271                           ; B9A9 4C 71 C2                 Lq.
 ; ----------------------------------------------------------------------------
 LB9AC:  sec                                     ; B9AC 38                       8
-        jmp     IECOUT__                        ; B9AD 4C 6C BD                 Ll.
+        jmp     CIOUT                        ; B9AD 4C 6C BD                 Ll.
 ; ----------------------------------------------------------------------------
 LB9B0:  pha                                     ; B9B0 48                       H
 LB9B1:  lda     LFS2ndAddr                      ; B9B1 A5 C4                    ..
@@ -7788,7 +7793,7 @@ LB9DC:  sta     $0385                           ; B9DC 8D 85 03                 
 LB9E0:  rts                                     ; B9E0 60                       `
 ; ----------------------------------------------------------------------------
 LB9E1:  tax                                     ; B9E1 AA                       .
-        jsr     SendTalk                        ; B9E2 20 91 BC                  ..
+        jsr     TALK__                        ; B9E2 20 91 BC                  ..
         bit     ST                              ; B9E5 24 BA                    $.
         bmi     LB9FB                           ; B9E7 30 12                    0.
         lda     LFS2ndAddr                      ; B9E9 A5 C4                    ..
@@ -7796,7 +7801,7 @@ LB9E1:  tax                                     ; B9E1 AA                       
         jsr     LBD5B                           ; B9ED 20 5B BD                  [.
         jmp     LB9F6                           ; B9F0 4C F6 B9                 L..
 ; ----------------------------------------------------------------------------
-LB9F3:  jsr     TALKSA__                        ; B9F3 20 55 BD                  U.
+LB9F3:  jsr     TKSA                        ; B9F3 20 55 BD                  U.
 LB9F6:  txa                                     ; B9F6 8A                       .
         bit     ST                              ; B9F7 24 BA                    $.
         bpl     LB9DC                           ; B9F9 10 E1                    ..
@@ -7834,14 +7839,14 @@ LBA32:  sta     L0386                           ; BA32 8D 86 03                 
 LBA36:  rts                                     ; BA36 60                       `
 ; ----------------------------------------------------------------------------
 LBA37:  tax                                     ; BA37 AA                       .
-        jsr     LISTEN__                        ; BA38 20 94 BC                  ..
+        jsr     LISTN                        ; BA38 20 94 BC                  ..
         bit     ST                              ; BA3B 24 BA                    $.
         bmi     LBA50                           ; BA3D 30 11                    0.
         lda     LFS2ndAddr                      ; BA3F A5 C4                    ..
         bpl     LBA48                           ; BA41 10 05                    ..
-        jsr     PORT1B_RESET_BIT3               ; BA43 20 4C BD                  L.
+        jsr     SCATN               ; BA43 20 4C BD                  L.
         bne     LBA4B                           ; BA46 D0 03                    ..
-LBA48:  jsr     LSTNSA__                        ; BA48 20 46 BD                  F.
+LBA48:  jsr     SECND                        ; BA48 20 46 BD                  F.
 LBA4B:  txa                                     ; BA4B 8A                       .
         bit     ST                              ; BA4C 24 BA                    $.
         bpl     LBA32                           ; BA4E 10 E2                    ..
@@ -7916,10 +7921,10 @@ CLRCHN__:
         ldx     #$03                            ; BAD7 A2 03                    ..
         cpx     L0386                           ; BAD9 EC 86 03                 ...
         bcs     LBAE1                           ; BADC B0 03                    ..
-        jsr     UNLSTN__                        ; BADE 20 90 BD                  ..
+        jsr     UNLSN                        ; BADE 20 90 BD                  ..
 LBAE1:  cpx     $0385                           ; BAE1 EC 85 03                 ...
         bcs     LBAE9                           ; BAE4 B0 03                    ..
-        jsr     UNTALK__                        ; BAE6 20 81 BD                  ..
+        jsr     UNTLK                        ; BAE6 20 81 BD                  ..
 LBAE9:  stx     L0386                           ; BAE9 8E 86 03                 ...
         stz     $0385                           ; BAEC 9C 85 03                 ...
         rts                                     ; BAEF 60                       `
@@ -7973,12 +7978,12 @@ LBB40:  lda     LFS2ndAddr                      ; BB40 A5 C4                    
         beq     LBB3E                           ; BB47 F0 F5                    ..
         stz     ST                              ; BB49 64 BA                    d.
         lda     LFSDevNum                       ; BB4B A5 C5                    ..
-        jsr     LISTEN__                        ; BB4D 20 94 BC                  ..
+        jsr     LISTN                        ; BB4D 20 94 BC                  ..
         bit     ST                              ; BB50 24 BA                    $.
         bmi     LBB5F                           ; BB52 30 0B                    0.
         lda     LFS2ndAddr                      ; BB54 A5 C4                    ..
         ora     #$F0                            ; BB56 09 F0                    ..
-        jsr     LSTNSA__                        ; BB58 20 46 BD                  F.
+        jsr     SECND                        ; BB58 20 46 BD                  F.
         lda     ST                              ; BB5B A5 BA                    ..
         bpl     LBB64                           ; BB5D 10 05                    ..
 LBB5F:  pla                                     ; BB5F 68                       h
@@ -7991,7 +7996,7 @@ LBB64:  lda     FNlength                        ; BB64 AD 87 03                 
 LBB6B:  lda     #$AE                            ; BB6B A9 AE                    ..
         sta     $034E                           ; BB6D 8D 4E 03                 .N.
         jsr     FROM_C67B                       ; BB70 20 4A 03                  J.
-        jsr     IECOUT__                        ; BB73 20 6C BD                  l.
+        jsr     CIOUT                        ; BB73 20 6C BD                  l.
         iny                                     ; BB76 C8                       .
         cpy     FNlength                        ; BB77 CC 87 03                 ...
         bne     LBB6B                           ; BB7A D0 EF                    ..
@@ -8046,18 +8051,18 @@ LBBE1:  lda     #$61                            ; BBE1 A9 61                    
         jsr     LBB40                           ; BBE5 20 40 BB                  @.
         jsr     LBB7F                           ; BBE8 20 7F BB                  ..
         lda     LFSDevNum                       ; BBEB A5 C5                    ..
-        jsr     LISTEN__                        ; BBED 20 94 BC                  ..
+        jsr     LISTN                        ; BBED 20 94 BC                  ..
         lda     LFS2ndAddr                      ; BBF0 A5 C4                    ..
-        jsr     LSTNSA__                        ; BBF2 20 46 BD                  F.
+        jsr     SECND                        ; BBF2 20 46 BD                  F.
         ldy     #$00                            ; BBF5 A0 00                    ..
         lda     $B7                             ; BBF7 A5 B7                    ..
         sta     $B9                             ; BBF9 85 B9                    ..
         lda     $B6                             ; BBFB A5 B6                    ..
         sta     $B8                             ; BBFD 85 B8                    ..
         lda     $B8                             ; BBFF A5 B8                    ..
-        jsr     IECOUT__                        ; BC01 20 6C BD                  l.
+        jsr     CIOUT                        ; BC01 20 6C BD                  l.
         lda     $B9                             ; BC04 A5 B9                    ..
-        jsr     IECOUT__                        ; BC06 20 6C BD                  l.
+        jsr     CIOUT                        ; BC06 20 6C BD                  l.
 LBC09:  sec                                     ; BC09 38                       8
         lda     $B8                             ; BC0A A5 B8                    ..
         sbc     $B2                             ; BC0C E5 B2                    ..
@@ -8067,7 +8072,7 @@ LBC09:  sec                                     ; BC09 38                       
         lda     #$B8                            ; BC14 A9 B8                    ..
         sta     $034E                           ; BC16 8D 4E 03                 .N.
         jsr     FROM_C67B                       ; BC19 20 4A 03                  J.
-        jsr     IECOUT__                        ; BC1C 20 6C BD                  l.
+        jsr     CIOUT                        ; BC1C 20 6C BD                  l.
         jsr     LFDB9                           ; BC1F 20 B9 FD                  ..
         bne     LBC2B                           ; BC22 D0 07                    ..
         jsr     LBC36                           ; BC24 20 36 BC                  6.
@@ -8079,16 +8084,16 @@ LBC2B:  inc     $B8                             ; BC2B E6 B8                    
         bne     LBC09                           ; BC2D D0 DA                    ..
         inc     $B9                             ; BC2F E6 B9                    ..
         bne     LBC09                           ; BC31 D0 D6                    ..
-LBC33:  jsr     UNLSTN__                        ; BC33 20 90 BD                  ..
+LBC33:  jsr     UNLSN                        ; BC33 20 90 BD                  ..
 LBC36:  bit     LFS2ndAddr                      ; BC36 24 C4                    $.
         bmi     LBC4B                           ; BC38 30 11                    0.
         lda     LFSDevNum                       ; BC3A A5 C5                    ..
-        jsr     LISTEN__                        ; BC3C 20 94 BC                  ..
+        jsr     LISTN                        ; BC3C 20 94 BC                  ..
         lda     LFS2ndAddr                      ; BC3F A5 C4                    ..
         and     #$EF                            ; BC41 29 EF                    ).
         ora     #$E0                            ; BC43 09 E0                    ..
-        jsr     LSTNSA__                        ; BC45 20 46 BD                  F.
-LBC48:  jsr     UNLSTN__                        ; BC48 20 90 BD                  ..
+        jsr     SECND                        ; BC45 20 46 BD                  F.
+LBC48:  jsr     UNLSN                        ; BC48 20 90 BD                  ..
 LBC4B:  clc                                     ; BC4B 18                       .
         rts                                     ; BC4C 60                       `
 ; ----------------------------------------------------------------------------
@@ -8130,65 +8135,82 @@ LBC6B:  lda     #$0A                            ; BC6B A9 0A                    
 LBC8E:  pla                                     ; BC8E 68                       h
         sec                                     ; BC8F 38                       8
         rts                                     ; BC90 60                       `
+
 ; ----------------------------------------------------------------------------
-SendTalk:
+
+;Send TALK to IEC
+TALK__:
         ora     #$40                            ; BC91 09 40                    .@
         .byte   $2C                             ; BC93 2C                       ,
-LISTEN__:
+
+;Send LISTEN to IEC
+LISTN:
         ora     #$20                            ; BC94 09 20                    .
-; This routine seems to be used to send out a byte on the IEC bus.
-LBC96:  pha                                     ; BC96 48                       H
-        bit     $040B                           ; BC97 2C 0B 04                 ,..
-        bpl     LBCA9                           ; BC9A 10 0D                    ..
+
+;Start of LIST1 from C64 KERNAL
+LIST1:  pha                                     ; BC96 48                       H
+        bit     C3P0                           ; BC97 2C 0B 04                 ,..
+        bpl     LIST2                           ; BC9A 10 0D                    ..
         sec                                     ; BC9C 38                       8
-        ror     $040A                           ; BC9D 6E 0A 04                 n..
-        jsr     LBCCA                           ; BCA0 20 CA BC                  ..
-        lsr     $040B                           ; BCA3 4E 0B 04                 N..
-        lsr     $040A                           ; BCA6 4E 0A 04                 N..
-LBCA9:  pla                                     ; BCA9 68                       h
-        sta     $0408                           ; BCAA 8D 08 04                 ...
+        ror     R2D2                           ; BC9D 6E 0A 04                 n..
+        jsr     ISOUR                           ; BCA0 20 CA BC                  ..
+        lsr     C3P0                           ; BCA3 4E 0B 04                 N..
+        lsr     R2D2                           ; BCA6 4E 0A 04                 N..
+
+LIST2:  pla                                     ; BCA9 68                       h
+        sta     BSOUR                           ; BCAA 8D 08 04                 ...
         sei                                     ; BCAD 78                       x
-        jsr     PORT1B_RESET_BIT5               ; BCAE 20 2C BE                  ,.
+        jsr     DATAHI                          ; BCAE 20 2C BE                  ,.
         cmp     #$3F                            ; BCB1 C9 3F                    .?
-        bne     LBCB8                           ; BCB3 D0 03                    ..
-        jsr     PORT1B_RESET_BIT4               ; BCB5 20 1A BE                  ..
-LBCB8:  lda     VIA1_PORTB                      ; BCB8 AD 00 F8                 ...
+        bne     LIST5                           ; BCB3 D0 03                    ..
+        jsr     CLKHI                           ; BCB5 20 1A BE                  ..
+
+LIST5:  lda     VIA1_PORTB                      ; BCB8 AD 00 F8                 ...
         ora     #$08                            ; BCBB 09 08                    ..
         sta     VIA1_PORTB                      ; BCBD 8D 00 F8                 ...
-LBCC0:  sei                                     ; BCC0 78                       x
-        jsr     PORT1B_SET_BIT4                 ; BCC1 20 23 BE                  #.
-        jsr     PORT1B_RESET_BIT5               ; BCC4 20 2C BE                  ,.
-        jsr     LBE4A                           ; BCC7 20 4A BE                  J.
-LBCCA:  sei                                     ; BCCA 78                       x
-        jsr     PORT1B_RESET_BIT5               ; BCCB 20 2C BE                  ,.
-        jsr     PORT1B_WAIT_CHANGE              ; BCCE 20 3E BE                  >.
-        bcs     LBD3A                           ; BCD1 B0 67                    .g
-        jsr     PORT1B_RESET_BIT4               ; BCD3 20 1A BE                  ..
+
+ISOURA: sei                                     ; BCC0 78                       x
+        jsr     CLKLO                 ; BCC1 20 23 BE                  #.
+        jsr     DATAHI               ; BCC4 20 2C BE                  ,.
+        jsr     W1MS                      ; BCC7 20 4A BE                  J.
+
+ISOUR:  sei                                     ; BCCA 78                       x
+        jsr     DATAHI               ; BCCB 20 2C BE                  ,.
+        jsr     DEBPIA              ; BCCE 20 3E BE                  >.
+        bcs     NOTPRES                           ; BCD1 B0 67                    .g
+        jsr     CLKHI               ; BCD3 20 1A BE                  ..
         bit     VIA1_PORTB                      ; BCD6 2C 00 F8                 ,..
-        bvs     LBD3A                           ; BCD9 70 5F                    p_
-        bit     $040A                           ; BCDB 2C 0A 04                 ,..
-        bpl     LBCEA                           ; BCDE 10 0A                    ..
-LBCE0:  jsr     PORT1B_WAIT_CHANGE              ; BCE0 20 3E BE                  >.
-        bcc     LBCE0                           ; BCE3 90 FB                    ..
-LBCE5:  jsr     PORT1B_WAIT_CHANGE              ; BCE5 20 3E BE                  >.
-        bcs     LBCE5                           ; BCE8 B0 FB                    ..
-LBCEA:  jsr     PORT1B_WAIT_CHANGE              ; BCEA 20 3E BE                  >.
-        bcc     LBCEA                           ; BCED 90 FB                    ..
-        jsr     PORT1B_SET_BIT4                 ; BCEF 20 23 BE                  #.
+        bvs     NOTPRES                           ; BCD9 70 5F                    p_
+        bit     R2D2                           ; BCDB 2C 0A 04                 ,..
+        bpl     NOEOI                           ; BCDE 10 0A                    ..
+
+ISR02:  jsr     DEBPIA              ; BCE0 20 3E BE                  >.
+        bcc     ISR02                           ; BCE3 90 FB                    ..
+
+ISR03:  jsr     DEBPIA              ; BCE5 20 3E BE                  >.
+        bcs     ISR03                           ; BCE8 B0 FB                    ..
+
+NOEOI:  jsr     DEBPIA              ; BCEA 20 3E BE                  >.
+        bcc     NOEOI                           ; BCED 90 FB                    ..
+        jsr     CLKLO                 ; BCEF 20 23 BE                  #.
+
         lda     #$08                            ; BCF2 A9 08                    ..
-        sta     $040C                           ; BCF4 8D 0C 04                 ...
-LBCF7:  lda     VIA1_PORTB                      ; BCF7 AD 00 F8                 ...
+        sta     IECCNT                           ; BCF4 8D 0C 04                 ...
+
+ISR01:  lda     VIA1_PORTB                      ; BCF7 AD 00 F8                 ...
         cmp     VIA1_PORTB                      ; BCFA CD 00 F8                 ...
-        bne     LBCF7                           ; BCFD D0 F8                    ..
+        bne     ISR01                           ; BCFD D0 F8                    ..
         eor     #$C0                            ; BCFF 49 C0                    I.
         asl     a                               ; BD01 0A                       .
-        bcc     LBD3D                           ; BD02 90 39                    .9
-        ror     $0408                           ; BD04 6E 08 04                 n..
-        bcs     LBD0E                           ; BD07 B0 05                    ..
-        jsr     PORT1B_SET_BIT5                 ; BD09 20 35 BE                  5.
-        bne     LBD11                           ; BD0C D0 03                    ..
-LBD0E:  jsr     PORT1B_RESET_BIT5               ; BD0E 20 2C BE                  ,.
-LBD11:  jsr     PORT1B_RESET_BIT4               ; BD11 20 1A BE                  ..
+        bcc     FRMERR                           ; BD02 90 39                    .9
+        ror     BSOUR                           ; BD04 6E 08 04                 n..
+        bcs     ISRHI                           ; BD07 B0 05                    ..
+        jsr     DATALO                 ; BD09 20 35 BE                  5.
+        bne     ISRCLK                           ; BD0C D0 03                    ..
+
+ISRHI:  jsr     DATAHI               ; BD0E 20 2C BE                  ,.
+
+ISRCLK:  jsr     CLKHI               ; BD11 20 1A BE                  ..
         nop                                     ; BD14 EA                       .
         nop                                     ; BD15 EA                       .
         nop                                     ; BD16 EA                       .
@@ -8197,174 +8219,193 @@ LBD11:  jsr     PORT1B_RESET_BIT4               ; BD11 20 1A BE                 
         and     #$DF                            ; BD1B 29 DF                    ).
         ora     #$10                            ; BD1D 09 10                    ..
         sta     VIA1_PORTB                      ; BD1F 8D 00 F8                 ...
-        dec     $040C                           ; BD22 CE 0C 04                 ...
-        bne     LBCF7                           ; BD25 D0 D0                    ..
+        dec     IECCNT                           ; BD22 CE 0C 04                 ...
+        bne     ISR01                           ; BD25 D0 D0                    ..
         lda     #$04                            ; BD27 A9 04                    ..
         sta     VIA1_T2CH                       ; BD29 8D 09 F8                 ...
-LBD2C:  lda     VIA1_IFR                        ; BD2C AD 0D F8                 ...
+
+ISR04:  lda     VIA1_IFR                        ; BD2C AD 0D F8                 ...
         and     #$20                            ; BD2F 29 20                    )
-        bne     LBD3D                           ; BD31 D0 0A                    ..
-        jsr     PORT1B_WAIT_CHANGE              ; BD33 20 3E BE                  >.
-        bcs     LBD2C                           ; BD36 B0 F4                    ..
+        bne     FRMERR                           ; BD31 D0 0A                    ..
+        jsr     DEBPIA              ; BD33 20 3E BE                  >.
+        bcs     ISR04                           ; BD36 B0 F4                    ..
         cli                                     ; BD38 58                       X
         rts                                     ; BD39 60                       `
 ; ----------------------------------------------------------------------------
-LBD3A:  lda     #$80                            ; BD3A A9 80                    ..
+NOTPRES: lda     #$80                            ; BD3A A9 80                    ..
         .byte   $2C                             ; BD3C 2C                       ,
-LBD3D:  lda     #$03                            ; BD3D A9 03                    ..
-LBD3F:  jsr     SetST                           ; BD3F 20 CA FC                  ..
+
+FRMERR: lda     #$03                            ; BD3D A9 03                    ..
+
+CSBERR: jsr     UDST                           ; BD3F 20 CA FC                  ..
         cli                                     ; BD42 58                       X
         clc                                     ; BD43 18                       .
-        bcc     LBD95                           ; BD44 90 4F                    .O
-LSTNSA__:
-        sta     $0408                           ; BD46 8D 08 04                 ...
-        jsr     LBCC0                           ; BD49 20 C0 BC                  ..
-PORT1B_RESET_BIT3:
+        bcc     DLABYE                           ; BD44 90 4F                    .O
+
+SECND:
+        sta     BSOUR                           ; BD46 8D 08 04                 ...
+        jsr     ISOURA                           ; BD49 20 C0 BC                  ..
+
+;Release ATN after LISTEN
+SCATN:
         lda     VIA1_PORTB                      ; BD4C AD 00 F8                 ...
         and     #$F7                            ; BD4F 29 F7                    ).
         sta     VIA1_PORTB                      ; BD51 8D 00 F8                 ...
         rts                                     ; BD54 60                       `
+
 ; ----------------------------------------------------------------------------
-TALKSA__:
-        sta     $0408                           ; BD55 8D 08 04                 ...
-        jsr     LBCC0                           ; BD58 20 C0 BC                  ..
+TKSA:
+        sta     BSOUR                           ; BD55 8D 08 04                 ...
+        jsr     ISOURA                           ; BD58 20 C0 BC                  ..
 LBD5B:  sei                                     ; BD5B 78                       x
-        jsr     PORT1B_SET_BIT5                 ; BD5C 20 35 BE                  5.
-        jsr     PORT1B_RESET_BIT3               ; BD5F 20 4C BD                  L.
-        jsr     PORT1B_RESET_BIT4               ; BD62 20 1A BE                  ..
-LBD65:  jsr     PORT1B_WAIT_CHANGE              ; BD65 20 3E BE                  >.
-        bmi     LBD65                           ; BD68 30 FB                    0.
+        jsr     DATALO                 ; BD5C 20 35 BE                  5.
+        jsr     SCATN               ; BD5F 20 4C BD                  L.
+        jsr     CLKHI               ; BD62 20 1A BE                  ..
+
+TKATN1: jsr     DEBPIA              ; BD65 20 3E BE                  >.
+        bmi     TKATN1                           ; BD68 30 FB                    0.
         cli                                     ; BD6A 58                       X
         rts                                     ; BD6B 60                       `
+
 ; ----------------------------------------------------------------------------
-IECOUT__:
-        bit     $040B                           ; BD6C 2C 0B 04                 ,..
-        bmi     LBD77                           ; BD6F 30 06                    0.
+CIOUT:
+        bit     C3P0                           ; BD6C 2C 0B 04                 ,..
+        bmi     CI2                           ; BD6F 30 06                    0.
         sec                                     ; BD71 38                       8
-        ror     $040B                           ; BD72 6E 0B 04                 n..
-        bne     LBD7C                           ; BD75 D0 05                    ..
-LBD77:  pha                                     ; BD77 48                       H
-        jsr     LBCCA                           ; BD78 20 CA BC                  ..
+        ror     C3P0                           ; BD72 6E 0B 04                 n..
+        bne     CI4                           ; BD75 D0 05                    ..
+CI2:    pha                                     ; BD77 48                       H
+        jsr     ISOUR                           ; BD78 20 CA BC                  ..
         pla                                     ; BD7B 68                       h
-LBD7C:  sta     $0408                           ; BD7C 8D 08 04                 ...
+CI4:    sta     BSOUR                           ; BD7C 8D 08 04                 ...
         clc                                     ; BD7F 18                       .
         rts                                     ; BD80 60                       `
+
 ; ----------------------------------------------------------------------------
-UNTALK__:
-        sei                                     ; BD81 78                       x
-        jsr     PORT1B_SET_BIT4                 ; BD82 20 23 BE                  #.
+UNTLK:  sei                                     ; BD81 78                       x
+        jsr     CLKLO                 ; BD82 20 23 BE                  #.
         lda     VIA1_PORTB                      ; BD85 AD 00 F8                 ...
         ora     #$08                            ; BD88 09 08                    ..
         sta     VIA1_PORTB                      ; BD8A 8D 00 F8                 ...
         lda     #$5F                            ; BD8D A9 5F                    ._
         .byte   $2C                             ; BD8F 2C                       ,
-UNLSTN__:
-        lda     #$3F                            ; BD90 A9 3F                    .?
-        jsr     LBC96                           ; BD92 20 96 BC                  ..
-LBD95:  jsr     PORT1B_RESET_BIT3               ; BD95 20 4C BD                  L.
-LBD98:  txa                                     ; BD98 8A                       .
+
+UNLSN:  lda     #$3F                            ; BD90 A9 3F                    .?
+        jsr     LIST1                           ; BD92 20 96 BC                  ..
+
+DLABYE: jsr     SCATN               ; BD95 20 4C BD                  L.
+
+DLADLH: txa                                     ; BD98 8A                       .
         ldx     #$0A                            ; BD99 A2 0A                    ..
-LBD9B:  dex                                     ; BD9B CA                       .
-        bne     LBD9B                           ; BD9C D0 FD                    ..
+
+DLAD00: dex                                     ; BD9B CA                       .
+        bne     DLAD00                           ; BD9C D0 FD                    ..
         tax                                     ; BD9E AA                       .
-        jsr     PORT1B_RESET_BIT4               ; BD9F 20 1A BE                  ..
-        jmp     PORT1B_RESET_BIT5               ; BDA2 4C 2C BE                 L,.
+        jsr     CLKHI               ; BD9F 20 1A BE                  ..
+        jmp     DATAHI               ; BDA2 4C 2C BE                 L,.
 ; ----------------------------------------------------------------------------
-IECIN__:sei                                     ; BDA5 78                       x
+ACPTR:  sei                                     ; BDA5 78                       x
         lda     #$00                            ; BDA6 A9 00                    ..
-        sta     $040C                           ; BDA8 8D 0C 04                 ...
-        jsr     PORT1B_RESET_BIT4               ; BDAB 20 1A BE                  ..
-LBDAE:  jsr     PORT1B_WAIT_CHANGE              ; BDAE 20 3E BE                  >.
-        bpl     LBDAE                           ; BDB1 10 FB                    ..
-LBDB3:  lda     #$01                            ; BDB3 A9 01                    ..
+        sta     IECCNT                           ; BDA8 8D 0C 04                 ...
+        jsr     CLKHI               ; BDAB 20 1A BE                  ..
+
+ACP00A: jsr     DEBPIA              ; BDAE 20 3E BE                  >.
+        bpl     ACP00A                           ; BDB1 10 FB                    ..
+
+EOIACP: lda     #$01                            ; BDB3 A9 01                    ..
         sta     VIA1_T2CH                       ; BDB5 8D 09 F8                 ...
-        jsr     PORT1B_RESET_BIT5               ; BDB8 20 2C BE                  ,.
-LBDBB:  lda     VIA1_IFR                        ; BDBB AD 0D F8                 ...
+        jsr     DATAHI               ; BDB8 20 2C BE                  ,.
+
+ACP00:  lda     VIA1_IFR                        ; BDBB AD 0D F8                 ...
         and     #$20                            ; BDBE 29 20                    )
-        bne     LBDC9                           ; BDC0 D0 07                    ..
-        jsr     PORT1B_WAIT_CHANGE              ; BDC2 20 3E BE                  >.
-        bmi     LBDBB                           ; BDC5 30 F4                    0.
-        bpl     LBDE3                           ; BDC7 10 1A                    ..
-LBDC9:  lda     $040C                           ; BDC9 AD 0C 04                 ...
-        beq     LBDD3                           ; BDCC F0 05                    ..
+        bne     ACP00B                           ; BDC0 D0 07                    ..
+        jsr     DEBPIA              ; BDC2 20 3E BE                  >.
+        bmi     ACP00                           ; BDC5 30 F4                    0.
+        bpl     ACP01                           ; BDC7 10 1A                    ..
+ACP00B: lda     IECCNT                           ; BDC9 AD 0C 04                 ...
+        beq     ACP00C                           ; BDCC F0 05                    ..
         lda     #$02                            ; BDCE A9 02                    ..
-        jmp     LBD3F                           ; BDD0 4C 3F BD                 L?.
+        jmp     CSBERR                           ; BDD0 4C 3F BD                 L?.
 ; ----------------------------------------------------------------------------
-LBDD3:  jsr     PORT1B_SET_BIT5                 ; BDD3 20 35 BE                  5.
-        jsr     PORT1B_RESET_BIT4               ; BDD6 20 1A BE                  ..
+ACP00C: jsr     DATALO                 ; BDD3 20 35 BE                  5.
+        jsr     CLKHI               ; BDD6 20 1A BE                  ..
         lda     #$40                            ; BDD9 A9 40                    .@
-        jsr     SetST                           ; BDDB 20 CA FC                  ..
-        inc     $040C                           ; BDDE EE 0C 04                 ...
-        bne     LBDB3                           ; BDE1 D0 D0                    ..
-LBDE3:  lda     #$08                            ; BDE3 A9 08                    ..
-        sta     $040C                           ; BDE5 8D 0C 04                 ...
-LBDE8:  lda     VIA1_PORTB                      ; BDE8 AD 00 F8                 ...
+        jsr     UDST                           ; BDDB 20 CA FC                  ..
+        inc     IECCNT                           ; BDDE EE 0C 04                 ...
+        bne     EOIACP                           ; BDE1 D0 D0                    ..
+
+ACP01:  lda     #$08                            ; BDE3 A9 08                    ..
+        sta     IECCNT                           ; BDE5 8D 0C 04                 ...
+
+ACP03:  lda     VIA1_PORTB                      ; BDE8 AD 00 F8                 ...
         cmp     VIA1_PORTB                      ; BDEB CD 00 F8                 ...
-        bne     LBDE8                           ; BDEE D0 F8                    ..
+        bne     ACP03                           ; BDEE D0 F8                    ..
         eor     #$C0                            ; BDF0 49 C0                    I.
         asl     a                               ; BDF2 0A                       .
-        bpl     LBDE8                           ; BDF3 10 F3                    ..
-        ror     $0409                           ; BDF5 6E 09 04                 n..
-LBDF8:  lda     VIA1_PORTB                      ; BDF8 AD 00 F8                 ...
+        bpl     ACP03                           ; BDF3 10 F3                    ..
+        ror     BSOUR1                           ; BDF5 6E 09 04                 n..
+ACP03A: lda     VIA1_PORTB                      ; BDF8 AD 00 F8                 ...
         cmp     VIA1_PORTB                      ; BDFB CD 00 F8                 ...
-        bne     LBDF8                           ; BDFE D0 F8                    ..
+        bne     ACP03A                           ; BDFE D0 F8                    ..
         eor     #$C0                            ; BE00 49 C0                    I.
         asl     a                               ; BE02 0A                       .
-        bmi     LBDF8                           ; BE03 30 F3                    0.
-        dec     $040C                           ; BE05 CE 0C 04                 ...
-        bne     LBDE8                           ; BE08 D0 DE                    ..
-        jsr     PORT1B_SET_BIT5                 ; BE0A 20 35 BE                  5.
+        bmi     ACP03A                           ; BE03 30 F3                    0.
+        dec     IECCNT                           ; BE05 CE 0C 04                 ...
+        bne     ACP03                           ; BE08 D0 DE                    ..
+        jsr     DATALO                 ; BE0A 20 35 BE                  5.
         bit     ST                              ; BE0D 24 BA                    $.
-        bvc     LBE14                           ; BE0F 50 03                    P.
-        jsr     LBD98                           ; BE11 20 98 BD                  ..
-LBE14:  lda     $0409                           ; BE14 AD 09 04                 ...
+        bvc     ACP04                           ; BE0F 50 03                    P.
+        jsr     DLADLH                           ; BE11 20 98 BD                  ..
+ACP04:  lda     BSOUR1                           ; BE14 AD 09 04                 ...
         cli                                     ; BE17 58                       X
         clc                                     ; BE18 18                       .
         rts                                     ; BE19 60                       `
 ; ----------------------------------------------------------------------------
-PORT1B_RESET_BIT4:
-; Reset VIA1 port-B bit#4.
+CLKHI:
+;Set clock line high (allows IEC CLK to be pulled to 5V)
+;Write 0 to VIA port bit, so 7406 output is Hi-Z
         lda     VIA1_PORTB                      ; BE1A AD 00 F8                 ...
         and     #$EF                            ; BE1D 29 EF                    ).
         sta     VIA1_PORTB                      ; BE1F 8D 00 F8                 ...
         rts                                     ; BE22 60                       `
 ; ----------------------------------------------------------------------------
-PORT1B_SET_BIT4:
+CLKLO:
 ; Set VIA1 port-B bit#4.
         lda     VIA1_PORTB                      ; BE23 AD 00 F8                 ...
         ora     #$10                            ; BE26 09 10                    ..
         sta     VIA1_PORTB                      ; BE28 8D 00 F8                 ...
         rts                                     ; BE2B 60                       `
 ; ----------------------------------------------------------------------------
-PORT1B_RESET_BIT5:
-; Reset VIA1 port-B bit#5.
+DATAHI:
+;Set data line high (allows IEC DATA to be pulled up to 5V)
+;Write 0 to VIA port bit, so 7406 output is Hi-Z
         lda     VIA1_PORTB                      ; BE2C AD 00 F8                 ...
         and     #$DF                            ; BE2F 29 DF                    ).
         sta     VIA1_PORTB                      ; BE31 8D 00 F8                 ...
         rts                                     ; BE34 60                       `
 ; ----------------------------------------------------------------------------
-PORT1B_SET_BIT5:
-; Set VIA1 port-B bit#5.
+DATALO:
+;Set data line low (holds IEC DATA to GND)
+;Write 1 to VIA port bit, so 7406 output is GND
         lda     VIA1_PORTB                      ; BE35 AD 00 F8                 ...
         ora     #$20                            ; BE38 09 20                    .
         sta     VIA1_PORTB                      ; BE3A 8D 00 F8                 ...
         rts                                     ; BE3D 60                       `
 ; ----------------------------------------------------------------------------
-PORT1B_WAIT_CHANGE:
-; Waiting for change on port B of VIA1. The high two bits are inverted, and
-; bit 7 moved to carry.
-; Maybe used for CLK/DAT sense on IEC bus?
+DEBPIA:
+;Debounce VIA PA then ASL A
         lda     VIA1_PORTB                      ; BE3E AD 00 F8                 ...
         cmp     VIA1_PORTB                      ; BE41 CD 00 F8                 ...
-        bne     PORT1B_WAIT_CHANGE              ; BE44 D0 F8                    ..
+        bne     DEBPIA                          ; BE44 D0 F8                    ..
         eor     #$C0                            ; BE46 49 C0                    I.
         asl     a                               ; BE48 0A                       .
         rts                                     ; BE49 60                       `
 ; ----------------------------------------------------------------------------
-LBE4A:  txa                                     ; BE4A 8A                       .
+;Delay 1 ms using loop
+W1MS:   txa                                     ; BE4A 8A                       .
         ldx     #$B8                            ; BE4B A2 B8                    ..
-LBE4D:  dex                                     ; BE4D CA                       .
-        bne     LBE4D                           ; BE4E D0 FD                    ..
+W1MS1:  dex                                     ; BE4D CA                       .
+        bne     W1MS1                           ; E4E D0 FD                    ..
         tax                                     ; BE50 AA                       .
         rts                                     ; BE51 60                       `
 ; ----------------------------------------------------------------------------
@@ -8834,7 +8875,7 @@ LC200:  jsr     LC1B4                           ; C200 20 B4 C1                 
         jsr     LC1A7                           ; C206 20 A7 C1                  ..
         jsr     LC19A                           ; C209 20 9A C1                  ..
         lda     #$80                            ; C20C A9 80                    ..
-        jmp     SetST                           ; C20E 4C CA FC                 L..
+        jmp     UDST                           ; C20E 4C CA FC                 L..
 ; ----------------------------------------------------------------------------
 LC211:  .byte   $04,$02,$00,$04,$06,$07,$09,$0B ; C211 04 02 00 04 06 07 09 0B  ........
 ; ----------------------------------------------------------------------------
@@ -8844,7 +8885,7 @@ LC219:  stz     $0411                           ; C219 9C 11 04                 
         cmp     #$08                            ; C221 C9 08                    ..
         beq     LC22C                           ; C223 F0 07                    ..
         lda     #$01                            ; C225 A9 01                    ..
-        jsr     SetST                           ; C227 20 CA FC                  ..
+        jsr     UDST                           ; C227 20 CA FC                  ..
 LC22A:  clc                                     ; C22A 18                       .
         rts                                     ; C22B 60                       `
 ; ----------------------------------------------------------------------------
@@ -9055,7 +9096,7 @@ LC393:  lda     VIA2_PORTB                      ; C393 AD 80 F8                 
         lda     #$01                            ; C3A9 A9 01                    ..
 LC3AB:  plx                                     ; C3AB FA                       .
 LC3AC:  sec                                     ; C3AC 38                       8
-        jmp     SetST                           ; C3AD 4C CA FC                 L..
+        jmp     UDST                           ; C3AD 4C CA FC                 L..
 ; ----------------------------------------------------------------------------
 LC3B0:  ldx     #$03                            ; C3B0 A2 03                    ..
 LC3B2:  dex                                     ; C3B2 CA                       .
@@ -15747,12 +15788,12 @@ SetMsg_:sta     KernMsg                         ; FC56 8D 83 03                 
         rts                                     ; FC59 60                       `
 ; ----------------------------------------------------------------------------
 LSTNSA_:sta     MMU_MODE_KERN                   ; FC5A 8D 00 FA                 ...
-        jsr     LSTNSA__                        ; FC5D 20 46 BD                  F.
+        jsr     SECND                        ; FC5D 20 46 BD                  F.
         sta     MMU_MODE_APPL                   ; FC60 8D 80 FA                 ...
         rts                                     ; FC63 60                       `
 ; ----------------------------------------------------------------------------
 TALKSA_:sta     MMU_MODE_KERN                   ; FC64 8D 00 FA                 ...
-        jsr     TALKSA__                        ; FC67 20 55 BD                  U.
+        jsr     TKSA                        ; FC67 20 55 BD                  U.
         sta     MMU_MODE_APPL                   ; FC6A 8D 80 FA                 ...
         rts                                     ; FC6D 60                       `
 ; ----------------------------------------------------------------------------
@@ -15776,37 +15817,37 @@ KR_SCNKEY:
         rts                                     ; FC8B 60                       `
 ; ----------------------------------------------------------------------------
 IECIN_: sta     MMU_MODE_KERN                   ; FC8C 8D 00 FA                 ...
-        jsr     IECIN__                         ; FC8F 20 A5 BD                  ..
+        jsr     ACPTR                         ; FC8F 20 A5 BD                  ..
         sta     MMU_MODE_APPL                   ; FC92 8D 80 FA                 ...
         rts                                     ; FC95 60                       `
 ; ----------------------------------------------------------------------------
 IECOUT_:sta     MMU_MODE_KERN                   ; FC96 8D 00 FA                 ...
-        jsr     IECOUT__                        ; FC99 20 6C BD                  l.
+        jsr     CIOUT                        ; FC99 20 6C BD                  l.
         sta     MMU_MODE_APPL                   ; FC9C 8D 80 FA                 ...
         rts                                     ; FC9F 60                       `
 ; ----------------------------------------------------------------------------
 UNTALK_:sta     MMU_MODE_KERN                   ; FCA0 8D 00 FA                 ...
-        jsr     UNTALK__                        ; FCA3 20 81 BD                  ..
+        jsr     UNTLK                        ; FCA3 20 81 BD                  ..
         sta     MMU_MODE_APPL                   ; FCA6 8D 80 FA                 ...
         rts                                     ; FCA9 60                       `
 ; ----------------------------------------------------------------------------
 UNLSTN_:sta     MMU_MODE_KERN                   ; FCAA 8D 00 FA                 ...
-        jsr     UNLSTN__                        ; FCAD 20 90 BD                  ..
+        jsr     UNLSN                        ; FCAD 20 90 BD                  ..
         sta     MMU_MODE_APPL                   ; FCB0 8D 80 FA                 ...
         rts                                     ; FCB3 60                       `
 ; ----------------------------------------------------------------------------
 LISTEN_:sta     MMU_MODE_KERN                   ; FCB4 8D 00 FA                 ...
-        jsr     LISTEN__                        ; FCB7 20 94 BC                  ..
+        jsr     LISTN                        ; FCB7 20 94 BC                  ..
         sta     MMU_MODE_APPL                   ; FCBA 8D 80 FA                 ...
         rts                                     ; FCBD 60                       `
 ; ----------------------------------------------------------------------------
 TALK_:  sta     MMU_MODE_KERN                   ; FCBE 8D 00 FA                 ...
-        jsr     SendTalk                        ; FCC1 20 91 BC                  ..
+        jsr     TALK__                        ; FCC1 20 91 BC                  ..
         sta     MMU_MODE_APPL                   ; FCC4 8D 80 FA                 ...
         rts                                     ; FCC7 60                       `
 ; ----------------------------------------------------------------------------
 ReadST: lda     ST                              ; FCC8 A5 BA                    ..
-SetST:  ora     ST                              ; FCCA 05 BA                    ..
+UDST:  ora     ST                              ; FCCA 05 BA                    ..
         sta     ST                              ; FCCC 85 BA                    ..
         rts                                     ; FCCE 60                       `
 ; ----------------------------------------------------------------------------
