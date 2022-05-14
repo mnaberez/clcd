@@ -7679,18 +7679,16 @@ LB90E:  tsb     $A8                             ; B90E 04 A8                    
 LB918:  lda     $0385                           ; B918 AD 85 03                 ...
         and     #$1F                            ; B91B 29 1F                    ).
         bne     CHRIN__                         ; B91D D0 06                    ..
-        .byte   $4C                             ; B91F 4C                       L
-LB920:  dey                                     ; B920 88                       .
-        .byte   $B6                             ; B921 B6                       .
+LB91F:  jmp     LB688                           ; B91F 4C 88 B6
 LB922:  ply                                     ; B922 7A                       z
         plx                                     ; B923 FA                       .
 LB924:  rts                                     ; B924 60                       `
 ; ----------------------------------------------------------------------------
 CHRIN__:phx                                     ; B925 DA                       .
         phy                                     ; B926 5A                       Z
-        lda     #SAH                            ; B927 A9 B9                    ..
+        lda     #>(LB922-1)                     ; B927 A9 B9                    ..
         pha                                     ; B929 48                       H
-        lda     #$21                            ; B92A A9 21                    .!
+        lda     #<(LB922-1)                     ; B92A A9 21                    .!
         pha                                     ; B92C 48                       H
         lda     $0385                           ; B92D AD 85 03                 ...
         and     #$1F                            ; B930 29 1F                    ).
@@ -7956,15 +7954,15 @@ LBAE9:  stx     L0386                           ; BAE9 8E 86 03                 
 ;NOPEN
 Open__: ldx     LA                       ; BAF0 A6 C6                    ..
         jsr     LOOKUP                           ; BAF2 20 B5 BA                  ..
-        bne     LBAFA                           ; BAF5 D0 03                    ..
+        bne     OP100                           ; BAF5 D0 03                    ..
         jmp     ERROR2 ;FILE OPEN                          ; BAF7 4C 53 BC                 LS.
 ; ----------------------------------------------------------------------------
-LBAFA:  ldx     LDTND                           ; BAFA AE 05 04                 ...
+OP100:  ldx     LDTND                           ; BAFA AE 05 04                 ...
         cpx     #$0C                            ; BAFD E0 0C                    ..
-        bcc     LBB04                           ; BAFF 90 03                    ..
+        bcc     OP110                           ; BAFF 90 03                    ..
         jmp     ERROR1 ;TOO MANY FILES                          ; BB01 4C 50 BC                 LP.
 ; ----------------------------------------------------------------------------
-LBB04:  inc     LDTND                           ; BB04 EE 05 04                 ...
+OP110:  inc     LDTND                           ; BB04 EE 05 04                 ...
         lda     LA                       ; BB07 A5 C6                    ..
         sta     LAT,x                         ; BB09 9D DB 02                 ...
         lda     SA                      ; BB0C A5 C4                    ..
@@ -7973,7 +7971,10 @@ LBB04:  inc     LDTND                           ; BB04 EE 05 04                 
         sta     FAT,x                         ; BB12 9D F3 02                 ...
         lda     FA                       ; BB15 A5 C5                    ..
         sta     SAT,x                         ; BB17 9D E7 02                 ...
-        beq     LBB2F                           ; BB1A F0 13                    ..
+;
+;PERFORM DEVICE SPECIFIC OPEN TASKS
+;
+        beq     LBB2F  ;IS KEYBOARD...DONE.                         ; BB1A F0 13                    ..
         cmp     #$1E                            ; BB1C C9 1E                    ..
         beq     LBB2F                           ; BB1E F0 0F                    ..
         bcc     LBB25                           ; BB20 90 03                    ..
@@ -10884,7 +10885,7 @@ LD0D7:  sta     $03A3                           ; D0D7 8D A3 03                 
         bra     LD11C                           ; D0DD 80 3D                    .=
 LD0DF:  .byte   $20                             ; D0DF 20
         .byte   $16                             ; D0E0 16                       .
-LD0E1:  cpy     LB920                           ; D0E1 CC 20 B9                 . .
+LD0E1:  cpy     LB91F+1                           ; D0E1 CC 20 B9                 . .
         sbc     $12F0,x                         ; D0E4 FD F0 12                 ...
         dec     $03A3                           ; D0E7 CE A3 03                 ...
         bne     LD11C                           ; D0EA D0 30                    .0
