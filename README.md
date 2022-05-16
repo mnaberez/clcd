@@ -20,13 +20,30 @@ The IEC routines are extremely similar to those in the C64 KERNAL.
 
 The IEC signals are connected to VIA1 ($F800):
 
-| Pin | Line | Polarity | Source |
+| Pin | IEC Signal | Polarity | Source |
 |-----|-----|----------|--------|
 |VIA1 PB7 |DAT_IN  |inverted from C64   | DEBPIA $BE3E |
 |VIA1 PB6 |CLK_IN  |inverted from C64   | DEBPIA $BE3E |
 |VIA1 PB5 |DAT_OUT |same as C64| DATAHI $BE2C, DATALO $BE35 |
 |VIA1 PB4 |CLK_OUT |same as C64| CLKHI $BE1A, CLKLO $BE23 |
 |VIA1 PB3 |ATN_OUT |same as C64| SCATN $BD4C, LIST5 $BCB8 |
+
+### Centronics Port
+
+The KERNAL supports a Centronics printer on device number 30 (see `NOPEN` at $BB1C).  This device is output only (see `CHROUT/BSOUT` at $B994).  Attempting to read from it will give `?NOT INPUT FILE ERROR` (see `GETIN` at $B958).
+
+The Centronics signals are connected to VIA2 ($F880):
+
+| Pin | Centronics Signal | Source |
+|-----|-----|--------|
+|VIA2 PA0-7|Data 0-7 out|$C3B6|
+|VIA2 PB6|/BUSY in|$C396|
+|VIA2 PB5|Possibly STROBE out|$C3B9|
+|VIA2 CA2|Possibly STROBE out|$C3C1|
+
+Before writing the data byte, the LCD will wait for /BUSY to go high.  If it does not go high within a timeout,
+or if STOP is pressed, the LCD will abort.  If /BUSY goes high, the byte is placed on the data lines and 
+STROBE is pulsed.  Above, there are two candidates for STROBE.  Both of these lines are pulsed immediately after putting the byte on PORTA.  
 
 ## License
 

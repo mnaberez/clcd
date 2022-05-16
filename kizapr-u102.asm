@@ -68,7 +68,8 @@ CurMaxY         := $037E
 L0380           := $0380
 CurMaxX         := $0381
 MSGFLG          := $0383
-L0386           := $0386
+DFLTN           := $0385
+DFLTO           := $0386
 FNLEN           := $0387
 TOD_60HZ        := $038F
 TOD_SECS        := $0390
@@ -88,6 +89,7 @@ BSOUR1          := $0409
 R2D2            := $040A
 C3P0            := $040B
 IECCNT          := $040C
+L0450           := $0450
 L0470           := $0470
 L066A           := $066A
 L0810           := $0810
@@ -1093,9 +1095,9 @@ KL_IOINIT:
 L874F:  stz     $0393,x                         ; 874F 9E 93 03                 ...
         dex                                     ; 8752 CA                       .
         bpl     L874F                           ; 8753 10 FA                    ..
-        stz     $0385                           ; 8755 9C 85 03                 ...
+        stz     DFLTN                           ; 8755 9C 85 03                 ...
         lda     #$03                            ; 8758 A9 03                    ..
-        sta     L0386                           ; 875A 8D 86 03                 ...
+        sta     DFLTO                           ; 875A 8D 86 03                 ...
         lda     #$FF                            ; 875D A9 FF                    ..
         sta     MSGFLG                         ; 875F 8D 83 03                 ...
         rts                                     ; 8762 60                       `
@@ -1673,6 +1675,7 @@ L8BA0:  lda     #$0D                            ; 8BA0 A9 0D                    
         sec                                     ; 8BA8 38                       8
         rts                                     ; 8BA9 60                       `
 ; ----------------------------------------------------------------------------
+;CHROUT to Virtual 1541
 L8BAA:  jsr     L8BB0                           ; 8BAA 20 B0 8B                  ..
         jmp     L993F                           ; 8BAD 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
@@ -7676,7 +7679,7 @@ LB90E:  tsb     $A8                             ; B90E 04 A8                    
         jsr     LB2D6                           ; B914 20 D6 B2                  ..
         rts                                     ; B917 60                       `
 ; ----------------------------------------------------------------------------
-LB918:  lda     $0385                           ; B918 AD 85 03                 ...
+LB918:  lda     DFLTN                           ; B918 AD 85 03                 ...
         and     #$1F                            ; B91B 29 1F                    ).
         bne     CHRIN__                         ; B91D D0 06                    ..
 LB91F:  jmp     LB688                           ; B91F 4C 88 B6
@@ -7690,16 +7693,18 @@ CHRIN__:phx                                     ; B925 DA                       
         pha                                     ; B929 48                       H
         lda     #<(LB922-1)                     ; B92A A9 21                    .!
         pha                                     ; B92C 48                       H
-        lda     $0385                           ; B92D AD 85 03                 ...
+        lda     DFLTN                           ; B92D AD 85 03                 ...
         and     #$1F                            ; B930 29 1F                    ).
         bne     LB937                           ; B932 D0 03                    ..
-        jmp     LB325                           ; B934 4C 25 B3                 L%.
+        jmp     LB325 ;DFLTN > 31               ; B934 4C 25 B3                 L%.
 ; ----------------------------------------------------------------------------
 LB937:  cmp     #$02                            ; B937 C9 02                    ..
         bne     LB948                           ; B939 D0 0D                    ..
-        .byte   $20                             ; B93B 20
-LB93C:  asl     $48BF,x                         ; B93C 1E BF 48                 ..H
-        lda     SA                      ; B93F A5 C4                    ..
+        ;Device 2 = RS-232
+LB93C = * + 1
+        jsr     LBF1E                           ; B93B 20 1E BF
+        pha                                     ; B93E 48                 ..H
+        lda     SA                              ; B93F A5 C4                    ..
         and     #$0F                            ; B941 29 0F                    ).
         tax                                     ; B943 AA                       .
         pla                                     ; B944 68                       h
@@ -7708,65 +7713,75 @@ LB93C:  asl     $48BF,x                         ; B93C 1E BF 48                 
 LB948:  bcs     LB94D                           ; B948 B0 03                    ..
         jmp     L8B3A                           ; B94A 4C 3A 8B                 L:.
 ; ----------------------------------------------------------------------------
-LB94D:  cmp     #$03                            ; B94D C9 03                    ..
-        .byte   $D0                             ; B94F D0                       .
-LB950:  .byte   $03                             ; B950 03                       .
-        .byte   $4C                             ; B951 4C                       L
-LB952:  .byte   $19                             ; B952 19                       .
-        .byte   $B3                             ; B953 B3                       .
-LB954:  cmp     #$1E                            ; B954 C9 1E                    ..
+LB94D:  cmp     #$03 ;Screen                    ; B94D C9 03                    ..
+LB950 := * + 1
+        bne     LB954                           ; b94f d0 03
+LB952 := * + 1
+        jmp     LB319                           ; b951 4c 19 b3
+LB954:  cmp     #$1E ;30=Centronics             ; B954 C9 1E                    ..
         bne     LB95B                           ; B956 D0 03                    ..
-        jmp     ERROR6 ;NOT INPUT FILE                          ; B958 4C 5F BC                 L_.
+        jmp     ERROR6 ;NOT INPUT FILE          ; B958 4C 5F BC                 L_.
 ; ----------------------------------------------------------------------------
 LB95B:  bcc     LB960                           ; B95B 90 03                    ..
         jmp     LC2AD                           ; B95D 4C AD C2                 L..
 ; ----------------------------------------------------------------------------
-LB960:  lda     SATUS                             ; B960 A5 BA                    ..
+LB960:  lda     SATUS                           ; B960 A5 BA                    ..
         bne     LB968                           ; B962 D0 04                    ..
         sec                                     ; B964 38                       8
-        jmp     ACPTR                         ; B965 4C A5 BD                 L..
+        jmp     ACPTR                           ; B965 4C A5 BD                 L..
 ; ----------------------------------------------------------------------------
 LB968:  lda     #$0D                            ; B968 A9 0D                    ..
         clc                                     ; B96A 18                       .
         rts                                     ; B96B 60                       `
 ; ----------------------------------------------------------------------------
+;NBSOUT
 CHROUT__:
+        ;Push X and Y onto stack, will be popped on return by LB922
         phx                                     ; B96C DA                       .
         phy                                     ; B96D 5A                       Z
-        ldx     #SAH                            ; B96E A2 B9                    ..
+
+        ;Push return address LB922
+        ldx     #>(LB922-1)                     ; B96E A2 B9                    ..
         phx                                     ; B970 DA                       .
-        ldx     #$21                            ; B971 A2 21                    .!
+        ldx     #<(LB922-1)                     ; B971 A2 21                    .!
         phx                                     ; B973 DA                       .
-LB974:  pha                                     ; B974 48                       H
-        lda     L0386                           ; B975 AD 86 03                 ...
+
+LB974:  pha ;Push byte to write                 ; B974 48                       H
+
+        ;Get device number into X
+        lda     DFLTO                           ; B975 AD 86 03                 ...
         and     #$1F                            ; B978 29 1F                    ).
         tax                                     ; B97A AA                       .
-        pla                                     ; B97B 68                       h
+
+        pla ;Pull byte to write                 ; B97B 68                       h
+
 LB97D           := * + 1
-        cpx     #$01                            ; B97C E0 01                    ..
+        cpx     #$01  ;1 = Virtual 1541         ; B97C E0 01                    ..
         bne     LB983                           ; B97E D0 03                    ..
-        jmp     L8BAA                           ; B980 4C AA 8B                 L..
+        jmp     L8BAA ;CHROUT to Virtual 1541   ; B980 4C AA 8B                 L..
 ; ----------------------------------------------------------------------------
 LB983:  bcs     LB988                           ; B983 B0 03                    ..
-LB985:  jmp     ShowChar_                       ; B985 4C B3 AB                 L..
+LB985:  jmp     ShowChar_ ;X=0                  ; B985 4C B3 AB                 L..
 ; ----------------------------------------------------------------------------
 LB988:  cpx     #$03                            ; B988 E0 03                    ..
-        beq     LB985                           ; B98A F0 F9                    ..
+        beq     LB985 ;X=3 (Screen)             ; B98A F0 F9                    ..
         bcs     LB994                           ; B98C B0 06                    ..
         jsr     LB9B0                           ; B98E 20 B0 B9                  ..
         jmp     LBF0C                           ; B991 4C 0C BF                 L..
 ; ----------------------------------------------------------------------------
-LB994:  cpx     #$1E                            ; B994 E0 1E                    ..
+LB994:  cpx     #$1E  ;30                       ; B994 E0 1E                    ..
         bne     LB9A7                           ; B996 D0 0F                    ..
-        ldx     SA                      ; B998 A6 C4                    ..
+        ;Device = 30 (Centronics port)
+        ldx     SA                              ; B998 A6 C4                    ..
         pha                                     ; B99A 48                       H
-        lda     SA                      ; B99B A5 C4                    ..
+        lda     SA                              ; B99B A5 C4                    ..
         and     #$0F                            ; B99D 29 0F                    ).
         tax                                     ; B99F AA                       .
         pla                                     ; B9A0 68                       h
         jsr     LB9B0                           ; B9A1 20 B0 B9                  ..
-        jmp     LC38C                           ; B9A4 4C 8C C3                 L..
+        jmp     LC38C ;CHROUT to Centronics     ; B9A4 4C 8C C3                 L..
 ; ----------------------------------------------------------------------------
+;CHROUT to IEC
 LB9A7:  bcc     LB9AC                           ; B9A7 90 03                    ..
         jmp     LC271                           ; B9A9 4C 71 C2                 Lq.
 ; ----------------------------------------------------------------------------
@@ -7796,7 +7811,7 @@ LB9C2:  jsr     JZ100                           ; B9C2 20 C4 BA                 
         jsr     LBF4D                           ; B9D5 20 4D BF                  M.
         bcs     LB9E0                           ; B9D8 B0 06                    ..
         lda     FA                       ; B9DA A5 C5                    ..
-JX320:  sta     $0385                           ; B9DC 8D 85 03                 ...
+JX320:  sta     DFLTN                           ; B9DC 8D 85 03                 ...
         clc                                     ; B9DF 18                       .
 LB9E0:  rts                                     ; B9E0 60                       `
 ; ----------------------------------------------------------------------------
@@ -7843,7 +7858,7 @@ LBA25:  cmp     #$03                            ; BA25 C9 03                    
 LBA2B:  jsr     LBF4D                           ; BA2B 20 4D BF                  M.
         bcs     LBA36                           ; BA2E B0 06                    ..
         lda     FA                       ; BA30 A5 C5                    ..
-LBA32:  sta     L0386                           ; BA32 8D 86 03                 ...
+LBA32:  sta     DFLTO                           ; BA32 8D 86 03                 ...
         clc                                     ; BA35 18                       .
 LBA36:  rts                                     ; BA36 60                       `
 ; ----------------------------------------------------------------------------
@@ -7938,17 +7953,19 @@ JZ100:  lda     LAT,x                         ; BAC4 BD DB 02                 ..
         sta     FA                       ; BAD1 85 C5                    ..
 JZ101:  rts                                     ; BAD3 60                       `
 ; ----------------------------------------------------------------------------
+;NCLALL
 LBAD4:  stz     LDTND                           ; BAD4 9C 05 04                 ...
+;NCLRCH
 CLRCHN__:
         ldx     #$03                            ; BAD7 A2 03                    ..
-        cpx     L0386                           ; BAD9 EC 86 03                 ...
-        bcs     LBAE1                           ; BADC B0 03                    ..
-        jsr     UNLSN                        ; BADE 20 90 BD                  ..
-LBAE1:  cpx     $0385                           ; BAE1 EC 85 03                 ...
+        cpx     DFLTO ;IS OUTPUT CHANNEL IEEE?  ; BAD9 EC 86 03                 ...
+        bcs     LBAE1 ;NO...                    ; BADC B0 03                    ..
+        jsr     UNLSN  ;YES...UNLISTEN IT       ; BADE 20 90 BD                  ..
+LBAE1:  cpx     DFLTN                           ; BAE1 EC 85 03                 ...
         bcs     LBAE9                           ; BAE4 B0 03                    ..
         jsr     UNTLK                        ; BAE6 20 81 BD                  ..
-LBAE9:  stx     L0386                           ; BAE9 8E 86 03                 ...
-        stz     $0385                           ; BAEC 9C 85 03                 ...
+LBAE9:  stx     DFLTO                           ; BAE9 8E 86 03                 ...
+        stz     DFLTN                           ; BAEC 9C 85 03                 ...
         rts                                     ; BAEF 60                       `
 ; ----------------------------------------------------------------------------
 ;NOPEN
@@ -7975,13 +7992,16 @@ OP110:  inc     LDTND                           ; BB04 EE 05 04                 
 ;PERFORM DEVICE SPECIFIC OPEN TASKS
 ;
         beq     LBB2F  ;IS KEYBOARD...DONE.                         ; BB1A F0 13                    ..
-        cmp     #$1E                            ; BB1C C9 1E                    ..
-        beq     LBB2F                           ; BB1E F0 0F                    ..
+
+        cmp     #$1E  ;30 (Centronics port)     ; BB1C C9 1E                    ..
+        beq     LBB2F ;Return OK                ; BB1E F0 0F                    ..
+
         bcc     LBB25                           ; BB20 90 03                    ..
         jmp     LC219                           ; BB22 4C 19 C2                 L..
 ; ----------------------------------------------------------------------------
-LBB25:  cmp     #$03                            ; BB25 C9 03                    ..
-        beq     LBB2F                           ; BB27 F0 06                    ..
+;Device < 30
+LBB25:  cmp     #$03  ;3 (Screen)               ; BB25 C9 03                    ..
+        beq     LBB2F ;Return OK                ; BB27 F0 06                    ..
         bcc     LBB31                           ; BB29 90 06                    ..
         sec                                     ; BB2B 38                       8
         jsr     LBB40                           ; BB2C 20 40 BB                  @.
@@ -8445,6 +8465,7 @@ W1MS1:  dex                                     ; BE4D CA                       
         tax                                     ; BE50 AA                       .
         rts                                     ; BE51 60                       `
 ; ----------------------------------------------------------------------------
+;RS-232 related
 LBE52:  stz     $0389                           ; BE52 9C 89 03                 ...
         stz     $0388                           ; BE55 9C 88 03                 ...
         lda     #$40                            ; BE58 A9 40                    .@
@@ -8464,6 +8485,7 @@ LBE6C:  php                                     ; BE6C 08                       
         plp                                     ; BE79 28                       (
         rts                                     ; BE7A 60                       `
 ; ----------------------------------------------------------------------------
+;RS-232 related
 LBE7B:  lda     ACIA_ST                         ; BE7B AD 81 F9                 ...
         bit     #$10                            ; BE7E 89 10                    ..
         beq     LBEB5                           ; BE80 F0 33                    .3
@@ -8543,6 +8565,7 @@ LBF16:  stx     $040D                           ; BF16 8E 0D 04                 
         tsb     $C3                             ; BF1B 04 C3                    ..
         rts                                     ; BF1D 60                       `
 ; ----------------------------------------------------------------------------
+;Get byte from RS-232?
 LBF1E:  ldy     $038D                           ; BF1E AC 8D 03                 ...
         tya                                     ; BF21 98                       .
         beq     LBF4D                           ; BF22 F0 29                    .)
@@ -9114,37 +9137,53 @@ LC375:  pha                                     ; C375 48                       
 LC382:  .byte   $00,$06,$0C,$12,$18,$1E,$24,$2A ; C382 00 06 0C 12 18 1E 24 2A  ......$*
         .byte   $30,$36                         ; C38A 30 36                    06
 ; ----------------------------------------------------------------------------
-LC38C:  ldx     SATUS                             ; C38C A6 BA                    ..
+;CHROUT to Centronics
+;Wait for /BUSY to go high, or STOP key pressed, or timeout
+;Returns carry=1 if error (STOP or timeout)
+LC38C:  ldx     SATUS                           ; C38C A6 BA                    ..
         bne     LC3AC                           ; C38E D0 1C                    ..
-        pha                                     ; C390 48                       H
-        ldy     #$F0                            ; C391 A0 F0                    ..
+
+        pha ;Save byte to send                  ; C390 48                       H
+        ldy     #$F0 ;loops before timeout      ; C391 A0 F0                    ..
 LC393:  lda     VIA2_PORTB                      ; C393 AD 80 F8                 ...
-        and     #$40                            ; C396 29 40                    )@
-        bne     LC3B0                           ; C398 D0 16                    ..
-        lda     STKEY                     ; C39A A5 AD                    ..
+        and     #$40 ;PB6 = /BUSY               ; C396 29 40                    )@
+        bne     LC3B0 ;Branch if /BUSY=high     ; C398 D0 16                    ..
+
+        lda     STKEY                           ; C39A A5 AD                    ..
         lsr     a                               ; C39C 4A                       J
         lda     #$00                            ; C39D A9 00                    ..
-        bcs     LC3AB                           ; C39F B0 0A                    ..
+        bcs     LC3AB ;Branch is STOP pressed   ; C39F B0 0A                    ..
+
         ldx     #$01                            ; C3A1 A2 01                    ..
         jsr     WaitXticks_                     ; C3A3 20 E4 BF                  ..
+
         dey                                     ; C3A6 88                       .
-        bne     LC393                           ; C3A7 D0 EA                    ..
+        bne     LC393 ;Loop until timeout       ; C3A7 D0 EA                    ..
+
         lda     #$01                            ; C3A9 A9 01                    ..
 LC3AB:  plx                                     ; C3AB FA                       .
 LC3AC:  sec                                     ; C3AC 38                       8
-        jmp     UDST                           ; C3AD 4C CA FC                 L..
+        jmp     UDST                            ; C3AD 4C CA FC                 L..
 ; ----------------------------------------------------------------------------
+;CHROUT to Centronics
+;/BUSY has gone high, so send the byte now
+;Always returns carry=0 (OK)
 LC3B0:  ldx     #$03                            ; C3B0 A2 03                    ..
 LC3B2:  dex                                     ; C3B2 CA                       .
-        bpl     LC3B2                           ; C3B3 10 FD                    ..
-        pla                                     ; C3B5 68                       h
-        sta     VIA2_PORTA                      ; C3B6 8D 81 F8                 ...
-        lda     #$20                            ; C3B9 A9 20                    .
+        bpl     LC3B2 ;delay a bit after /BUSY=1; C3B3 10 FD                    ..
+
+        ;PORTA = Centronics data lines
+        pla     ;A=byte to send                 ; C3B5 68                       h
+        sta     VIA2_PORTA ;PA = Centronics data; C3B6 8D 81 F8                 ...
+
+        lda     #$20 ;PB5 = ?                   ; C3B9 A9 20                    .
         trb     VIA2_PORTB                      ; C3BB 1C 80 F8                 ...
         tsb     VIA2_PORTB                      ; C3BE 0C 80 F8                 ...
-        lda     #$02                            ; C3C1 A9 02                    ..
+
+        lda     #$02 ;CA2 = ?                   ; C3C1 A9 02                    ..
         tsb     VIA2_PCR                        ; C3C3 0C 8C F8                 ...
         trb     VIA2_PCR                        ; C3C6 1C 8C F8                 ...
+
         clc                                     ; C3C9 18                       .
         rts                                     ; C3CA 60                       `
 ; ----------------------------------------------------------------------------
@@ -9931,16 +9970,16 @@ LC9B3:  jmp     LC767                           ; C9B3 4C 67 C7                 
 LC9B6:  jmp     LC759                           ; C9B6 4C 59 C7                 LY.
 ; ----------------------------------------------------------------------------
 LC9B9:  ldy     #$01                            ; C9B9 A0 01                    ..
-        sty     FA                       ; C9BB 84 C5                    ..
-        sty     SA                      ; C9BD 84 C4                    ..
+        sty     FA                              ; C9BB 84 C5                    ..
+        sty     SA                              ; C9BD 84 C4                    ..
         dey                                     ; C9BF 88                       .
-        sty     FNLEN                        ; C9C0 8C 87 03                 ...
-        sty     SATUS                             ; C9C3 84 BA                    ..
+        sty     FNLEN                           ; C9C0 8C 87 03                 ...
+        sty     SATUS                           ; C9C3 84 BA                    ..
         sty     VERCHK                          ; C9C5 8C 06 04                 ...
-        lda     #$04                            ; C9C8 A9 04                    ..
-        sta     FNADR+1                        ; C9CA 85 AF                    ..
-        lda     #$50                            ; C9CC A9 50                    .P
-        sta     FNADR                        ; C9CE 85 AE                    ..
+        lda     #>L0450                         ; C9C8 A9 04                    ..
+        sta     FNADR+1                         ; C9CA 85 AF                    ..
+        lda     #<L0450                         ; C9CC A9 50                    .P
+        sta     FNADR                           ; C9CE 85 AE                    ..
 LC9D0:  jsr     LCAFD                           ; C9D0 20 FD CA                  ..
         beq     LCA33                           ; C9D3 F0 5E                    .^
         cmp     #$20                            ; C9D5 C9 20                    .
@@ -11526,7 +11565,7 @@ LD5A7:  lda     stack,y                         ; D5A7 B9 00 01                 
 LD5B1:  jsr     L86DF                           ; D5B1 20 DF 86                  ..
         jsr     L9792                           ; D5B4 20 92 97                  ..
         jsr     L95DA                           ; D5B7 20 DA 95                  ..
-LD5BA:  jsr     L0386                           ; D5BA 20 86 03                  ..
+LD5BA:  jsr     DFLTO                           ; D5BA 20 86 03                  ..
         cmp     #$2C                            ; D5BD C9 2C                    .,
         beq     LD54B                           ; D5BF F0 8A                    ..
         sec                                     ; D5C1 38                       8
@@ -11536,7 +11575,7 @@ LD5BA:  jsr     L0386                           ; D5BA 20 86 03                 
         tay                                     ; D5C8 A8                       .
         pla                                     ; D5C9 68                       h
         jsr     L8781                           ; D5CA 20 81 87                  ..
-        jsr     L0386                           ; D5CD 20 86 03                  ..
+        jsr     DFLTO                           ; D5CD 20 86 03                  ..
         cmp     #$3B                            ; D5D0 C9 3B                    .;
         beq     LD5D7                           ; D5D2 F0 03                    ..
         jmp     L5595                           ; D5D4 4C 95 55                 L.U
@@ -12024,7 +12063,7 @@ LD9B3:  rts                                     ; D9B3 60                       
         sta     $03D9                           ; D9CB 8D D9 03                 ...
         ldx     #$01                            ; D9CE A2 01                    ..
         stx     $67                             ; D9D0 86 67                    .g
-        jsr     L0386                           ; D9D2 20 86 03                  ..
+        jsr     DFLTO                           ; D9D2 20 86 03                  ..
         cmp     #$29                            ; D9D5 C9 29                    .)
         beq     LD9DC                           ; D9D7 F0 03                    ..
         jsr     L8805                           ; D9D9 20 05 88                  ..
@@ -12576,7 +12615,7 @@ LDDE1:  plp                                     ; DDE1 28                       
         sta     $1132,y                         ; DDF5 99 32 11                 .2.
         rts                                     ; DDF8 60                       `
 ; ----------------------------------------------------------------------------
-        jsr     L0386                           ; DDF9 20 86 03                  ..
+        jsr     DFLTO                           ; DDF9 20 86 03                  ..
         beq     LDE0A                           ; DDFC F0 0C                    ..
         jsr     L794A                           ; DDFE 20 4A 79                  Jy
         cmp     #$2C                            ; DE01 C9 2C                    .,
@@ -12591,7 +12630,7 @@ LDE0D:  clc                                     ; DE0D 18                       
         rts                                     ; DE0E 60                       `
 ; ----------------------------------------------------------------------------
         ldx     #$00                            ; DE0F A2 00                    ..
-        jsr     L0386                           ; DE11 20 86 03                  ..
+        jsr     DFLTO                           ; DE11 20 86 03                  ..
         beq     LDE0D                           ; DE14 F0 F7                    ..
         jsr     L794A                           ; DE16 20 4A 79                  Jy
         cmp     #$2C                            ; DE19 C9 2C                    .,
@@ -12602,7 +12641,7 @@ LDE0D:  clc                                     ; DE0D 18                       
 ; ----------------------------------------------------------------------------
         jsr     LA067                           ; DE22 20 67 A0                  g.
         ldx     #$01                            ; DE25 A2 01                    ..
-        jsr     L0386                           ; DE27 20 86 03                  ..
+        jsr     DFLTO                           ; DE27 20 86 03                  ..
         beq     LDE3F                           ; DE2A F0 13                    ..
         cmp     #$2C                            ; DE2C C9 2C                    .,
         beq     LDE3F                           ; DE2E F0 0F                    ..
@@ -12618,7 +12657,7 @@ LDE3F:  stx     $83                             ; DE3F 86 83                    
 ; ----------------------------------------------------------------------------
 LDE42:  jmp     L7D16                           ; DE42 4C 16 7D                 L.}
 ; ----------------------------------------------------------------------------
-        jsr     L0386                           ; DE45 20 86 03                  ..
+        jsr     DFLTO                           ; DE45 20 86 03                  ..
         beq     LDE51                           ; DE48 F0 07                    ..
         jsr     L794A                           ; DE4A 20 4A 79                  Jy
         cmp     #$2C                            ; DE4D C9 2C                    .,
@@ -12637,7 +12676,7 @@ LDE61:  lsr     a                               ; DE61 4A                       
         .byte   $79                             ; DE62 79                       y
 LDE63:  stx     $1178                           ; DE63 8E 78 11                 .x.
         jsr     L9EFB                           ; DE66 20 FB 9E                  ..
-        jsr     L0386                           ; DE69 20 86 03                  ..
+        jsr     DFLTO                           ; DE69 20 86 03                  ..
         cmp     #$2C                            ; DE6C C9 2C                    .,
         beq     LDEC6                           ; DE6E F0 56                    .V
         cmp     #$3B                            ; DE70 C9 3B                    .;
@@ -12706,7 +12745,7 @@ LDEF2:  ldy     #$00                            ; DEF2 A0 00                    
         clc                                     ; DEF9 18                       .
         rts                                     ; DEFA 60                       `
 ; ----------------------------------------------------------------------------
-        jsr     L0386                           ; DEFB 20 86 03                  ..
+        jsr     DFLTO                           ; DEFB 20 86 03                  ..
         cmp     #$AA                            ; DEFE C9 AA                    ..
         beq     LDF07                           ; DF00 F0 05                    ..
 LDF02:  .byte   $C9                             ; DF02 C9                       .
@@ -13301,7 +13340,7 @@ LE3AD:  lda     LA38F,x                         ; E3AD BD 8F A3                 
         bpl     LE3AD                           ; E3B4 10 F7                    ..
         ldx     $03D5                           ; E3B6 AE D5 03                 ...
         stx     stack+31                        ; E3B9 8E 1F 01                 ...
-        jsr     L0386                           ; E3BC 20 86 03                  ..
+        jsr     DFLTO                           ; E3BC 20 86 03                  ..
         bne     LE3CF                           ; E3BF D0 0E                    ..
         pla                                     ; E3C1 68                       h
         and     L0081                           ; E3C2 25 81                    %.
@@ -13429,7 +13468,7 @@ LE4BD:  jsr     L03B7                           ; E4BD 20 B7 03                 
         lda     #$01                            ; E4CC A9 01                    ..
 LE4CE:  ora     $80                             ; E4CE 05 80                    ..
         sta     $80                             ; E4D0 85 80                    ..
-LE4D2:  jsr     L0386                           ; E4D2 20 86 03                  ..
+LE4D2:  jsr     DFLTO                           ; E4D2 20 86 03                  ..
         bne     LE4F0                           ; E4D5 D0 19                    ..
 LE4D7:  jmp     LA3C1                           ; E4D7 4C C1 A3                 L..
 ; ----------------------------------------------------------------------------
@@ -13481,7 +13520,7 @@ LE52F:  lda     #$02                            ; E52F A9 02                    
         lda     #$02                            ; E53D A9 02                    ..
 LE53F:  ora     $80                             ; E53F 05 80                    ..
         sta     $80                             ; E541 85 80                    ..
-        jsr     L0386                           ; E543 20 86 03                  ..
+        jsr     DFLTO                           ; E543 20 86 03                  ..
         beq     LE4D7                           ; E546 F0 8F                    ..
         cmp     #$2C                            ; E548 C9 2C                    .,
         beq     LE4FA                           ; E54A F0 AE                    ..
