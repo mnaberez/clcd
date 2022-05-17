@@ -5922,7 +5922,7 @@ LABC4:  ply                                     ; ABC4 7A                       
 LABC8:  bit     $0382                           ; ABC8 2C 82 03                 ,..
         bpl     LABD6                           ; ABCB 10 09                    ..
         stz     $0382                           ; ABCD 9C 82 03                 ...
-        jsr     LB220                           ; ABD0 20 20 B2                   .
+        jsr     ESC_O ;Cancel insert, quote, reverse modes ; ABD0 20 20 B2                   .
         jsr     LAEA6                           ; ABD3 20 A6 AE                  ..
 LABD6:  pha                                     ; ABD6 48                       H
 LABD7:  php                                     ; ABD7 08                       .
@@ -5939,15 +5939,15 @@ LABD7:  php                                     ; ABD7 08                       
 LABED:  pla                                     ; ABED 68                       h
         ldx     $036E                           ; ABEE AE 6E 03                 .n.
         sta     $036E                           ; ABF1 8D 6E 03                 .n.
-        cmp     #$0D                            ; ABF4 C9 0D                    ..
+        cmp     #$0D ;Return                    ; ABF4 C9 0D                    ..
         beq     LAC2F                           ; ABF6 F0 37                    .7
-        cmp     #$8D                            ; ABF8 C9 8D                    ..
+        cmp     #$8D ;Shift-Return              ; ABF8 C9 8D                    ..
         beq     LAC2F                           ; ABFA F0 33                    .3
-        cpx     #$1B                            ; ABFC E0 1B                    ..
+        cpx     #$1B ;Escape                    ; ABFC E0 1B                    ..
         bne     LAC03                           ; ABFE D0 03                    ..
         jmp     LB10E                           ; AC00 4C 0E B1                 L..
 ; ----------------------------------------------------------------------------
-LAC03:  cmp     #$1B                            ; AC03 C9 1B                    ..
+LAC03:  cmp     #$1B ;Escape                    ; AC03 C9 1B                    ..
         bne     LAC08                           ; AC05 D0 01                    ..
         rts                                     ; AC07 60                       `
 ; ----------------------------------------------------------------------------
@@ -6156,9 +6156,11 @@ LAD37:  jsr     LAD28                           ; AD37 20 28 AD                 
         sta     $0370,y                         ; AD3D 99 70 03                 .p.
         rts                                     ; AD40 60                       `
 ; ----------------------------------------------------------------------------
-LAD41:  lda     #$80                            ; AD41 A9 80                    ..
+;ESC-Y Set default tab stops (8 spaces)
+ESC_Y:  lda     #$80                            ; AD41 A9 80                    ..
         .byte   $2C                             ; AD43 2C                       ,
-LAD44:  lda     #$00                            ; AD44 A9 00                    ..
+;ESC-Z Clear all tab stops
+ESC_Z:  lda     #$00                            ; AD44 A9 00                    ..
         ldx     #$09                            ; AD46 A2 09                    ..
 LAD48:  sta     $0370,x                         ; AD48 9D 70 03                 .p.
         dex                                     ; AD4B CA                       .
@@ -6179,11 +6181,11 @@ LAD4F:  lda     $AA                             ; AD4F A5 AA                    
         bne     LAD65                           ; AD5E D0 05                    ..
         ldx     #$2D                            ; AD60 A2 2D                    .-
         jsr     WaitXticks_                     ; AD62 20 E4 BF                  ..
-LAD65:  jsr     LB15A                           ; AD65 20 5A B1                  Z.
+LAD65:  jsr     ESC_K ;Move to end of current line ; AD65 20 5A B1                  Z.
         ldx     $A3                             ; AD68 A6 A3                    ..
         stx     CursorX                         ; AD6A 86 A1                    ..
         jsr     LADA5                           ; AD6C 20 A5 AD                  ..
-        jmp     LB220                           ; AD6F 4C 20 B2                 L .
+        jmp     ESC_O ;Cancel insert, quote, reverse modes  ; AD6F 4C 20 B2                 L .
 ; ----------------------------------------------------------------------------
 ;CHR$(18) Reverse On
 LAD72:  lda     #$80                            ; AD72 A9 80                    ..
@@ -6321,7 +6323,7 @@ LAE42:  ldy     CurMaxY_                        ; AE42 A4 A6                    
 LAE47:  jsr     LAE6F                           ; AE47 20 6F AE                  o.
         ldy     CurMaxY_                        ; AE4A A4 A6                    ..
 LAE4C:  sty     CursorY                         ; AE4C 84 A2                    ..
-        jsr     LAFC0                           ; AE4E 20 C0 AF                  ..
+        jsr     ESC_D ;Delete the current line  ; AE4E 20 C0 AF                  ..
         ldy     CursorY                         ; AE51 A4 A2                    ..
         dey                                     ; AE53 88                       .
         cpy     $A5                             ; AE54 C4 A5                    ..
@@ -6490,11 +6492,11 @@ LAF7C:  jsr     LAFD3                           ; AF7C 20 D3 AF                 
         lda     #$C0                            ; AF7F A9 C0                    ..
         tsb     $037D                           ; AF81 0C 7D 03                 .}.
         ldy     CursorY                         ; AF84 A4 A2                    ..
-        jmp     LAFC0                           ; AF86 4C C0 AF                 L..
+        jmp     ESC_D ;Delete the current line  ; AF86 4C C0 AF                 L..
 ; ----------------------------------------------------------------------------
 LAF89:  ldy     CursorY                         ; AF89 A4 A2                    ..
         cpy     CurMaxY_                        ; AF8B C4 A6                    ..
-        beq     LAFC0                           ; AF8D F0 31                    .1
+        beq     ESC_D ;Delete the current line  ; AF8D F0 31                    .1
         jsr     LAF3A                           ; AF8F 20 3A AF                  :.
         sta     $F3                             ; AF92 85 F3                    ..
         ldy     CurMaxY_                        ; AF94 A4 A6                    ..
@@ -6520,7 +6522,8 @@ LAFAB:  lda     ($F1),y                         ; AFAB B1 F1                    
         jsr     LAFF3                           ; AFB8 20 F3 AF                  ..
         lda     #$80                            ; AFBB A9 80                    ..
         tsb     $037D                           ; AFBD 0C 7D 03                 .}.
-LAFC0:  ldy     CursorY                         ; AFC0 A4 A2                    ..
+;ESC-D Delete the current line
+ESC_D:  ldy     CursorY                         ; AFC0 A4 A2                    ..
         ldx     $A3                             ; AFC2 A6 A3                    ..
         jsr     LAF2C                           ; AFC4 20 2C AF                  ,.
         jsr     LAF3A                           ; AFC7 20 3A AF                  :.
@@ -6619,7 +6622,7 @@ LB06F:  bcc     LB07B                           ; B06F 90 0A                    
 LB07B:  .byte   $20                             ; B07B 20
         .byte   $30                             ; B07C 30                       0
 LB07D:  bcs     LB0C8                           ; B07D B0 49                    .I
-        bbs7    $3D,LB0EB+1                     ; B07F FF 3D 6A                 .=j
+        bbs7    $3D,LB0ED-1                     ; B07F FF 3D 6A                 .=j
         .byte   $03                             ; B082 03                       .
         sta     $036A,x                         ; B083 9D 6A 03                 .j.
         rts                                     ; B086 60                       `
@@ -6675,84 +6678,88 @@ LB0CE:  cmp     #$DE                            ; B0CE C9 DE                    
         lda     #$FF                            ; B0D2 A9 FF                    ..
 LB0D4:  rts                                     ; B0D4 60                       `
 ; ----------------------------------------------------------------------------
-; Just guessing: this table is a byte then a jump address. Maybe it's some
-; kind of terminal escape sequence table or such, at least pointed routines
-; are often touch cursor position zp locs, etc.
-LB0D5:  .byte   $41                             ; B0D5 41                       A
-; ----------------------------------------------------------------------------
-LB0D6:  .addr   LB12A                           ; B0D6 2A B1                    *.
-; ----------------------------------------------------------------------------
-        .byte   $42                             ; B0D8 42                       B
-; ----------------------------------------------------------------------------
-        .addr   LB12F                           ; B0D9 2F B1                    /.
-; ----------------------------------------------------------------------------
-        .byte   $43                             ; B0DB 43                       C
-; ----------------------------------------------------------------------------
-        .addr   LB13A                           ; B0DC 3A B1                    :.
-; ----------------------------------------------------------------------------
-        .byte   $44                             ; B0DE 44                       D
-; ----------------------------------------------------------------------------
-        .addr   LAFC0                           ; B0DF C0 AF                    ..
-; ----------------------------------------------------------------------------
-        .byte   $45                             ; B0E1 45                       E
-; ----------------------------------------------------------------------------
-        .addr   LB2CA                           ; B0E2 CA B2                    ..
-; ----------------------------------------------------------------------------
-        .byte   $46                             ; B0E4 46                       F
-; ----------------------------------------------------------------------------
-LB0E5:  .addr   LB2D0                           ; B0E5 D0 B2                    ..
-; ----------------------------------------------------------------------------
-        .byte   $49                             ; B0E7 49                       I
-; ----------------------------------------------------------------------------
-        .addr   LB13D                           ; B0E8 3D B1                    =.
-; ----------------------------------------------------------------------------
-        .byte   $4A                             ; B0EA 4A                       J
-; ----------------------------------------------------------------------------
-LB0EB:  .addr   LB14A                           ; B0EB 4A B1                    J.
-; ----------------------------------------------------------------------------
-        .byte   $4B                             ; B0ED 4B                       K
-; ----------------------------------------------------------------------------
-        .addr   LB15A                           ; B0EE 5A B1                    Z.
-; ----------------------------------------------------------------------------
-        .byte   $4C                             ; B0F0 4C                       L
-; ----------------------------------------------------------------------------
-        .addr   LB180                           ; B0F1 80 B1                    ..
-; ----------------------------------------------------------------------------
-        .byte   $4D                             ; B0F3 4D                       M
-; ----------------------------------------------------------------------------
-        .addr   LB185                           ; B0F4 85 B1                    ..
-; ----------------------------------------------------------------------------
-        .byte   $4F                             ; B0F6 4F                       O
-; ----------------------------------------------------------------------------
-        .addr   LB220                           ; B0F7 20 B2                     .
-; ----------------------------------------------------------------------------
-        .byte   $50                             ; B0F9 50                       P
-; ----------------------------------------------------------------------------
-        .addr   LB198                           ; B0FA 98 B1                    ..
-; ----------------------------------------------------------------------------
-LB0FC:  .byte   $51                             ; B0FC 51                       Q
-; ----------------------------------------------------------------------------
-LB0FD:  .addr   LB18A                           ; B0FD 8A B1                    ..
-; ----------------------------------------------------------------------------
-        .byte   $54                             ; B0FF 54                       T
-; ----------------------------------------------------------------------------
-        .addr   LB1B3                           ; B100 B3 B1                    ..
-; ----------------------------------------------------------------------------
-        .byte   $56                             ; B102 56                       V
-; ----------------------------------------------------------------------------
-        .addr   LB1BE                           ; B103 BE B1                    ..
-; ----------------------------------------------------------------------------
-        .byte   $57                             ; B105 57                       W
-; ----------------------------------------------------------------------------
-        .addr   LB1CA                           ; B106 CA B1                    ..
-; ----------------------------------------------------------------------------
-        .byte   $59                             ; B108 59                       Y
-; ----------------------------------------------------------------------------
-        .addr   LAD41                           ; B109 41 AD                    A.
-; ----------------------------------------------------------------------------
-        .byte   $5A                             ; B10B 5A                       Z
-; ----------------------------------------------------------------------------
-        .addr   LAD44                           ; B10C 44 AD                    D.
+;Screen Editor escape codes
+;
+;These are very similar to the C128 escape codes;
+;see the C128 Programmer's Reference Guide for the list.
+;
+;C128 codes missing on the LCD:
+;  ESC-G (Enable Bell)
+;  ESC-H (Disable Bell)
+;  ESC-N (Return screen to normal video)
+;  ESC-R (Set screen to reverse video)
+;  ESC-S (Change to block cursor)
+;  ESC-U (Change to underline cursor)
+;  ESC-X (Swap 40/80 column output device)
+;
+LB0D5:  .byte   "A"                                   ; B0D5 41                       A
+        .addr   ESC_A ;Enable auto-insert mode        ; B0D6 2A B1                    *.
+
+        .byte   "B"                                                           ; B0D8 42                       B
+        .addr   ESC_B ;Set bottom right of screen window at current position  ; B0D9 2F B1                    /.
+
+        .byte   "C"                                   ; B0DB 43                       C
+        .addr   ESC_C ;Disable auto-insert mode       ; B0DC 3A B1                    :.
+
+        .byte   "D"                                   ; B0DE 44                       D
+        .addr   ESC_D ;Delete the current line        ; B0DF C0 AF                    ..
+
+        .byte   "E"                                   ; B0E1 45                       E
+        .addr   ESC_E ;Set cursor to nonflashing mode ; B0E2 CA B2                    ..
+
+        .byte   "F"                                   ; B0E4 46                       F
+        .addr   ESC_F ;Set cursor to flashing mode    ; B0E5 D0 B2                    ..
+
+        ;ESC-G (Enable Bell) and ESC-H (Disable Bell)
+        ;from C128 are missing
+
+LB0E7:  .byte   "I"                                   ; B0E7 49                       I
+        .addr   ESC_I ;Insert line                    ; B0E8 3D B1                    =.
+
+        .byte   "J"                                   ; B0EA 4A                       J
+        .addr   ESC_J ;Move to start of current line  ; B0EB 4A B1                    J.
+
+LB0ED:  .byte   "K"                                   ; B0ED 4B                       K
+        .addr   ESC_K ;Move to end of current line    ; B0EE 5A B1                    Z.
+
+        .byte   "L"                                   ; B0F0 4C                       L
+        .addr   ESC_L ;Enable scrolling               ; B0F1 80 B1                    ..
+
+        .byte   "M"                                   ; B0F3 4D                       M
+        .addr   ESC_M ;Disable scrolling              ; B0F4 85 B1                    ..
+
+        ;ESC-N (Normal video) and ESC-R (Reverse Video)
+        ;from C128 are missing
+
+        .byte   "O"                                         ; B0F6 4F                       O
+        .addr   ESC_O ;Cancel insert, quote, reverse modes  ; B0F7 20 B2                     .
+
+        .byte   "P"                                   ; B0F9 50                       P
+        .addr   ESC_P ;Erase to start of current line ; B0FA 98 B1                    ..
+
+LB0FC:  .byte   "Q"                                   ; B0FC 51                       Q
+        .addr   ESC_Q ;Erase to end of current line   ; B0FD 8A B1                    ..
+
+        ;ESC-S (Block cursor) and ESC-U (Underline cursor)
+        ;from C128 are missing
+
+        .byte   "T"                                                     ; B0FF 54                       T
+        .addr   ESC_T ;Set top left of screen window at cursor position ; B100 B3 B1                    ..
+
+        .byte   "V"                                     ; B102 56                       V
+        .addr   ESC_V ;Scroll up                        ; B103 BE B1                    ..
+
+        .byte   "W"                                     ; B105 57                       W
+        .addr   ESC_W ;Scroll down                      ; B106 CA B1                    ..
+
+        ;ESC-X (Swap 40/80 column output device)
+        ;from C128 is missing
+
+        .byte   "Y"                                     ; B108 59                       Y
+        .addr   ESC_Y ;Set default tab stops (8 spaces) ; B109 41 AD                    A.
+
+        .byte   "Z"                                     ; B10B 5A                       Z
+        .addr   ESC_Z ;Clear all tab stops              ; B10C 44 AD                    D.
 ; ----------------------------------------------------------------------------
 LB10E:  bit     $036E                           ; B10E 2C 6E 03                 ,n.
         bmi     LB126                           ; B111 30 13                    0.
@@ -6768,28 +6775,34 @@ LB11C:  cmp     LB0D5,x                         ; B11C DD D5 B0                 
         bpl     LB11C                           ; B124 10 F6                    ..
 LB126:  rts                                     ; B126 60                       `
 ; ----------------------------------------------------------------------------
-LB127:  jmp     (LB0D6,x)                       ; B127 7C D6 B0                 |..
-LB12A:  sta     $A9                             ; B12A 85 A9                    ..
+LB127:  jmp     (LB0D5+1,x)                     ; B127 7C D6 B0                 |..
+; ----------------------------------------------------------------------------
+;ESC-A Enable auto-insert mode
+ESC_A:  sta     $A9                             ; B12A 85 A9                    ..
         stz     $A8                             ; B12C 64 A8                    d.
         rts                                     ; B12E 60                       `
 ; ----------------------------------------------------------------------------
-LB12F:  ldx     CursorX                         ; B12F A6 A1                    ..
+;ESC-B Set bottom right of screen window at current position
+ESC_B:  ldx     CursorX                         ; B12F A6 A1                    ..
         stx     CurMaxX_                        ; B131 86 A4                    ..
         ldy     CursorY                         ; B133 A4 A2                    ..
         sty     CurMaxY_                        ; B135 84 A6                    ..
         jmp     LB087                           ; B137 4C 87 B0                 L..
 ; ----------------------------------------------------------------------------
-LB13A:  stz     $A9                             ; B13A 64 A9                    d.
+;ESC-C Disable auto-insert mode
+ESC_C:  stz     $A9                             ; B13A 64 A9                    d.
         rts                                     ; B13C 60                       `
 ; ----------------------------------------------------------------------------
-LB13D:  jsr     LAF89                           ; B13D 20 89 AF                  ..
+;ESC-I Insert line
+ESC_I:  jsr     LAF89                           ; B13D 20 89 AF                  ..
         ldy     CursorY                         ; B140 A4 A2                    ..
         dey                                     ; B142 88                       .
         jsr     LB059                           ; B143 20 59 B0                  Y.
         iny                                     ; B146 C8                       .
         jmp     LB06F                           ; B147 4C 6F B0                 Lo.
 ; ----------------------------------------------------------------------------
-LB14A:  ldx     $A3                             ; B14A A6 A3                    ..
+;ESC-J Move to start of current line
+ESC_J:  ldx     $A3                             ; B14A A6 A3                    ..
         stx     CursorX                         ; B14C 86 A1                    ..
         ldy     CursorY                         ; B14E A4 A2                    ..
 LB150:  dey                                     ; B150 88                       .
@@ -6799,7 +6812,8 @@ LB150:  dey                                     ; B150 88                       
         sty     CursorY                         ; B157 84 A2                    ..
         rts                                     ; B159 60                       `
 ; ----------------------------------------------------------------------------
-LB15A:  dec     CursorY                         ; B15A C6 A2                    ..
+;ESC-K Move to end of current line
+ESC_K:  dec     CursorY                         ; B15A C6 A2                    ..
 LB15C:  inc     CursorY                         ; B15C E6 A2                    ..
         ldy     CursorY                         ; B15E A4 A2                    ..
         jsr     LB059                           ; B160 20 59 B0                  Y.
@@ -6818,44 +6832,51 @@ LB16E:  jsr     LAF41                           ; B16E 20 41 AF                 
         bcs     LB16B                           ; B17D B0 EC                    ..
 LB17F:  rts                                     ; B17F 60                       `
 ; ----------------------------------------------------------------------------
-LB180:  lda     #$40                            ; B180 A9 40                    .@
+;ESC-L Enable scrolling
+ESC_L:  lda     #$40                            ; B180 A9 40                    .@
         tsb     $AA                             ; B182 04 AA                    ..
         rts                                     ; B184 60                       `
 ; ----------------------------------------------------------------------------
-LB185:  lda     #$40                            ; B185 A9 40                    .@
+;ESC-M Disable scrolling
+ESC_M:  lda     #$40                            ; B185 A9 40                    .@
         trb     $AA                             ; B187 14 AA                    ..
         rts                                     ; B189 60                       `
 ; ----------------------------------------------------------------------------
-LB18A:  jsr     LAEB1                           ; B18A 20 B1 AE                  ..
-        jsr     LB15A                           ; B18D 20 5A B1                  Z.
+;ESC-Q Erase to end of current line
+ESC_Q:  jsr     LAEB1                           ; B18A 20 B1 AE                  ..
+        jsr     ESC_K ;Move to end of current line ; B18D 20 5A B1                  Z.
         jsr     LAEBC                           ; B190 20 BC AE                  ..
         bcs     LB19E                           ; B193 B0 09                    ..
         jmp     LAEA6                           ; B195 4C A6 AE                 L..
 ; ----------------------------------------------------------------------------
-LB198:  jsr     LAEB1                           ; B198 20 B1 AE                  ..
-        jsr     LB14A                           ; B19B 20 4A B1                  J.
+;ESC-P Erase to start of current line
+ESC_P:  jsr     LAEB1                           ; B198 20 B1 AE                  ..
+        jsr     ESC_J ;Move to start of current line ; B19B 20 4A B1                  J.
 LB19E:  jsr     LAF1A                           ; B19E 20 1A AF                  ..
         jsr     LAEBC                           ; B1A1 20 BC AE                  ..
         bne     LB1A7                           ; B1A4 D0 01                    ..
         rts                                     ; B1A6 60                       `
-; ----------------------------------------------------------------------------
 LB1A7:  bpl     LB1AE                           ; B1A7 10 05                    ..
         jsr     LADD1                           ; B1A9 20 D1 AD                  ..
         bra     LB19E                           ; B1AC 80 F0                    ..
 LB1AE:  jsr     LAE09                           ; B1AE 20 09 AE                  ..
         bra     LB19E                           ; B1B1 80 EB                    ..
-LB1B3:  ldx     CursorX                         ; B1B3 A6 A1                    ..
+; ----------------------------------------------------------------------------
+;ESC-T Set top left of screen window at cursor position
+ESC_T:  ldx     CursorX                         ; B1B3 A6 A1                    ..
         ldy     CursorY                         ; B1B5 A4 A2                    ..
         stx     $A3                             ; B1B7 86 A3                    ..
         sty     $A5                             ; B1B9 84 A5                    ..
         jmp     LB087                           ; B1BB 4C 87 B0                 L..
 ; ----------------------------------------------------------------------------
-LB1BE:  jsr     LAEB1                           ; B1BE 20 B1 AE                  ..
+;ESC-V Scroll up
+ESC_V:  jsr     LAEB1                           ; B1BE 20 B1 AE                  ..
         ldy     CurMaxY_                        ; B1C1 A4 A6                    ..
         sty     CursorY                         ; B1C3 84 A2                    ..
         jsr     LAF4B                           ; B1C5 20 4B AF                  K.
         bra     LB1D4                           ; B1C8 80 0A                    ..
-LB1CA:  jsr     LAEB1                           ; B1CA 20 B1 AE                  ..
+;ESC-W Scroll down
+ESC_W:  jsr     LAEB1                           ; B1CA 20 B1 AE                  ..
         ldy     $A5                             ; B1CD A4 A5                    ..
         sty     CursorY                         ; B1CF 84 A2                    ..
         jsr     LAF89                           ; B1D1 20 89 AF                  ..
@@ -6890,8 +6911,9 @@ LB1E8:  sty     $0369                           ; B1E8 8C 69 03                 
         lda     #$ED                            ; B216 A9 ED                    ..
         sta     $AA                             ; B218 85 AA                    ..
         stz     $036F                           ; B21A 9C 6F 03                 .o.
-        jsr     LAD41                           ; B21D 20 41 AD                  A.
-LB220:  stz     $A7                             ; B220 64 A7                    d.
+        jsr     ESC_Y ;Set default tab stops (8 spaces)  ; B21D 20 41 AD                  A.
+;ESC-O Cancel insert, quote, reverse modes
+ESC_O:  stz     $A7                             ; B220 64 A7                    d.
         stz     $A8                             ; B222 64 A8                    d.
 ;CHR$(146) Reverse Off
 LB224:  stz     REVERSE                         ; B224 9C 6C 03                 .l.
@@ -6961,11 +6983,13 @@ LB2A9:  lda     LB255,x                         ; B2A9 BD 55 B2                 
 LB2C6:  sec                                     ; B2C6 38                       8
         jmp     LCDsetupGetOrSet                ; B2C7 4C 28 B2                 L(.
 ; ----------------------------------------------------------------------------
-LB2CA:  lda     #$80                            ; B2CA A9 80                    ..
+;ESC-E Set cursor to nonflashing mode
+ESC_E:  lda     #$80                            ; B2CA A9 80                    ..
         tsb     $036F                           ; B2CC 0C 6F 03                 .o.
         rts                                     ; B2CF 60                       `
 ; ----------------------------------------------------------------------------
-LB2D0:  lda     #$80                            ; B2D0 A9 80                    ..
+;ESCF-F Set cursor to flashing mode
+ESC_F:  lda     #$80                            ; B2D0 A9 80                    ..
         trb     $036F                           ; B2D2 1C 6F 03                 .o.
         rts                                     ; B2D5 60                       `
 ; ----------------------------------------------------------------------------
@@ -7026,7 +7050,7 @@ LB33A:  jsr     LB2D6                           ; B33A 20 D6 B2                 
         cmp     #$0D                            ; B345 C9 0D                    ..
         bne     LB337                           ; B347 D0 EE                    ..
 LB349:  stz     $A7                             ; B349 64 A7                    d.
-        jsr     LB15A                           ; B34B 20 5A B1                  Z.
+        jsr     ESC_K ;Move to end of current line ; B34B 20 5A B1                  Z.
         jsr     LAEB1                           ; B34E 20 B1 AE                  ..
         ldy     $03E9                           ; B351 AC E9 03                 ...
         bmi     LB35F                           ; B354 30 09                    0.
@@ -7034,7 +7058,7 @@ LB349:  stz     $A7                             ; B349 64 A7                    
         ldx     $03E8                           ; B358 AE E8 03                 ...
         stx     CursorX                         ; B35B 86 A1                    ..
         bra     LB362                           ; B35D 80 03                    ..
-LB35F:  jsr     LB14A                           ; B35F 20 4A B1                  J.
+LB35F:  jsr     ESC_J ;Move to start of current line ; B35F 20 4A B1                  J.
 LB362:  jsr     LAEBC                           ; B362 20 BC AE                  ..
         bcc     LB36E                           ; B365 90 07                    ..
         lda     #$40                            ; B367 A9 40                    .@
@@ -7053,7 +7077,7 @@ LB381:  clc                                     ; B381 18                       
 ; ----------------------------------------------------------------------------
 LB383:  cmp     #$20                            ; B383 C9 20                    .
         bne     LB381                           ; B385 D0 FA                    ..
-LB387:  jsr     LB15A                           ; B387 20 5A B1                  Z.
+LB387:  jsr     ESC_K ;Move to end of current line ; B387 20 5A B1                  Z.
         stz     $A7                             ; B38A 64 A7                    d.
         stz     $0382                           ; B38C 9C 82 03                 ...
         lda     #$0D                            ; B38F A9 0D                    ..
@@ -9797,7 +9821,7 @@ LC82B:  jsr     LCA75                           ; C82B 20 75 CA                 
         iny                                     ; C835 C8                       .
         cpy     #$10                            ; C836 C0 10                    ..
         bcc     LC82B                           ; C838 90 F1                    ..
-LC83A:  jsr     LB220                           ; C83A 20 20 B2                   .
+LC83A:  jsr     ESC_O ;Cancel insert, quote, reverse modes ; C83A 20 20 B2                   .
         lda     #$91 ;CHR($145) Cursor Up       ; C83D A9 91                    ..
         jsr     ShowChar_                       ; C83F 20 B3 AB                  ..
         jsr     LC8B9                           ; C842 20 B9 C8                  ..
@@ -14521,7 +14545,7 @@ LF0A6:  jsr     LB8E9                           ; F0A6 20 E9 B8                 
         jmp     (RAMVEC_WTF)                    ; F0AF 6C 2E 03                 l..
 ; ----------------------------------------------------------------------------
 LF0B2:  ldx     #$15                            ; F0B2 A2 15                    ..
-LF0B4:  cmp     LB0E5+1,x                       ; F0B4 DD E6 B0                 ...
+LF0B4:  cmp     LB0E7-1,x                       ; F0B4 DD E6 B0                 ...
         beq     LF0C5                           ; F0B7 F0 0C                    ..
         dex                                     ; F0B9 CA                       .
         bpl     LF0B4                           ; F0BA 10 F8                    ..
@@ -14539,7 +14563,7 @@ LF0C5:  cpx     #$13                            ; F0C5 E0 13                    
         txa                                     ; F0CD 8A                       .
         asl     a                               ; F0CE 0A                       .
         tax                                     ; F0CF AA                       .
-        lda     LB0FD,x                         ; F0D0 BD FD B0                 ...
+        lda     LB0FC+1,x                         ; F0D0 BD FD B0                 ...
         pha                                     ; F0D3 48                       H
         lda     LB0FC,x                         ; F0D4 BD FC B0                 ...
         pha                                     ; F0D7 48                       H
@@ -14663,7 +14687,7 @@ LF1A8:  jmp     LB08B                           ; F1A8 4C 8B B0                 
 LF1B2:  jsr     LB7A7                           ; F1B2 20 A7 B7                  ..
         bcs     LF1C9                           ; F1B5 B0 12                    ..
         lda     $60                             ; F1B7 A5 60                    .`
-        jsr     LB12A                           ; F1B9 20 2A B1                  *.
+        jsr     ESC_A ;Enable auto-insert mode  ; F1B9 20 2A B1                  *.
         iny                                     ; F1BC C8                       .
         bit     $D7                             ; F1BD 24 D7                    $.
         bpl     LF1C5                           ; F1BF 10 04                    ..
@@ -14931,7 +14955,7 @@ LF3D1:  ldx     $66                             ; F3D1 A6 66                    
         bcs     LF403                           ; F3EA B0 17                    ..
         ldy     #$00                            ; F3EC A0 00                    ..
 LF3EE:  lda     $60                             ; F3EE A5 60                    .`
-        jsr     LB12A                           ; F3F0 20 2A B1                  *.
+        jsr     ESC_A ;Enable auto-insert mode  ; F3F0 20 2A B1                  *.
         jsr     LFFE1                           ; F3F3 20 E1 FF                  ..
         beq     LF400                           ; F3F6 F0 08                    ..
         jsr     LB950                           ; F3F8 20 50 B9                  P.
@@ -15079,11 +15103,11 @@ LF519:  dex                                     ; F519 CA                       
         ldy     $0AAB                           ; F51C AC AB 0A                 ...
         bne     LF524                           ; F51F D0 03                    ..
 LF521:  lda     $5F,y                           ; F521 B9 5F 00                 ._.
-LF524:  jsr     LB12A                           ; F524 20 2A B1                  *.
+LF524:  jsr     ESC_A ;Enable auto-insert mode  ; F524 20 2A B1                  *.
         dey                                     ; F527 88                       .
         bne     LF521                           ; F528 D0 F7                    ..
 LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 ...
-        jsr     LB12A                           ; F52D 20 2A B1                  *.
+        jsr     ESC_A ;Enable auto-insert mode  ; F52D 20 2A B1                  *.
         jsr     LB8AD                           ; F530 20 AD B8                  ..
         jsr     LFF7D                           ; F533 20 7D FF                  }.
         .byte   "A "                            ; F536 41 20                    A
@@ -16130,8 +16154,8 @@ LFE07:  ldy     CursorX                         ; FE07 A4 A1                    
 ; Though CLCD contains VIA, not CIA, but fair enough :) $F800 seems to be OK,
 ; as this is addr of VIA-1, indeed. It also helped me to be sure that F800 is
 ; really start of the VIA regs.
-LFE0C:  ldx     #$00                            ; FE0C A2 00                    ..
-        ldy     #$F8                            ; FE0E A0 F8                    ..
+LFE0C:  ldx     #<$F800                         ; FE0C A2 00                    ..
+        ldy     #>$F800                         ; FE0E A0 F8                    ..
         rts                                     ; FE10 60                       `
 ; ----------------------------------------------------------------------------
 ; Seems to be an unused area.

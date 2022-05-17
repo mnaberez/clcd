@@ -2,9 +2,9 @@
 
 This is an incomplete disassembly of the KERNAL ROM of [Bil Herd](http://c128.com/)'s Commodore LCD prototype.  See the [Commodore LCD ROMs](http://mikenaberezny.com/2008/10/04/commodore-lcd-firmware/) page for the original binaries.
 
-This disassembly is based on the [disassembly](https://web.archive.org/web/20170419205827/http://commodore-lcd.lgb.hu/sk/) of the KERNAL ROM found in Bil Herd's LCD prototype published by Gábor Lénárt.  It been changed from a webpage to a source file that can be assembled with [ca65](https://www.cc65.org/doc/ca65.html).  The reassembled binary is bit-identical to the original `kizapr-u102.bin` file.  Some symbols have been renamed to more conventional CBM names, e.g. `LFSDevNum` to `FA`, with the goal of making the disassembly easier to read for those familiar with the other KERNALs.  Some hardcoded addresses were replaced with symbols, e.g. `LAT`.  The original motivation for this version of the disassembly was to better understand the IEC implementation of the LCD.  Therefore, most of the changes from the original are in the IEC routines.
+This disassembly is based on the [disassembly](https://web.archive.org/web/20170419205827/http://commodore-lcd.lgb.hu/sk/) of the KERNAL ROM found in Bil Herd's LCD prototype published by Gábor Lénárt.  It been changed from a webpage to a source file that can be assembled with [ca65](https://www.cc65.org/doc/ca65.html).  The reassembled binary is bit-identical to the original `kizapr-u102.bin` file.  Some symbols have been renamed to more conventional CBM names, e.g. `LFSDevNum` to `FA`, with the goal of making the disassembly easier to read for those familiar with the other KERNALs.  Some hardcoded addresses were replaced with symbols, e.g. `LAT`.  Additional routines have been disassembled.
 
-## Findings
+## Hardware
 
 ### Main Clock
 
@@ -48,6 +48,33 @@ STROBE is pulsed.  Above, there are two candidates for STROBE.  Both of these li
 ### Beeper / CB2 Sound
 
 The KERNAL screen device (`3`) will sound the beeper when control code 7 is written (see routine at $C65C and the calls to it).  The beeper is driven by CB2 of VIA2 (see $C64B).
+
+## Firmware
+
+The screen editor supports nearly all of the ESC codes in the C128:
+
+| ESC Code | Function | Source |
+|--------------|----------|--------|
+|ESC-A | Enable auto-insert mode | $B0D5 |
+|ESC-B | Set bottom right of screen window at current position | $B0D8 |
+|ESC-C | Disable auto-insert mode | $B0DB |
+|ESC-D | Delete the current line | $B0DE |
+|ESC-E | Set cursor to nonflashing mode | $B0E1 |
+|ESC-F | Set cursor to flashing mode | $B0E4 |
+|ESC-I | Insert line | $B0E7 |
+|ESC-J | Move to start of current line | $B0EA |
+|ESC-K | Move to end of current line | $B0ED |
+|ESC-L | Enable scrolling | $B0F0 |
+|ESC-M | Disable scrolling | $B0F4 |
+|ESC-O | Cancel insert, quote, reverse modes | $B0F7 |
+|ESC-P | Erase to start of current line | $B0FA |
+|ESC-Q | Erase to end of current line | $B0FD |
+|ESC-T | Set top left of screen window at cursor position | $B0FF |
+|ESC-V | Scroll up | $B103 |
+|ESC-W | Scroll down | $B106 |
+|ESC-Y | Set default tab stops (8 spaces) | $B108 |
+|ESC-Z | Clear all tab stops | $B10B |
+
 
 ## License
 
