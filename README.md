@@ -51,6 +51,8 @@ The KERNAL screen device (`3`) will sound the beeper when control code 7 is writ
 
 ## Firmware
 
+### Screen Editor
+
 The screen editor supports nearly all of the ESC codes in the C128:
 
 | ESC Code | Function | Source |
@@ -75,6 +77,16 @@ The screen editor supports nearly all of the ESC codes in the C128:
 |ESC-Y | Set default tab stops (8 spaces) | $B108 |
 |ESC-Z | Clear all tab stops | $B10B |
 
+### Alarm
+
+The KERNAL updates the TOD clock on a 60 Hz interrupt like other CBM machines.  An alarm has also been added (see UDTIM at $BF93).  The alarm counts down hours, minutes, and seconds independently of the TOD clock.  The alarm beeps 3 times in the final seconds of the countdown.
+
+This program sounds the alarm in 1 hour, 30 minutes, and 15 seconds:
+
+```text
+0 poke917,1:poke916,30:poke915,15
+1 printpeek(917),peek(916),peek(915):goto1
+```
 
 ## License
 
