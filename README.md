@@ -42,8 +42,12 @@ The Centronics signals are connected to VIA2 ($F880):
 |VIA2 CA2|Possibly STROBE out|$C3C1|
 
 Before writing the data byte, the LCD will wait for /BUSY to go high.  If it does not go high within a timeout,
-or if STOP is pressed, the LCD will abort.  If /BUSY goes high, the byte is placed on the data lines and 
+or if STOP is pressed, the LCD will abort.  If /BUSY goes high, the byte is placed on the data lines and
 STROBE is pulsed.  Above, there are two candidates for STROBE.  Both of these lines are pulsed immediately after putting the byte on PORTA.  
+
+### Beeper / CB2 Sound
+
+The KERNAL screen device (`3`) will sound the beeper when control code 7 is written (see routine at $C65C and the calls to it).  The beeper is driven by CB2 of VIA2 (see $C64B).
 
 ## License
 
