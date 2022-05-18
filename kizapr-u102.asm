@@ -59,13 +59,13 @@ RAMVEC_LOAD     := $0330
 RAMVEC_SAVE     := $0332
 L0334           := $0334
 L0336           := $0336
-FROM_C669       := $0338
-FROM_C672       := $0341
-FROM_C67B       := $034A
-L034D           := $034D
-FROM_C684       := $0353
-FROM_C68D       := $035C
-L035F           := $035F
+GO_RAM_LOAD_GO_APPL       := $0338  ;
+GO_RAM_STORE_GO_APPL      := $0341  ;
+GO_RAM_LOAD_GO_KERN       := $034A  ; RAM-resident code loaded from:
+GO_NOWHERE_LOAD_GO_KERN   := $034D  ; MMU_HELPER_ROUTINES
+GO_APPL_LOAD_GO_KERN      := $0353  ;
+GO_RAM_STORE_GO_KERN      := $035C  ;
+GO_NOWHERE_STORE_GO_KERN  := $035F  ;
 REVERSE         := $036C  ;0=Reverse Off, 0x80=Reverse On
 TABMAP          := $0370
 SETUP_LCD_A     := $037A
@@ -480,7 +480,7 @@ L826E:  rts                                     ; 826E 60                       
 L826F:  phy                                     ; 826F 5A                       Z
         txa                                     ; 8270 8A                       .
         tay                                     ; 8271 A8                       .
-        jsr     FROM_C67B                       ; 8272 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; 8272 20 4A 03                  J.
         ply                                     ; 8275 7A                       z
         rts                                     ; 8276 60                       `
 ; ----------------------------------------------------------------------------
@@ -2237,7 +2237,7 @@ L8F9B:  cld                                     ; 8F9B D8                       
 L8FAA:  lda     $03                             ; 8FAA A5 03                    ..
 L8FAC:  rts                                     ; 8FAC 60                       `
 ; ----------------------------------------------------------------------------
-L8FAD:  jsr     FROM_C67B                       ; 8FAD 20 4A 03                  J.
+L8FAD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FAD 20 4A 03                  J.
         iny                                     ; 8FB0 C8                       .
 L8FB1:  ldx     #$03                            ; 8FB1 A2 03                    ..
 L8FB3:  .byte   $DD                             ; 8FB3 DD                       .
@@ -2257,7 +2257,7 @@ L8FC3:  ldx     #$00                            ; 8FC3 A2 00                    
         ldy     $03A1                           ; 8FC5 AC A1 03                 ...
         lda     #$E2                            ; 8FC8 A9 E2                    ..
         sta     $034E                           ; 8FCA 8D 4E 03                 .N.
-L8FCD:  jsr     FROM_C67B                       ; 8FCD 20 4A 03                  J.
+L8FCD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FCD 20 4A 03                  J.
 L8FD0:  cmp     #$2A                            ; 8FD0 C9 2A                    .*
         beq     L8FE9                           ; 8FD2 F0 15                    ..
         cmp     #$3F                            ; 8FD4 C9 3F                    .?
@@ -2285,7 +2285,7 @@ L8FF3:  stz     $02D8                           ; 8FF3 9C D8 02                 
         sta     $034E                           ; 8FF8 8D 4E 03                 .N.
         ldx     #$00                            ; 8FFB A2 00                    ..
         ldy     $03A1                           ; 8FFD AC A1 03                 ...
-L9000:  jsr     FROM_C67B                       ; 9000 20 4A 03                  J.
+L9000:  jsr     GO_RAM_LOAD_GO_KERN             ; 9000 20 4A 03                  J.
         sta     $021D,x                         ; 9003 9D 1D 02                 ...
         inx                                     ; 9006 E8                       .
         iny                                     ; 9007 C8                       .
@@ -2332,7 +2332,7 @@ L9055:  bit     #$80                            ; 9055 89 80                    
         ldy     $03A1                           ; 905B AC A1 03                 ...
 L905E:  lda     #$E2                            ; 905E A9 E2                    ..
         sta     $034E                           ; 9060 8D 4E 03                 .N.
-        jsr     FROM_C67B                       ; 9063 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; 9063 20 4A 03                  J.
         sta     $0238,x                         ; 9066 9D 38 02                 .8.
         iny                                     ; 9069 C8                       .
         inx                                     ; 906A E8                       .
@@ -2469,7 +2469,7 @@ L915A:  .byte   $02                             ; 915A 02                       
         sta     $034E                           ; 9160 8D 4E 03                 .N.
 L9163:  jsr     L89AF                           ; 9163 20 AF 89                  ..
         ldy     #$FF                            ; 9166 A0 FF                    ..
-L9168:  jsr     FROM_C67B                       ; 9168 20 4A 03                  J.
+L9168:  jsr     GO_RAM_LOAD_GO_KERN             ; 9168 20 4A 03                  J.
         sta     ($E4),y                         ; 916B 91 E4                    ..
         dey                                     ; 916D 88                       .
         bne     L9168                           ; 916E D0 F8                    ..
@@ -2544,8 +2544,8 @@ L91E4:  lda     STAH                            ; 91E4 A5 B7                    
         cmp     EAL                             ; 91EC C5 B2                    ..
         beq     L9206                           ; 91EE F0 16                    ..
 L91F0:  ldy     #$00                            ; 91F0 A0 00                    ..
-        jsr     FROM_C67B                       ; 91F2 20 4A 03                  J.
-        jsr     FROM_C68D                       ; 91F5 20 5C 03                  \.
+        jsr     GO_RAM_LOAD_GO_KERN             ; 91F2 20 4A 03                  J.
+        jsr     GO_RAM_STORE_GO_KERN            ; 91F5 20 5C 03                  \.
         inc     $E0                             ; 91F8 E6 E0                    ..
         bne     L91FE                           ; 91FA D0 02                    ..
 L91FC:  inc     $E1                             ; 91FC E6 E1                    ..
@@ -3053,11 +3053,11 @@ L95F9:  jsr     L9661                           ; 95F9 20 61 96                 
         sta     $0407                           ; 960B 8D 07 04                 ...
         lda     #$B2                            ; 960E A9 B2                    ..
         sta     $034E                           ; 9610 8D 4E 03                 .N.
-        jsr     FROM_C67B                       ; 9613 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; 9613 20 4A 03                  J.
         cmp     $0407                           ; 9616 CD 07 04                 ...
         beq     L963D                           ; 9619 F0 22                    ."
         lda     #$10                            ; 961B A9 10                    ..
-        jsr     UDST                           ; 961D 20 CA FC                  ..
+        jsr     UDST                            ; 961D 20 CA FC                  ..
         bra     L963D                           ; 9620 80 1B                    ..
 L9622:  ldx     #$B2                            ; 9622 A2 B2                    ..
         stx     $0360                           ; 9624 8E 60 03                 .`.
@@ -3070,15 +3070,15 @@ L9622:  ldx     #$B2                            ; 9622 A2 B2                    
         bne     L963A                           ; 9635 D0 03                    ..
 L9637:  jmp     L9588                           ; 9637 4C 88 95                 L..
 ; ----------------------------------------------------------------------------
-L963A:  jsr     FROM_C68D                       ; 963A 20 5C 03                  \.
+L963A:  jsr     GO_RAM_STORE_GO_KERN            ; 963A 20 5C 03                  \.
 L963D:  inc     EAL                             ; 963D E6 B2                    ..
         bne     L9643                           ; 963F D0 02                    ..
         inc     EAH                             ; 9641 E6 B3                    ..
-L9643:  bit     SATUS                             ; 9643 24 BA                    $.
+L9643:  bit     SATUS                           ; 9643 24 BA                    $.
         bvc     L95F9                           ; 9645 50 B2                    P.
-        lda     SA                      ; 9647 A5 C4                    ..
+        lda     SA                              ; 9647 A5 C4                    ..
         beq     L9651                           ; 9649 F0 06                    ..
-        jsr     UNTLK                        ; 964B 20 81 BD                  ..
+        jsr     UNTLK                           ; 964B 20 81 BD                  ..
         jsr     CLSEI                           ; 964E 20 36 BC                  6.
 L9651:  ldx     EAL                             ; 9651 A6 B2                    ..
         ldy     EAH                             ; 9653 A4 B3                    ..
@@ -3175,7 +3175,7 @@ L9703:  iny                                     ; 9703 C8                       
         lda     ($E4),y                         ; 9704 B1 E4                    ..
         phy                                     ; 9706 5A                       Z
         ldy     #$00                            ; 9707 A0 00                    ..
-        jsr     FROM_C68D                       ; 9709 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; 9709 20 5C 03                  \.
         inc     EAL                             ; 970C E6 B2                    ..
         bne     L9712                           ; 970E D0 02                    ..
         inc     EAH                             ; 9710 E6 B3                    ..
@@ -3217,7 +3217,7 @@ L974A:  lda     #$AE                            ; 974A A9 AE                    
         sta     $034E                           ; 974C 8D 4E 03                 .N.
         dey                                     ; 974F 88                       .
         bmi     L9749                           ; 9750 30 F7                    0.
-L9752:  jsr     FROM_C67B                       ; 9752 20 4A 03                  J.
+L9752:  jsr     GO_RAM_LOAD_GO_KERN             ; 9752 20 4A 03                  J.
         sta     $0295,y                         ; 9755 99 95 02                 ...
         dey                                     ; 9758 88                       .
         bpl     L9752                           ; 9759 10 F7                    ..
@@ -3781,7 +3781,7 @@ L9C13:  sei                                     ; 9C13 78                       
         ldy     #$00                            ; 9C14 A0 00                    ..
         lda     #$3F                            ; 9C16 A9 3F                    .?
         sta     $034E                           ; 9C18 8D 4E 03                 .N.
-        jsr     FROM_C67B                       ; 9C1B 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; 9C1B 20 4A 03                  J.
         cli                                     ; 9C1E 58                       X
         cmp     #$3A                            ; 9C1F C9 3A                    .:
         bcs     L9C2D                           ; 9C21 B0 0A                    ..
@@ -3795,7 +3795,7 @@ L9C2D:  rts                                     ; 9C2D 60                       
 ; ----------------------------------------------------------------------------
 L9C2E:  lda     #$3F                            ; 9C2E A9 3F                    .?
         sta     $034E                           ; 9C30 8D 4E 03                 .N.
-        jmp     FROM_C67B                       ; 9C33 4C 4A 03                 LJ.
+        jmp     GO_RAM_LOAD_GO_KERN             ; 9C33 4C 4A 03                 LJ.
 ; ----------------------------------------------------------------------------
 L9C36:  lda     #$08                            ; 9C36 A9 08                    ..
         sta     $034E                           ; 9C38 8D 4E 03                 .N.
@@ -3804,17 +3804,17 @@ L9C3C:  lsr     a                               ; 9C3C 4A                       
         .byte   $03                             ; 9C3D 03                       .
 L9C3E:  lda     #$08                            ; 9C3E A9 08                    ..
         sta     $0357                           ; 9C40 8D 57 03                 .W.
-        jmp     FROM_C684                       ; 9C43 4C 53 03                 LS.
+        jmp     GO_APPL_LOAD_GO_KERN            ; 9C43 4C 53 03                 LS.
 ; ----------------------------------------------------------------------------
 L9C46:  lda     #$0A                            ; 9C46 A9 0A                    ..
         sta     $034E                           ; 9C48 8D 4E 03                 .N.
-        jmp     FROM_C67B                       ; 9C4B 4C 4A 03                 LJ.
+        jmp     GO_RAM_LOAD_GO_KERN             ; 9C4B 4C 4A 03                 LJ.
 ; ----------------------------------------------------------------------------
 L9C4E:  pha                                     ; 9C4E 48                       H
         lda     #$0A                            ; 9C4F A9 0A                    ..
         sta     $0360                           ; 9C51 8D 60 03                 .`.
         pla                                     ; 9C54 68                       h
-        jmp     FROM_C68D                       ; 9C55 4C 5C 03                 L\.
+        jmp     GO_RAM_STORE_GO_KERN            ; 9C55 4C 5C 03                 L\.
 ; ----------------------------------------------------------------------------
         bcc     L9BDA                           ; 9C58 90 80                    ..
         brk                                     ; 9C5A 00                       .
@@ -4642,30 +4642,30 @@ LA227:  jsr     LA28A                           ; A227 20 8A A2                 
         lda     #$08                            ; A230 A9 08                    ..
         sta     $0360                           ; A232 8D 60 03                 .`.
         lda     $2C                             ; A235 A5 2C                    .,
-        jsr     FROM_C68D                       ; A237 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A237 20 5C 03                  \.
         dey                                     ; A23A 88                       .
         lda     $2B                             ; A23B A5 2B                    .+
-        jsr     FROM_C68D                       ; A23D 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A23D 20 5C 03                  \.
         dey                                     ; A240 88                       .
         lda     $2A                             ; A241 A5 2A                    .*
-        jsr     FROM_C68D                       ; A243 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A243 20 5C 03                  \.
         dey                                     ; A246 88                       .
         lda     $29                             ; A247 A5 29                    .)
-        jsr     FROM_C68D                       ; A249 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A249 20 5C 03                  \.
         dey                                     ; A24C 88                       .
         lda     $28                             ; A24D A5 28                    .(
-        jsr     FROM_C68D                       ; A24F 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A24F 20 5C 03                  \.
         dey                                     ; A252 88                       .
         lda     $27                             ; A253 A5 27                    .'
-        jsr     FROM_C68D                       ; A255 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A255 20 5C 03                  \.
         dey                                     ; A258 88                       .
         lda     $2D                             ; A259 A5 2D                    .-
         ora     #$7F                            ; A25B 09 7F                    ..
         and     $26                             ; A25D 25 26                    %&
-        jsr     FROM_C68D                       ; A25F 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A25F 20 5C 03                  \.
         dey                                     ; A262 88                       .
         lda     $25                             ; A263 A5 25                    .%
-        jsr     FROM_C68D                       ; A265 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; A265 20 5C 03                  \.
         sty     $3A                             ; A268 84 3A                    .:
         rts                                     ; A26A 60                       `
 ; ----------------------------------------------------------------------------
@@ -5783,7 +5783,7 @@ LAA6A:  rmb0    $8D                             ; AA6A 07 8D                    
         lda     ($03,x)                         ; AA6C A1 03                    ..
         ldy     #$00                            ; AA6E A0 00                    ..
         ldx     #$00                            ; AA70 A2 00                    ..
-LAA72:  jsr     FROM_C684                       ; AA72 20 53 03                  S.
+LAA72:  jsr     GO_APPL_LOAD_GO_KERN            ; AA72 20 53 03                  S.
         beq     LAA81                           ; AA75 F0 0A                    ..
         cmp     #$0D                            ; AA77 C9 0D                    ..
         bne     LAA7C                           ; AA79 D0 01                    ..
@@ -5864,7 +5864,7 @@ LAB11:  clc                                     ; AB11 18                       
         jsr     LB6F9                           ; AB12 20 F9 B6                  ..
         inc     $03A6                           ; AB15 EE A6 03                 ...
         ldy     $03A6                           ; AB18 AC A6 03                 ...
-        jsr     FROM_C684                       ; AB1B 20 53 03                  S.
+        jsr     GO_APPL_LOAD_GO_KERN            ; AB1B 20 53 03                  S.
         beq     LAB24                           ; AB1E F0 04                    ..
         cmp     #$0D                            ; AB20 C9 0D                    ..
         bne     LAB11                           ; AB22 D0 ED                    ..
@@ -7022,7 +7022,8 @@ LCDsetupSet:
         plp                                     ; B253 28                       (
         rts                                     ; B254 60                       `
 ; ----------------------------------------------------------------------------
-LB255:  .word   $00A1,$00A2,$00A3,$00A4             ; B255 A1 00 A2 00 A3 00 A4 00  ........
+EDITOR_LOCS:
+        .word   $00A1,$00A2,$00A3,$00A4             ; B255 A1 00 A2 00 A3 00 A4 00  ........
         .word   $00A6,$00A5,$00A7,$037D             ; B25D A6 00 A5 00 A7 00 7D 03  ......}.
         .word   $00A8,$00A9,$00AA,$036F           ; B265 A8 00 A9 00 AA 00 6F 03  ......o.
         .word   REVERSE,$036D,$036A,$036B           ; B26D 6C 03 6D 03 6A 03 6B 03  l.m.j.k.
@@ -7040,21 +7041,22 @@ LB293:  stx     $F1                             ; B293 86 F1                    
         sta     $0360                           ; B2A2 8D 60 03                 .`.
         ldy     #$00                            ; B2A5 A0 00                    ..
         ldx     #$00                            ; B2A7 A2 00                    ..
-LB2A9:  lda     LB255,x                         ; B2A9 BD 55 B2                 .U.
+LB2A9_LOOP:
+        lda     EDITOR_LOCS,x                   ; B2A9 BD 55 B2                 .U.
         sta     VidPtrLo                        ; B2AC 85 C1                    ..
-        lda     LB255+1,x                       ; B2AE BD 56 B2                 .V.
+        lda     EDITOR_LOCS+1,x                 ; B2AE BD 56 B2                 .V.
         sta     VidPtrHi                        ; B2B1 85 C2                    ..
         lda     (VidPtrLo)                      ; B2B3 B2 C1                    ..
         pha                                     ; B2B5 48                       H
-        jsr     FROM_C67B                       ; B2B6 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; B2B6 20 4A 03                  J.
         sta     (VidPtrLo)                      ; B2B9 92 C1                    ..
         pla                                     ; B2BB 68                       h
-        jsr     FROM_C68D                       ; B2BC 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; B2BC 20 5C 03                  \.
         iny                                     ; B2BF C8                       .
         inx                                     ; B2C0 E8                       .
         inx                                     ; B2C1 E8                       .
         cpx     #$3E                            ; B2C2 E0 3E                    .>
-        bne     LB2A9                           ; B2C4 D0 E3                    ..
+        bne     LB2A9_LOOP                      ; B2C4 D0 E3                    ..
 LB2C6:  sec                                     ; B2C6 38                       8
         jmp     LCDsetupGetOrSet                ; B2C7 4C 28 B2                 L(.
 ; ----------------------------------------------------------------------------
@@ -8136,74 +8138,74 @@ LBB3B:  jmp     L9243                           ; BB3B 4C 43 92                 
 LBB3E:  clc                                     ; BB3E 18                       .
         rts                                     ; BB3F 60                       `
 ; ----------------------------------------------------------------------------
-LBB40:  lda     SA                      ; BB40 A5 C4                    ..
+LBB40:  lda     SA                              ; BB40 A5 C4                    ..
         bmi     LBB3E                           ; BB42 30 FA                    0.
-        ldy     FNLEN                        ; BB44 AC 87 03                 ...
+        ldy     FNLEN                           ; BB44 AC 87 03                 ...
         beq     LBB3E                           ; BB47 F0 F5                    ..
-        stz     SATUS                             ; BB49 64 BA                    d.
-        lda     FA                       ; BB4B A5 C5                    ..
-        jsr     LISTN                        ; BB4D 20 94 BC                  ..
-        bit     SATUS                             ; BB50 24 BA                    $.
+        stz     SATUS                           ; BB49 64 BA                    d.
+        lda     FA                              ; BB4B A5 C5                    ..
+        jsr     LISTN                           ; BB4D 20 94 BC                  ..
+        bit     SATUS                           ; BB50 24 BA                    $.
         bmi     LBB5F                           ; BB52 30 0B                    0.
-        lda     SA                      ; BB54 A5 C4                    ..
+        lda     SA                              ; BB54 A5 C4                    ..
         ora     #$F0                            ; BB56 09 F0                    ..
-        jsr     SECND                        ; BB58 20 46 BD                  F.
-        lda     SATUS                             ; BB5B A5 BA                    ..
+        jsr     SECND                           ; BB58 20 46 BD                  F.
+        lda     SATUS                           ; BB5B A5 BA                    ..
         bpl     LBB64                           ; BB5D 10 05                    ..
 LBB5F:  pla                                     ; BB5F 68                       h
         pla                                     ; BB60 68                       h
-        jmp     ERROR5 ;DEVICE NOT PRESENT                          ; BB61 4C 5C BC                 L\.
+        jmp     ERROR5 ;DEVICE NOT PRESENT      ; BB61 4C 5C BC                 L\.
 ; ----------------------------------------------------------------------------
-LBB64:  lda     FNLEN                        ; BB64 AD 87 03                 ...
+LBB64:  lda     FNLEN                           ; BB64 AD 87 03                 ...
         beq     LBB7C                           ; BB67 F0 13                    ..
         ldy     #$00                            ; BB69 A0 00                    ..
 LBB6B:  lda     #$AE                            ; BB6B A9 AE                    ..
         sta     $034E                           ; BB6D 8D 4E 03                 .N.
-        jsr     FROM_C67B                       ; BB70 20 4A 03                  J.
-        jsr     CIOUT                        ; BB73 20 6C BD                  l.
+        jsr     GO_RAM_LOAD_GO_KERN             ; BB70 20 4A 03                  J.
+        jsr     CIOUT                           ; BB73 20 6C BD                  l.
         iny                                     ; BB76 C8                       .
-        cpy     FNLEN                        ; BB77 CC 87 03                 ...
+        cpy     FNLEN                           ; BB77 CC 87 03                 ...
         bne     LBB6B                           ; BB7A D0 EF                    ..
-LBB7C:  jmp     CUNLSN                           ; BB7C 4C 48 BC                 LH.
+LBB7C:  jmp     CUNLSN                          ; BB7C 4C 48 BC                 LH.
 ; ----------------------------------------------------------------------------
 ; Maybe typo? :) Or it's only my English ... "SAVEING" ...
-LBB7F:  jsr     PRIMM80                ; BB7F 20 56 FB                  V.
+LBB7F:  jsr     PRIMM80                         ; BB7F 20 56 FB                  V.
         .byte   "SAVEING "                      ; BB82 53 41 56 45 49 4E 47 20  SAVEING
         .byte   $00                             ; BB8A 00                       .
         bra     OUTFN                           ; BB8B 80 12                    ..
 ; ----------------------------------------------------------------------------
-LUKING: jsr     PRIMM80                ; BB8D 20 56 FB                  V.
+LUKING: jsr     PRIMM80                         ; BB8D 20 56 FB                  V.
         .byte   "SEARCHING FOR "                ; BB90 53 45 41 52 43 48 49 4E  SEARCHIN
                                                 ; BB98 47 20 46 4F 52 20        G FOR
         .byte   $00                             ; BB9E 00                       .
 ; ----------------------------------------------------------------------------
-OUTFN:  bit     MSGFLG                         ; BB9F 2C 83 03                 ,..
+OUTFN:  bit     MSGFLG                          ; BB9F 2C 83 03                 ,..
         bpl     LBBBF                           ; BBA2 10 1B                    ..
-        ldy     FNLEN                        ; BBA4 AC 87 03                 ...
+        ldy     FNLEN                           ; BBA4 AC 87 03                 ...
         beq     LBBBC                           ; BBA7 F0 13                    ..
         ldy     #$00                            ; BBA9 A0 00                    ..
 LBBAB:  lda     #$AE                            ; BBAB A9 AE                    ..
         sta     $034E                           ; BBAD 8D 4E 03                 .N.
-        jsr     FROM_C67B                       ; BBB0 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; BBB0 20 4A 03                  J.
         jsr     ShowChar_                       ; BBB3 20 B3 AB                  ..
         iny                                     ; BBB6 C8                       .
-        cpy     FNLEN                        ; BBB7 CC 87 03                 ...
+        cpy     FNLEN                           ; BBB7 CC 87 03                 ...
         bne     LBBAB                           ; BBBA D0 EF                    ..
 LBBBC:  jmp     PrintNewLine                    ; BBBC 4C D3 CA                 L..
 ; ----------------------------------------------------------------------------
 LBBBF:  rts                                     ; BBBF 60                       `
 ; ----------------------------------------------------------------------------
-LBBC0:  lda     FA                       ; BBC0 A5 C5                    ..
-        bne     LD20                           ; BBC2 D0 03                    ..
-LBBC4:  jmp     ERROR9 ;BAD DEVICE #                          ; BBC4 4C 68 BC                 Lh.
+LBBC0:  lda     FA                              ; BBC0 A5 C5                    ..
+        bne     LD20                            ; BBC2 D0 03                    ..
+LBBC4:  jmp     ERROR9 ;BAD DEVICE #            ; BBC4 4C 68 BC                 Lh.
 ; ----------------------------------------------------------------------------
 LD20:   cmp     #$03   ;DISALLOW SCREEN LOAD    ; BBC7 C9 03                    ..
         beq     LBBC4                           ; BBC9 F0 F9                    ..
         cmp     #$02                            ; BBCB C9 02                    ..
         beq     LBBC4  ;DISALLOW MODEM LOAD     ; BBCD F0 F5                    ..
-        ldy     FNLEN                        ; BBCF AC 87 03                 ...
+        ldy     FNLEN                           ; BBCF AC 87 03                 ...
         bne     LBBD7                           ; BBD2 D0 03                    ..
-        jmp     ERROR8 ;MISSING FILE NAME                          ; BBD4 4C 65 BC                 Le.
+        jmp     ERROR8 ;MISSING FILE NAME       ; BBD4 4C 65 BC                 Le.
 ; ----------------------------------------------------------------------------
 LBBD7:  cmp     #$01   ;Virtual 1541?           ; BBD7 C9 01                    ..
         bne     LBBE1                           ; BBD9 D0 06                    ..
@@ -8213,14 +8215,14 @@ LBBD7:  cmp     #$01   ;Virtual 1541?           ; BBD7 C9 01                    
 ; ----------------------------------------------------------------------------
 ;Not Virtual 1541
 LBBE1:  lda     #$61                            ; BBE1 A9 61                    .a
-        sta     SA                      ; BBE3 85 C4                    ..
+        sta     SA                              ; BBE3 85 C4                    ..
         jsr     LBB40                           ; BBE5 20 40 BB                  @.
         jsr     LBB7F                           ; BBE8 20 7F BB                  ..
 
-        lda     FA                       ; BBEB A5 C5                    ..
-        jsr     LISTN                        ; BBED 20 94 BC                  ..
-        lda     SA                      ; BBF0 A5 C4                    ..
-        jsr     SECND                        ; BBF2 20 46 BD                  F.
+        lda     FA                              ; BBEB A5 C5                    ..
+        jsr     LISTN                           ; BBED 20 94 BC                  ..
+        lda     SA                              ; BBF0 A5 C4                    ..
+        jsr     SECND                           ; BBF2 20 46 BD                  F.
         ldy     #$00                            ; BBF5 A0 00                    ..
 
         ;RD300 from C64 KERNAL inlined
@@ -8230,9 +8232,9 @@ LBBE1:  lda     #$61                            ; BBE1 A9 61                    
         sta     SAL                             ; BBFD 85 B8                    ..
 
         lda     SAL                             ; BBFF A5 B8                    ..
-        jsr     CIOUT                        ; BC01 20 6C BD                  l.
+        jsr     CIOUT                           ; BC01 20 6C BD                  l.
         lda     SAH                             ; BC04 A5 B9                    ..
-        jsr     CIOUT                        ; BC06 20 6C BD                  l.
+        jsr     CIOUT                           ; BC06 20 6C BD                  l.
 
 LBC09:  ;CMPSTE from C64 KERNAL inlined
         sec                                     ; BC09 38                       8
@@ -8244,8 +8246,8 @@ LBC09:  ;CMPSTE from C64 KERNAL inlined
         bcs     LBC33                           ; BC12 B0 1F                    ..
         lda     #SAL                            ; BC14 A9 B8                    ..
         sta     $034E                           ; BC16 8D 4E 03                 .N.
-        jsr     FROM_C67B                       ; BC19 20 4A 03                  J.
-        jsr     CIOUT                        ; BC1C 20 6C BD                  l.
+        jsr     GO_RAM_LOAD_GO_KERN             ; BC19 20 4A 03                  J.
+        jsr     CIOUT                           ; BC1C 20 6C BD                  l.
         jsr     LFDB9                           ; BC1F 20 B9 FD                  ..
         bne     LBC2B                           ; BC22 D0 07                    ..
         jsr     CLSEI                           ; BC24 20 36 BC                  6.
@@ -8257,17 +8259,17 @@ LBC2B:  inc     SAL                             ; BC2B E6 B8                    
         bne     LBC09                           ; BC2D D0 DA                    ..
         inc     SAH                             ; BC2F E6 B9                    ..
         bne     LBC09                           ; BC31 D0 D6                    ..
-LBC33:  jsr     UNLSN                        ; BC33 20 90 BD                  ..
+LBC33:  jsr     UNLSN                           ; BC33 20 90 BD                  ..
 ; ----------------------------------------------------------------------------
-CLSEI:  bit     SA                      ; BC36 24 C4                    $.
-        bmi     CLSEI2                           ; BC38 30 11                    0.
-        lda     FA                       ; BC3A A5 C5                    ..
-        jsr     LISTN                        ; BC3C 20 94 BC                  ..
-        lda     SA                      ; BC3F A5 C4                    ..
+CLSEI:  bit     SA                              ; BC36 24 C4                    $.
+        bmi     CLSEI2                          ; BC38 30 11                    0.
+        lda     FA                              ; BC3A A5 C5                    ..
+        jsr     LISTN                           ; BC3C 20 94 BC                  ..
+        lda     SA                              ; BC3F A5 C4                    ..
         and     #$EF                            ; BC41 29 EF                    ).
         ora     #$E0                            ; BC43 09 E0                    ..
-        jsr     SECND                        ; BC45 20 46 BD                  F.
-CUNLSN: jsr     UNLSN                        ; BC48 20 90 BD                  ..
+        jsr     SECND                           ; BC45 20 46 BD                  F.
+CUNLSN: jsr     UNLSN                           ; BC48 20 90 BD                  ..
 CLSEI2: clc                                     ; BC4B 18                       .
         rts                                     ; BC4C 60                       `
 ; ----------------------------------------------------------------------------
@@ -8296,7 +8298,7 @@ ERROR16:lda     #$0A  ;OUT OF MEMORY            ; BC6B A9 0A                    
         jsr     CLRCH                           ; BC6E 20 2A FD                  *.
         bit     MSGFLG                          ; BC71 2C 83 03                 ,..
         bvc     EREXIT                          ; BC74 50 18                    P.
-        jsr     PRIMM                  ; BC76 20 5B FB                  [.
+        jsr     PRIMM                           ; BC76 20 5B FB                  [.
         .byte   $0D                             ; BC79 0D                       .
         .byte   "I/O ERROR #"                   ; BC7A 49 2F 4F 20 45 52 52 4F  I/O ERRO
                                                 ; BC82 52 20 23                 R #
@@ -8884,16 +8886,16 @@ LC075:  dec     a                               ; C075 3A                       
 ; ----------------------------------------------------------------------------
 LC082:  lda     #$AE                            ; C082 A9 AE                    ..
         sta     $034E                           ; C084 8D 4E 03                 .N.
-        ldx     FNLEN                        ; C087 AE 87 03                 ...
+        ldx     FNLEN                           ; C087 AE 87 03                 ...
         beq     LC0A6                           ; C08A F0 1A                    ..
         stz     ACIA_ST                         ; C08C 9C 81 F9                 ...
         ldy     #$00                            ; C08F A0 00                    ..
-        jsr     FROM_C67B                       ; C091 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; C091 20 4A 03                  J.
         sta     ACIA_CTRL                       ; C094 8D 83 F9                 ...
         cpx     #$01                            ; C097 E0 01                    ..
         beq     LC0A6                           ; C099 F0 0B                    ..
         iny                                     ; C09B C8                       .
-        jsr     FROM_C67B                       ; C09C 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; C09C 20 4A 03                  J.
         cpx     #$02                            ; C09F E0 02                    ..
         bne     LC0A8                           ; C0A1 D0 05                    ..
         sta     ACIA_CMD                        ; C0A3 8D 82 F9                 ...
@@ -8906,7 +8908,7 @@ LC0A8:  and     #$E0                            ; C0A8 29 E0                    
         jsr     LC1A1                           ; C0B0 20 A1 C1                  ..
         jsr     LC1AD                           ; C0B3 20 AD C1                  ..
         ldy     #$02                            ; C0B6 A0 02                    ..
-        jsr     FROM_C67B                       ; C0B8 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; C0B8 20 4A 03                  J.
         cmp     #$41                            ; C0BB C9 41                    .A
         beq     LC0C3                           ; C0BD F0 04                    ..
         cmp     #$41                            ; C0BF C9 41                    .A
@@ -8936,20 +8938,20 @@ LC0E8:  php                                     ; C0E8 08                       
 ; ----------------------------------------------------------------------------
 LC0F1:  pha                                     ; C0F1 48                       H
         and     #$7F                            ; C0F2 29 7F                    ).
-        cmp     FNLEN                        ; C0F4 CD 87 03                 ...
+        cmp     FNLEN                           ; C0F4 CD 87 03                 ...
         bcc     LC0FC                           ; C0F7 90 03                    ..
         pla                                     ; C0F9 68                       h
         clc                                     ; C0FA 18                       .
         rts                                     ; C0FB 60                       `
 ; ----------------------------------------------------------------------------
 LC0FC:  tay                                     ; C0FC A8                       .
-        jsr     FROM_C67B                       ; C0FD 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; C0FD 20 4A 03                  J.
         jsr     LC110                           ; C100 20 10 C1                  ..
         jsr     LC1F0                           ; C103 20 F0 C1                  ..
         pla                                     ; C106 68                       h
         inc     a                               ; C107 1A                       .
         bcs     LC10F                           ; C108 B0 05                    ..
-        lda     STKEY                     ; C10A A5 AD                    ..
+        lda     STKEY                           ; C10A A5 AD                    ..
         lsr     a                               ; C10C 4A                       J
         bcc     LC0F1                           ; C10D 90 E2                    ..
 LC10F:  rts                                     ; C10F 60                       `
@@ -9103,7 +9105,7 @@ LC22A:  clc                                     ; C22A 18                       
 LC22C:  lda     #$AE                            ; C22C A9 AE                    ..
         sta     $034E                           ; C22E 8D 4E 03                 .N.
         ldy     #$07                            ; C231 A0 07                    ..
-LC233:  jsr     FROM_C67B                       ; C233 20 4A 03                  J.
+LC233:  jsr     GO_RAM_LOAD_GO_KERN             ; C233 20 4A 03                  J.
         sta     $0412,y                         ; C236 99 12 04                 ...
         dey                                     ; C239 88                       .
         bpl     LC233                           ; C23A 10 F7                    ..
@@ -9694,13 +9696,16 @@ BELL:   lda     #$A0                            ; C65C A9 A0                    
         lda     #$06                            ; C662 A9 06                    ..
         ldy     #$00                            ; C664 A0 00                    ..
         jmp     LC626                           ; C666 4C 26 C6                 L&.
+
+
+MMU_HELPER_ROUTINES:
 ; ----------------------------------------------------------------------------
-; It seems the following routines will be copied from $0338 to the RAM and
+; The following routines will be copied from $0338 to the RAM and
 ; used from there. Guessed purpose: the ROM itself is not always paged in, so
 ; we need them to be in RAM. Note about the "dummy writes", those (maybe ...)
 ; used to set/reset flip-flops to switch on/off mapping of various parts of
 ; the memories, but dunno what exactly :(
-; ----------------------------------------------------
+; ----------------------------------------------------------------------------
 ; My best guess so far: dummy writes to ...
 ; * $FA00: enables lower parts of KERNAL to be "seen"
 ; * $FA80: disables the above but enable ROM mapped from $4000 to be seen
@@ -9708,12 +9713,13 @@ BELL:   lda     #$A0                            ; C65C A9 A0                    
 ; "High area" is the end of the KERNAL & some I/O registers from
 ; at $FA00 (or probably from $F800?) and needs to be always (?)
 ; seen.
-; ----------------------------------------------------
+; ----------------------------------------------------------------------------
 ; This will be $0338 in RAM. It's even used by BASIC for example, the guessed
 ; purpose: allow to use RAM for BASIC even at an area where there is BASIC
 ; ROM paged in (from $4000) during its execution. $033C will be the RAM zp
 ; loc of LDA (zp),Y op.
-LC669:  sta     MMU_MODE_RAM                    ; C669 8D 00 FB                 ...
+;GO_RAM_LOAD_GO_APPL:
+        sta     MMU_MODE_RAM                    ; C669 8D 00 FB                 ...
         lda     ($00),y                         ; C66C B1 00                    ..
         sta     MMU_MODE_APPL                   ; C66E 8D 80 FA                 ...
         rts                                     ; C671 60                       `
@@ -9722,6 +9728,7 @@ LC669:  sta     MMU_MODE_RAM                    ; C669 8D 00 FB                 
 ; $0345 will be the RAM zp loc of STA (zp),Y op.
 ; This routine is also used by BASIC.
 ; It seems ZP loc of STA is modified in RAM.
+;GO_RAM_STORE_GO_APPL:
         sta     MMU_MODE_RAM                    ; C672 8D 00 FB                 ...
         sta     ($00),y                         ; C675 91 00                    ..
         sta     MMU_MODE_APPL                   ; C677 8D 80 FA                 ...
@@ -9729,13 +9736,16 @@ LC669:  sta     MMU_MODE_RAM                    ; C669 8D 00 FB                 
 ; ----------------------------------------------------------------------------
 ; This will be $034A in RAM.
 ; $034E will be the RAM zp loc of LDA (zp),Y op.
+;GO_RAM_LOAD_GO_KERN:
         sta     MMU_MODE_RAM                    ; C67B 8D 00 FB                 ...
+;GO_NOWHERE_LOAD_GO_KERN:
         lda     ($00),y                         ; C67E B1 00                    ..
         sta     MMU_MODE_KERN                   ; C680 8D 00 FA                 ...
         rts                                     ; C683 60                       `
 ; ----------------------------------------------------------------------------
 ; This will be $0353 in RAM.
 ; $0357 will be the RAM zp loc of LDA (zp),Y op.
+;GO_APPL_LOAD_GO_KERN:
         sta     MMU_MODE_APPL                   ; C684 8D 80 FA                 ...
         lda     ($00),y                         ; C687 B1 00                    ..
         sta     MMU_MODE_KERN                   ; C689 8D 00 FA                 ...
@@ -9743,7 +9753,9 @@ LC669:  sta     MMU_MODE_RAM                    ; C669 8D 00 FB                 
 ; ----------------------------------------------------------------------------
 ; This will be $035C in RAM.
 ; $0360 will be the RAM zp loc of STA (zp),Y op.
+;GO_RAM_STORE_GO_KERN:
         sta     MMU_MODE_RAM                    ; C68D 8D 00 FB                 ...
+;GO_NOWHERE_STORE_GO_KERN:
         sta     ($00),y                         ; C690 91 00                    ..
         sta     MMU_MODE_KERN                   ; C692 8D 00 FA                 ...
         rts                                     ; C695 60                       `
@@ -9755,12 +9767,12 @@ KL_RESTOR:
 KL_VECTOR:
         php                                     ; C69B 08                       .
         sei                                     ; C69C 78                       x
-        stx     FNADR                        ; C69D 86 AE                    ..
-        sty     FNADR+1                        ; C69F 84 AF                    ..
+        stx     FNADR                           ; C69D 86 AE                    ..
+        sty     FNADR+1                         ; C69F 84 AF                    ..
 ; This copies the routines from $C669 into the RAM from $338.
         ldx     #$2C                            ; C6A1 A2 2C                    .,
-LC6A3:  lda     LC669,x                         ; C6A3 BD 69 C6                 .i.
-        sta     FROM_C669,x                     ; C6A6 9D 38 03                 .8.
+LC6A3:  lda     MMU_HELPER_ROUTINES,x           ; C6A3 BD 69 C6                 .i.
+        sta     GO_RAM_LOAD_GO_APPL,x           ; C6A6 9D 38 03                 .8.
         dex                                     ; C6A9 CA                       .
         bpl     LC6A3                           ; C6AA 10 F7                    ..
         ldy     #$AE                            ; C6AC A0 AE                    ..
@@ -9769,10 +9781,10 @@ LC6A3:  lda     LC669,x                         ; C6A3 BD 69 C6                 
         ldy     #$23                            ; C6B4 A0 23                    .#
 LC6B6:  lda     RAMVEC_IRQ,y                    ; C6B6 B9 14 03                 ...
         bcs     LC6BE                           ; C6B9 B0 03                    ..
-        jsr     FROM_C67B                       ; C6BB 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; C6BB 20 4A 03                  J.
 LC6BE:  sta     RAMVEC_IRQ,y                    ; C6BE 99 14 03                 ...
         bcc     LC6C6                           ; C6C1 90 03                    ..
-        jsr     FROM_C68D                       ; C6C3 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; C6C3 20 5C 03                  \.
 LC6C6:  dey                                     ; C6C6 88                       .
         bpl     LC6B6                           ; C6C7 10 ED                    ..
         plp                                     ; C6C9 28                       (
@@ -10494,10 +10506,10 @@ LCC4E:  sta     $0360                           ; CC4E 8D 60 03                 
         tax                                     ; CC5A AA                       .
         pla                                     ; CC5B 68                       h
         jmp     (LCC5F,x)                       ; CC5C 7C 5F CC                 |_.
-LCC5F:  .addr   FROM_C68D                       ; CC5F 5C 03                    \.
-        .addr   LFA72                           ; CC61 72 FA                    r.
-        .addr   L035F                           ; CC63 5F 03                    _.
-        .addr   FROM_C68D                       ; CC65 5C 03                    \.
+LCC5F:  .addr   GO_RAM_STORE_GO_KERN            ; CC5F 5C 03                    \.
+        .addr   GO_APPL_STORE_GO_KERN           ; CC61 72 FA                    r.
+        .addr   GO_NOWHERE_STORE_GO_KERN        ; CC63 5F 03                    _.
+        .addr   GO_RAM_STORE_GO_KERN            ; CC65 5C 03                    \.
 ; ----------------------------------------------------------------------------
 LCC67:  lda     #$CB                            ; CC67 A9 CB                    ..
         .byte   $2C                             ; CC69 2C                       ,
@@ -10517,10 +10529,10 @@ LCC77:  sta     $034E                           ; CC77 8D 4E 03                 
         asl     a                               ; CC82 0A                       .
         tax                                     ; CC83 AA                       .
         jmp     (LCC87,x)                       ; CC84 7C 87 CC                 |..
-LCC87:  .addr   FROM_C67B                       ; CC87 4A 03                    J.
-        .addr   FROM_C684                       ; CC89 53 03                    S.
-        .addr   L034D                           ; CC8B 4D 03                    M.
-        .addr   FROM_C67B                       ; CC8D 4A 03                    J.
+LCC87:  .addr   GO_RAM_LOAD_GO_KERN             ; CC87 4A 03                    J.
+        .addr   GO_APPL_LOAD_GO_KERN            ; CC89 53 03                    S.
+        .addr   GO_NOWHERE_LOAD_GO_KERN         ; CC8B 4D 03                    M.
+        .addr   GO_RAM_LOAD_GO_KERN             ; CC8D 4A 03                    J.
 ; ----------------------------------------------------------------------------
         bcs     LCC99                           ; CC8F B0 08                    ..
         jsr     LCB19                           ; CC91 20 19 CB                  ..
@@ -11345,7 +11357,7 @@ LD2DB:  bit     $041C                           ; D2DB 2C 1C 04                 
         bne     LD2FC                           ; D2E8 D0 12                    ..
 LD2EA:  dex                                     ; D2EA CA                       .
         bmi     LD2F9                           ; D2EB 30 0C                    0.
-LD2ED:  jsr     FROM_C684                       ; D2ED 20 53 03                  S.
+LD2ED:  jsr     GO_APPL_LOAD_GO_KERN            ; D2ED 20 53 03                  S.
         iny                                     ; D2F0 C8                       .
         beq     LD2F9                           ; D2F1 F0 06                    ..
         cmp     #$00                            ; D2F3 C9 00                    ..
@@ -11355,7 +11367,7 @@ LD2F9:  sty     $041E                           ; D2F9 8C 1E 04                 
 LD2FC:  ldy     $041E                           ; D2FC AC 1E 04                 ...
         inc     $041E                           ; D2FF EE 1E 04                 ...
         beq     LD309                           ; D302 F0 05                    ..
-        jsr     FROM_C684                       ; D304 20 53 03                  S.
+        jsr     GO_APPL_LOAD_GO_KERN            ; D304 20 53 03                  S.
         bne     LD30F                           ; D307 D0 06                    ..
 LD309:  stz     $041E                           ; D309 9C 1E 04                 ...
         stz     $041D                           ; D30C 9C 1D 04                 ...
@@ -11389,7 +11401,7 @@ LD330:  phx                                     ; D330 DA                       
         ldy     #$09                            ; D340 A0 09                    ..
         sta     ($BD),y                         ; D342 91 BD                    ..
         ply                                     ; D344 7A                       z
-LD345:  jsr     FROM_C684                       ; D345 20 53 03                  S.
+LD345:  jsr     GO_APPL_LOAD_GO_KERN            ; D345 20 53 03                  S.
         beq     LD359                           ; D348 F0 0F                    ..
         cmp     #$08                            ; D34A C9 08                    ..
         bcs     LD353                           ; D34C B0 05                    ..
@@ -11553,9 +11565,9 @@ LD461:  lda     #$00                            ; D461 A9 00                    
 LD46B:  ldy     #$07                            ; D46B A0 07                    ..
 LD46D:  asl     a                               ; D46D 0A                       .
         pha                                     ; D46E 48                       H
-        jsr     FROM_C67B                       ; D46F 20 4A 03                  J.
+        jsr     GO_RAM_LOAD_GO_KERN             ; D46F 20 4A 03                  J.
         ror     a                               ; D472 6A                       j
-        jsr     FROM_C68D                       ; D473 20 5C 03                  \.
+        jsr     GO_RAM_STORE_GO_KERN            ; D473 20 5C 03                  \.
         pla                                     ; D476 68                       h
         dey                                     ; D477 88                       .
         bpl     LD46D                           ; D478 10 F3                    ..
@@ -15247,7 +15259,7 @@ LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 
         lda     $0AAB                           ; F541 AD AB 0A                 ...
         jsr     LB952                           ; F544 20 52 B9                  R.
         lda     #$41                            ; F547 A9 41                    .A
-        sta     FROM_C67B                       ; F549 8D 4A 03                 .J.
+        sta     GO_RAM_LOAD_GO_KERN             ; F549 8D 4A 03                 .J.
         lda     #$20                            ; F54C A9 20                    .
         sta     $034B                           ; F54E 8D 4B 03                 .K.
         sta     $0351                           ; F551 8D 51 03                 .Q.
@@ -15256,7 +15268,7 @@ LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 
         stx     $034C                           ; F559 8E 4C 03                 .L.
         lda     $67                             ; F55C A5 67                    .g
         jsr     LB8D2                           ; F55E 20 D2 B8                  ..
-        sta     L034D                           ; F561 8D 4D 03                 .M.
+        sta     GO_NOWHERE_LOAD_GO_KERN         ; F561 8D 4D 03                 .M.
         stx     $034E                           ; F564 8E 4E 03                 .N.
         lda     $66                             ; F567 A5 66                    .f
         jsr     LB8D2                           ; F569 20 D2 B8                  ..
@@ -15736,8 +15748,9 @@ LFA6D:  phy                                     ; FA6D 5A                       
         pha                                     ; FA6E 48                       H
         jmp     LFD7A                           ; FA6F 4C 7A FD                 Lz.
 ; ----------------------------------------------------------------------------
-LFA72:  sta     MMU_MODE_APPL                   ; FA72 8D 80 FA                 ...
-        jmp     L035F                           ; FA75 4C 5F 03                 L_.
+GO_APPL_STORE_GO_KERN:
+        sta     MMU_MODE_APPL                   ; FA72 8D 80 FA                 ...
+        jmp     GO_NOWHERE_STORE_GO_KERN        ; FA75 4C 5F 03                 L_.
 ; ----------------------------------------------------------------------------
 LFA78:  jsr     LFA7E                           ; FA78 20 7E FA                  ~.
 LFA7B:  jmp     MMU_MODE_KERN_RTS               ; FA7B 4C 66 FD                 Lf.
