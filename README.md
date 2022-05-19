@@ -16,7 +16,7 @@ The Commodore LCD probably runs at 1 MHz based on two things:
 
 ### Serial Bus (IEC)
 
-The IEC routines are extremely similar to those in the C64 KERNAL.  
+The IEC routines are extremely similar to those in the C64 KERNAL.
 
 The IEC signals are connected to VIA1 ($F800):
 
@@ -43,7 +43,7 @@ The Centronics signals are connected to VIA2 ($F880):
 
 Before writing the data byte, the LCD will wait for /BUSY to go high.  If it does not go high within a timeout,
 or if STOP is pressed, the LCD will abort.  If /BUSY goes high, the byte is placed on the data lines and
-STROBE is pulsed.  Above, there are two candidates for STROBE.  Both of these lines are pulsed immediately after putting the byte on PORTA.  
+STROBE is pulsed.  Above, there are two candidates for STROBE.  Both of these lines are pulsed immediately after putting the byte on PORTA.
 
 ### Beeper / CB2 Sound
 
@@ -51,7 +51,18 @@ The KERNAL screen device (`3`) will sound the beeper when control code 7 is writ
 
 ## Firmware
 
-### Screen Editor
+### Alarm
+
+The KERNAL updates the TOD clock on a 60 Hz interrupt like other CBM machines.  An alarm has also been added (see UDTIM at $BF93).  The alarm counts down hours, minutes, and seconds independently of the TOD clock.  The alarm beeps 3 times in the final seconds of the countdown.
+
+This program sounds the alarm in 1 hour, 30 minutes, and 15 seconds:
+
+```text
+0 poke917,1:poke916,30:poke915,15
+1 printpeek(917),peek(916),peek(915):goto1
+```
+
+### Editor
 
 The screen editor supports nearly all of the ESC codes in the C128:
 
@@ -77,16 +88,33 @@ The screen editor supports nearly all of the ESC codes in the C128:
 |ESC-Y | Set default tab stops (8 spaces) | $B108 |
 |ESC-Z | Clear all tab stops | $B10B |
 
-### Alarm
+### Monitor
 
-The KERNAL updates the TOD clock on a 60 Hz interrupt like other CBM machines.  An alarm has also been added (see UDTIM at $BF93).  The alarm counts down hours, minutes, and seconds independently of the TOD clock.  The alarm beeps 3 times in the final seconds of the countdown.
+The monitor is entered with the `MONITOR` command in BASIC.  The following commands are supported:
 
-This program sounds the alarm in 1 hour, 30 minutes, and 15 seconds:
+| Command | Function | Source |
+|--------------|----------|--------|
+| X | Exit | $C88C |
+| M | Memory | $C88D |
+| R | Registers | $C88E |
+| G | Go | $C88F |
+| T | Transfer|  $C890 |
+| C | Compare | $C891 |
+| D | Disassemble|  $C892 |
+| A | Assemble | $C893 |
+| . | Alias for Assemble|  $C894 |
+| H | Hunt | $C895  |
+| F | Fill | $C896  |
+| > | Modify Memory | $C897 |
+| ; | Modify Registers | $C898 |
+| W | Walk | $C899 |
+| L | Load | $C89A |
+| S | Save | $C89B |
+| V | Verify | $C89C |
 
-```text
-0 poke917,1:poke916,30:poke915,15
-1 printpeek(917),peek(916),peek(915):goto1
-```
+The commands use the same syntax as the TED-series and C128 monitors.  The "A" (Assemble) and "D" (Disassemble) commands have been extended to handle the 65C02 opcodes.
+
+A new command, "W" (Walk), has been added.  It single steps from the current PC.  This command is not found in the TED-series or C128 monitors.
 
 ## License
 

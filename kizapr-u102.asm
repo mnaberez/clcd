@@ -737,6 +737,7 @@ L841C:  sec                                     ; 841C 38                       
 L8420:  jsr     L8277                           ; 8420 20 77 82                  w.
         jmp     LFA67                           ; 8423 4C 67 FA                 Lg.
 ; ----------------------------------------------------------------------------
+MON_CMD_EXIT:
 L8426:  stz     $0202                           ; 8426 9C 02 02                 ...
         ldx     $0203                           ; 8429 AE 03 02                 ...
         stx     $0200                           ; 842C 8E 00 02                 ...
@@ -952,8 +953,7 @@ L8607:  jsr     L889A
         lda     #$0E
         sta     CursorY
         jsr     PRIMM
-L861B:  .byte   "PRESS ANY KEY TO CONTINUE",0
-; ----------------------------------------------------------------------------
+        .byte   "PRESS ANY KEY TO CONTINUE",0
         cli
         jsr     LB2D6
         jsr     LB6DF
@@ -2800,50 +2800,47 @@ L9414:  inc     $02D6                           ; 9414 EE D6 02                 
 L941A:  lda     #$01                            ; 941A A9 01                    ..
         sta     $02D7                           ; 941C 8D D7 02                 ...
 L941F:  jsr     L8CCE                           ; 941F 20 CE 8C                  ..
-        jsr     L942B                           ; 9422 20 2B 94                  +.
+        jsr     L942B_GET_V1541_DIR_PART        ; 9422 20 2B 94                  +.
         dec     $02D8                           ; 9425 CE D8 02                 ...
         jmp     L939A                           ; 9428 4C 9A 93                 L..
 ; ----------------------------------------------------------------------------
 ; Jumps (by a jump table) to the right routine to dump the "virtual 1541"
 ; directory listing tail/head or the content itself, IMHO.
-L942B:  ldx     $02D6                           ; 942B AE D6 02                 ...
+L942B_GET_V1541_DIR_PART:
+        ldx     $02D6
 L942F           := * + 1
-        jmp     (L942F,x)                       ; 942E 7C 2F 94                 |/.
-        .addr   L9457                           ; 9431 57 94                    W.
-        .addr   L94A8                           ; 9433 A8 94                    ..
-        .addr   L9488                           ; 9435 88 94                    ..
+        jmp     (L942F,x)
+        .addr   L9457_GET_V1541_HEADER
+        .addr   L94A8_GET_V1541_FILE
+        .addr   L9488_GET_V1541_BLOCKS_USED
 ; ----------------------------------------------------------------------------
 ; This (and other part later) fragment seems to be the usual directory
 ; listing produced by an 1541 and compatible drives. The text says "virtual
 ; 1541" thus it seems CLCD handles something (possible programs in ROM and/or
 ; RAM disk) as it would be a "real" 1541 drive for the user.
-L9437:  .byte   $01,$10,$01,$10,$00,$00,$12,$22 ; 9437 01 10 01 10 00 00 12 22  ......."
-        .byte   "VIRTUAL 1541 "                 ; 943F 56 49 52 54 55 41 4C 20  VIRTUAL
-                                                ; 9447 31 35 34 31 20           1541
-L944C:  .byte   "   "                           ; 944C 20 20 20
-        .byte   $22                             ; 944F 22                       "
-        .byte   " ID 00"                        ; 9450 20 49 44 20 30 30         ID 00
-        .byte   $00                             ; 9456 00                       .
+L9437_V1541_HEADER:
+        .byte   $01,$10,$01,$10,$00,$00,$12,$22
+L944C := * + 13
+        .byte   "VIRTUAL 1541    ",$22," ID 00",0
 ; ----------------------------------------------------------------------------
 ; This dumps the directory listing head, with the "virtual 1541" text.
-L9457:  ldx     #$1F                            ; 9457 A2 1F                    ..
-L9459:  lda     L9437,x                         ; 9459 BD 37 94                 .7.
-        sta     $0218,x                         ; 945C 9D 18 02                 ...
-        dex                                     ; 945F CA                       .
-        bpl     L9459                           ; 9460 10 F7                    ..
-        jsr     L8DE4                           ; 9462 20 E4 8D                  ..
-        sta     $021C                           ; 9465 8D 1C 02                 ...
-        rts                                     ; 9468 60                       `
+L9457_GET_V1541_HEADER:
+        ldx     #$1F
+L9459:  lda     L9437_V1541_HEADER,x
+        sta     $0218,x
+        dex
+        bpl     L9459
+        jsr     L8DE4
+        sta     $021C
+        rts
 ; ----------------------------------------------------------------------------
-L9469:  .byte   $01,$10,$00,$00                 ; 9469 01 10 00 00              ....
-        .byte   "BLOCKS USED.            "      ; 946D 42 4C 4F 43 4B 53 20 55  BLOCKS U
-                                                ; 9475 53 45 44 2E 20 20 20 20  SED.
-                                                ; 947D 20 20 20 20 20 20 20 20
-        .byte   $00,$00,$00                     ; 9485 00 00 00                 ...
+L9469_BLOCKS_USED:
+        .byte   $01,$10,$00,$00,"BLOCKS USED.            ",0,0,0
 ; ----------------------------------------------------------------------------
 ; This dumps the directory listing tail, with the "block used" text.
-L9488:  ldx     #$1E                            ; 9488 A2 1E                    ..
-L948A:  lda     L9469,x                         ; 948A BD 69 94                 .i.
+L9488_GET_V1541_BLOCKS_USED:
+        ldx     #$1E                            ; 9488 A2 1E                    ..
+L948A:  lda     L9469_BLOCKS_USED,x             ; 948A BD 69 94                 .i.
         sta     $0218,x                         ; 948D 9D 18 02                 ...
         dex                                     ; 9490 CA                       .
         bpl     L948A                           ; 9491 10 F7                    ..
@@ -2860,22 +2857,23 @@ L94A6           := * + 2
 ; ----------------------------------------------------------------------------
 ; Afaik this dumps a row of the directory listing, about a file, you can even
 ; see the "PRG", "SEQ" stuffs appended.
-L94A8:  ldx     #$04                            ; 94A8 A2 04                    ..
+L94A8_GET_V1541_FILE:
+        ldx     #$04                            ; 94A8 A2 04                    ..
 L94AA:  inx                                     ; 94AA E8                       .
         lda     $0218,x                         ; 94AB BD 18 02                 ...
         beq     L94B4                           ; 94AE F0 04                    ..
         cpx     #$15                            ; 94B0 E0 15                    ..
         bne     L94AA                           ; 94B2 D0 F6                    ..
-L94B4:  lda     #$22                            ; 94B4 A9 22                    ."
+L94B4:  lda     #'"'                            ; 94B4 A9 22                    ."
 L94B6:  sta     $0218,x                         ; 94B6 9D 18 02                 ...
-        lda     #$20                            ; 94B9 A9 20                    .
+        lda     #' '                            ; 94B9 A9 20                    .
         inx                                     ; 94BB E8                       .
-        cpx     #$20                            ; 94BC E0 20                    .
+        cpx     #' '                            ; 94BC E0 20                    .
         bne     L94B6                           ; 94BE D0 F6                    ..
         lda     $0218                           ; 94C0 AD 18 02                 ...
         bit     #$30                            ; 94C3 89 30                    .0
         beq     L94CC                           ; 94C5 F0 05                    ..
-        ldx     #$2A                            ; 94C7 A2 2A                    .*
+        ldx     #'*'                            ; 94C7 A2 2A                    .*
         stx     $022E                           ; 94C9 8E 2E 02                 ...
 L94CC:  bit     #$80                            ; 94CC 89 80                    ..
         bne     L94D5                           ; 94CE D0 05                    ..
@@ -2886,13 +2884,13 @@ L94D8:  sta     $021A                           ; 94D8 8D 1A 02                 
         lda     $0218                           ; 94DB AD 18 02                 ...
         and     #$40                            ; 94DE 29 40                    )@
         beq     L94EA                           ; 94E0 F0 08                    ..
-        lda     #$50                            ; 94E2 A9 50                    .P
-        ldx     #$52                            ; 94E4 A2 52                    .R
-        ldy     #$47                            ; 94E6 A0 47                    .G
+        lda     #'P'                            ; 94E2 A9 50                    .P
+        ldx     #'R'                            ; 94E4 A2 52                    .R
+        ldy     #'G'                            ; 94E6 A0 47                    .G
         bra     L94F0                           ; 94E8 80 06                    ..
-L94EA:  lda     #$53                            ; 94EA A9 53                    .S
-        ldx     #$45                            ; 94EC A2 45                    .E
-        ldy     #$51                            ; 94EE A0 51                    .Q
+L94EA:  lda     #'S'                            ; 94EA A9 53                    .S
+        ldx     #'E'                            ; 94EC A2 45                    .E
+        ldy     #'Q'                            ; 94EE A0 51                    .Q
 L94F0:  sta     $022F                           ; 94F0 8D 2F 02                 ./.
         stx     $0230                           ; 94F3 8E 30 02                 .0.
         sty     $0231                           ; 94F6 8C 31 02                 .1.
@@ -2901,7 +2899,7 @@ L94F0:  sta     $022F                           ; 94F0 8D 2F 02                 
         lda     #$10                            ; 94FE A9 10                    ..
         sta     $0219                           ; 9500 8D 19 02                 ...
         stz     $021B                           ; 9503 9C 1B 02                 ...
-        lda     #$22                            ; 9506 A9 22                    ."
+        lda     #'"'                            ; 9506 A9 22                    ."
         sta     $021C                           ; 9508 8D 1C 02                 ...
         lda     $021A                           ; 950B AD 1A 02                 ...
         cmp     #$64                            ; 950E C9 64                    .d
@@ -2912,7 +2910,7 @@ L9515:  lda     $021A                           ; 9515 AD 1A 02                 
         bcc     L951F                           ; 951A 90 03                    ..
         jsr     L9522                           ; 951C 20 22 95                  ".
 L951F:  jsr     L9522                           ; 951F 20 22 95                  ".
-L9522:  lda     #$20                            ; 9522 A9 20                    .
+L9522:  lda     #' '                            ; 9522 A9 20                    .
         ldx     #$04                            ; 9524 A2 04                    ..
 L9526:  ldy     $0218,x                         ; 9526 BC 18 02                 ...
         sta     $0218,x                         ; 9529 9D 18 02                 ...
@@ -2920,7 +2918,7 @@ L9526:  ldy     $0218,x                         ; 9526 BC 18 02                 
         inx                                     ; 952D E8                       .
         cpx     #$1F                            ; 952E E0 1F                    ..
         bne     L9526                           ; 9530 D0 F4                    ..
-        lda     #$00                            ; 9532 A9 00                    ..
+        lda     #0                              ; 9532 A9 00                    ..
         sta     $0237                           ; 9534 8D 37 02                 .7.
         rts                                     ; 9537 60                       `
 ; ----------------------------------------------------------------------------
@@ -5540,7 +5538,7 @@ LA8D7:  brk                                     ; A8D7 00                       
         tax                                     ; A8E3 AA                       .
         trb     $7D                             ; A8E4 14 7D                    .}
         eor     $76,x                           ; A8E6 55 76                    Uv
-        ora     LC957,y                         ; A8E8 19 57 C9                 .W.
+        ora     $C957,y                         ; A8E8 19 57 C9                 .W.
         txs                                     ; A8EB 9A                       .
         ldy     LB780                           ; A8EC AC 80 B7                 ...
         dec     $DC,x                           ; A8EF D6 DC                    ..
@@ -9796,8 +9794,8 @@ LC6DF:  stz     L03B7
         jsr     LD230
         jsr     PRIMM
         .byte   $0D,"COMMODORE LCD MONITOR",0
-; ----------------------------------------------------------------------------
         bra     LC748
+; ----------------------------------------------------------------------------
 LC70C:  cld
         ldx     #$05
 LC70F:  pla
@@ -9828,9 +9826,12 @@ LC748:  lda     #$C0
         sta     $CB
         sta     $CC
         cli
-LC754:  jsr     LCC13
+MON_CMD_REGISTERS:
+        jsr     LCC13_PRINT_REGISTERS
         bra     LC767
-LC759:  jsr     KL_RESTOR
+; ----------------------------------------------------------------------------
+MON_BAD_COMMAND:
+        jsr     KL_RESTOR
         jsr     CLRCH
         jsr     PRIMM
         .byte   $1D,$1D,":?",0
@@ -9851,19 +9852,19 @@ LC77F:  jsr     LCAFD
         cmp     #$20
         beq     LC77F
         ldx     #$10
-LC78A:  cmp     LC88C,x
+LC78A:  cmp     MON_COMMANDS,x
         beq     LC794
         dex
         bpl     LC78A
-        bmi     LC759
+        bmi     MON_BAD_COMMAND
 LC794:  cpx     #$0E
         bcs     LC7A6
         txa
         asl     a
         tax
-        lda     LC89E,x
+        lda     MON_CMD_ENTRIES+1,x
         pha
-        lda     LC89D,x
+        lda     MON_CMD_ENTRIES,x
         pha
         jmp     LCA75
 ; ----------------------------------------------------------------------------
@@ -9871,806 +9872,814 @@ LC7A6:  sta     $039F
         jsr     PrintNewLine
         jmp     LC9B9
 ; ----------------------------------------------------------------------------
-        bcs     LC7B9                           ; C7AF B0 08                    ..
-        jsr     LCB19                           ; C7B1 20 19 CB                  ..
-        jsr     LCA75                           ; C7B4 20 75 CA                  u.
-        bcc     LC7BF                           ; C7B7 90 06                    ..
-LC7B9:  lda     #$07                            ; C7B9 A9 07                    ..
-        sta     $C7                             ; C7BB 85 C7                    ..
-        bne     LC7D0                           ; C7BD D0 11                    ..
-LC7BF:  jsr     LCB22                           ; C7BF 20 22 CB                  ".
-        lsr     a                               ; C7C2 4A                       J
-        ror     $C7                             ; C7C3 66 C7                    f.
-        lsr     a                               ; C7C5 4A                       J
-        ror     $C7                             ; C7C6 66 C7                    f.
-        lsr     a                               ; C7C8 4A                       J
-        ror     $C7                             ; C7C9 66 C7                    f.
-        lsr     a                               ; C7CB 4A                       J
-        ror     $C7                             ; C7CC 66 C7                    f.
-        sta     $C8                             ; C7CE 85 C8                    ..
-LC7D0:  jsr     LFDB9                           ; C7D0 20 B9 FD                  ..
-        beq     LC7E2                           ; C7D3 F0 0D                    ..
-        jsr     LC8B9                           ; C7D5 20 B9 C8                  ..
-        lda     #$10                            ; C7D8 A9 10                    ..
-        jsr     LCB5D                           ; C7DA 20 5D CB                  ].
-        jsr     LCB30                           ; C7DD 20 30 CB                  0.
-        bcs     LC7D0                           ; C7E0 B0 EE                    ..
-LC7E2:  jmp     LC767                           ; C7E2 4C 67 C7                 Lg.
+MON_CMD_MEMORY:
+        bcs     LC7B9
+        jsr     LCB19
+        jsr     LCA75
+        bcc     LC7BF
+LC7B9:  lda     #$07
+        sta     $C7
+        bne     LC7D0
+LC7BF:  jsr     LCB22
+        lsr     a
+        ror     $C7
+        lsr     a
+        ror     $C7
+        lsr     a
+        ror     $C7
+        lsr     a
+        ror     $C7
+        sta     $C8
+LC7D0:  jsr     LFDB9
+        beq     LC7E2
+        jsr     LC8B9
+        lda     #$10
+        jsr     LCB5D
+        jsr     LCB30
+        bcs     LC7D0
+LC7E2:  jmp     LC767
 ; ----------------------------------------------------------------------------
-        bcs     LC81B                           ; C7E5 B0 34                    .4
-        lda     $C7                             ; C7E7 A5 C7                    ..
-        ldy     $C8                             ; C7E9 A4 C8                    ..
-        sta     $03B6                           ; C7EB 8D B6 03                 ...
-        sty     $03B5                           ; C7EE 8C B5 03                 ...
-        ldy     #$00                            ; C7F1 A0 00                    ..
-LC7F3:  jsr     LCA75                           ; C7F3 20 75 CA                  u.
-        bcs     LC81B                           ; C7F6 B0 23                    .#
-        lda     $C7                             ; C7F8 A5 C7                    ..
-        sta     L03B7,y                         ; C7FA 99 B7 03                 ...
-        iny                                     ; C7FD C8                       .
-        cpy     #$05                            ; C7FE C0 05                    ..
-        bcc     LC7F3                           ; C800 90 F1                    ..
-        jsr     LCA75                           ; C802 20 75 CA                  u.
-        bcs     LC81B                           ; C805 B0 14                    ..
-        lda     $C7                             ; C807 A5 C7                    ..
-        bne     LC810                           ; C809 D0 05                    ..
-        stz     $03A1                           ; C80B 9C A1 03                 ...
-        bra     LC81B                           ; C80E 80 0B                    ..
-LC810:  cmp     #$01                            ; C810 C9 01                    ..
-        beq     LC818                           ; C812 F0 04                    ..
-        cmp     #$02                            ; C814 C9 02                    ..
-        bne     LC81B                           ; C816 D0 03                    ..
-LC818:  sta     $03A1                           ; C818 8D A1 03                 ...
-LC81B:  jsr     PRIMM                  ; C81B 20 5B FB                  [.
-        .byte   $91,$91,$00                     ; C81E 91 91 00                 ...
+MON_CMD_WALK:
+        bcs     LC81B
+        lda     $C7
+        ldy     $C8
+        sta     $03B6
+        sty     $03B5
+        ldy     #$00
+LC7F3:  jsr     LCA75
+        bcs     LC81B
+        lda     $C7
+        sta     L03B7,y
+        iny
+        cpy     #$05
+        bcc     LC7F3
+        jsr     LCA75
+        bcs     LC81B
+        lda     $C7
+        bne     LC810
+        stz     $03A1
+        bra     LC81B
+LC810:  cmp     #$01
+        beq     LC818
+        cmp     #$02
+        bne     LC81B
+LC818:  sta     $03A1
+LC81B:  jsr     PRIMM
+        .byte   $91,$91,$00  ;Cursor Up twice
+        jmp     MON_CMD_REGISTERS
 ; ----------------------------------------------------------------------------
-        jmp     LC754                           ; C821 4C 54 C7                 LT.
+MON_CMD_MODIFY:
+        bcs     LC83A
+        jsr     LCB19
+        ldy     #$00
+LC82B:  jsr     LCA75
+        bcs     LC83A
+        lda     $C7
+        jsr     LCC4B
+        iny
+        cpy     #$10
+        bcc     LC82B
+LC83A:  jsr     ESC_O_CANCEL_MODES
+        lda     #$91 ;CHR($145) Cursor Up
+        jsr     ShowChar_
+        jsr     LC8B9
+        jmp     LC767
 ; ----------------------------------------------------------------------------
-        bcs     LC83A                           ; C824 B0 14                    ..
-        jsr     LCB19                           ; C826 20 19 CB                  ..
-        ldy     #$00                            ; C829 A0 00                    ..
-LC82B:  jsr     LCA75                           ; C82B 20 75 CA                  u.
-        bcs     LC83A                           ; C82E B0 0A                    ..
-        lda     $C7                             ; C830 A5 C7                    ..
-        jsr     LCC4B                           ; C832 20 4B CC                  K.
-        iny                                     ; C835 C8                       .
-        cpy     #$10                            ; C836 C0 10                    ..
-        bcc     LC82B                           ; C838 90 F1                    ..
-LC83A:  jsr     ESC_O_CANCEL_MODES ;Cancel insert, quote, reverse modes ; C83A 20 20 B2                   .
-        lda     #$91 ;CHR($145) Cursor Up       ; C83D A9 91                    ..
-        jsr     ShowChar_                       ; C83F 20 B3 AB                  ..
-        jsr     LC8B9                           ; C842 20 B9 C8                  ..
-        jmp     LC767                           ; C845 4C 67 C7                 Lg.
-; ----------------------------------------------------------------------------
-        bcs     LC854                           ; C848 B0 0A                    ..
-        lda     $C7                             ; C84A A5 C7                    ..
-        sta     $03B6                           ; C84C 8D B6 03                 ...
-        lda     $C8                             ; C84F A5 C8                    ..
-        sta     $03B5                           ; C851 8D B5 03                 ...
-LC854:  jsr     PrintNewLine                    ; C854 20 D3 CA                  ..
-        ldx     $03BB                           ; C857 AE BB 03                 ...
-        txs                                     ; C85A 9A                       .
-        ldx     $03B5                           ; C85B AE B5 03                 ...
-        ldy     $03B6                           ; C85E AC B6 03                 ...
-        bne     LC864                           ; C861 D0 01                    ..
-        dex                                     ; C863 CA                       .
-LC864:  dey                                     ; C864 88                       .
-        phx                                     ; C865 DA                       .
-        phy                                     ; C866 5A                       Z
-        ldx     $03A1                           ; C867 AE A1 03                 ...
-        cpx     #$03                            ; C86A E0 03                    ..
-        bcc     LC870                           ; C86C 90 02                    ..
-        ldx     #$02                            ; C86E A2 02                    ..
-LC870:  lda     LC886,x                         ; C870 BD 86 C8                 ...
-        pha                                     ; C873 48                       H
-        lda     LC889,x                         ; C874 BD 89 C8                 ...
-        pha                                     ; C877 48                       H
-        lda     L03B7                           ; C878 AD B7 03                 ...
-        pha                                     ; C87B 48                       H
-        ldx     $03B9                           ; C87C AE B9 03                 ...
-        ldy     $03BA                           ; C87F AC BA 03                 ...
-        lda     $03B8                           ; C882 AD B8 03                 ...
-        rti                                     ; C885 40                       @
+MON_CMD_GO:
+        bcs     LC854
+        lda     $C7
+        sta     $03B6
+        lda     $C8
+        sta     $03B5
+LC854:  jsr     PrintNewLine
+        ldx     $03BB
+        txs
+        ldx     $03B5
+        ldy     $03B6
+        bne     LC864
+        dex
+LC864:  dey
+        phx
+        phy
+        ldx     $03A1
+        cpx     #$03
+        bcc     LC870
+        ldx     #$02
+LC870:  lda     LC886,x
+        pha
+        lda     LC889,x
+        pha
+        lda     L03B7
+        pha
+        ldx     $03B9
+        ldy     $03BA
+        lda     $03B8
+        rti
 ; ----------------------------------------------------------------------------
 LC886:  .byte   $FD,$FD,$FD                     ; C886 FD FD FD                 ...
 LC889:  .byte   "~zf"                           ; C889 7E 7A 66                 ~zf
-LC88C:  .byte   "XMRGTCDA.HF>;WLSV"             ; C88C 58 4D 52 47 54 43 44 41  XMRGTCDA
-                                                ; C894 2E 48 46 3E 3B 57 4C 53  .HF>;WLS
-                                                ; C89C 56                       V
-LC89D:  .byte   "%"                             ; C89D 25                       %
-LC89E:  .byte   $84,$AE,$C7                     ; C89E 84 AE C7                 ...
-        .byte   "S"                             ; C8A1 53                       S
-        .byte   $C7                             ; C8A2 C7                       .
-        .byte   "G"                             ; C8A3 47                       G
-        .byte   $C8,$FD,$C8,$F5,$C8,$8E,$CC     ; C8A4 C8 FD C8 F5 C8 8E CC     .......
-        .byte   "3"                             ; C8AB 33                       3
-        .byte   $CF                             ; C8AC CF                       .
-        .byte   "3"                             ; C8AD 33                       3
-        .byte   $CF                             ; C8AE CF                       .
-        .byte   "T"                             ; C8AF 54                       T
-        .byte   $C9                             ; C8B0 C9                       .
-        .byte   "S"                             ; C8B1 53                       S
-        .byte   $CA                             ; C8B2 CA                       .
-        .byte   "#"                             ; C8B3 23                       #
-        .byte   $C8,$E4,$C7,$D0,$D0             ; C8B4 C8 E4 C7 D0 D0           .....
+
+MON_COMMANDS:
+        .byte   "X" ;Exit
+        .byte   "M" ;Memory
+        .byte   "R" ;Registers
+        .byte   "G" ;Go
+        .byte   "T" ;Transfer
+        .byte   "C" ;Compare
+        .byte   "D" ;Disassemble
+        .byte   "A" ;Assemble
+        .byte   "." ;Alias for Assemble
+        .byte   "H" ;Hunt
+        .byte   "F" ;Fill
+        .byte   ">" ;Modify Memory
+        .byte   ";" ;Modify Registers
+        .byte   "W" ;Walk
+        .byte   "L" ;Load
+        .byte   "S" ;Save
+        .byte   "V" ;Verify
+
+MON_CMD_ENTRIES:
+        .word  MON_CMD_EXIT-1
+        .word  MON_CMD_MEMORY-1
+        .word  MON_CMD_REGISTERS-1
+        .word  MON_CMD_GO-1
+        .word  MON_CMD_TRANSFER-1
+        .word  MON_CMD_COMPARE-1
+        .word  MON_CMD_DISASSEMBLE-1
+        .word  MON_CMD_ASSEMBLE-1
+        .word  MON_CMD_ASSEMBLE-1
+        .word  MON_CMD_HUNT-1
+        .word  MON_CMD_FILL-1
+        .word  MON_CMD_MODIFY-1
+        .word  MON_CMD_WALK-1
+        .word  MON_CMD_LOAD_SAVE_VERIFY-1
 ; ----------------------------------------------------------------------------
-LC8B9:  jsr     PRIMM                  ; C8B9 20 5B FB                  [.
-        .byte   $0D                             ; C8BC 0D                       .
-        .byte   ">"                             ; C8BD 3E                       >
-        .byte   $00                             ; C8BE 00                       .
-        .byte   " "                             ; C8BF 20
-        .byte   $C3,$CA,$A0,$00                 ; C8C0 C3 CA A0 00              ....
+LC8B9:  jsr     PRIMM
+        .byte   $0D,">",0
+        jsr     PrintHexWordAndSpaceFromMem
+        ldy     #0
+LC8C4:  tya
+        and     #$03
+        bne     LC8CF
+        jsr     PRIMM
+        .byte   "  ",0
+LC8CF:  jsr     LCC67
+        jsr     PrintHexByteAndSpace
+        iny
+        cpy     #$10
+        bcc     LC8C4
+        jsr     PRIMM
+        .byte   ":",$12,$00
+        ldy     #$00
+LC8E2:  jsr     LCC67
+        and     #$7F
+        cmp     #$20
+        bcs     LC8ED
+        lda     #'.'
+LC8ED:  jsr     ShowChar_
+        iny
+        cpy     #$10
+        bcc     LC8E2
+        rts
 ; ----------------------------------------------------------------------------
-LC8C4:  tya                                     ; C8C4 98                       .
-        and     #$03                            ; C8C5 29 03                    ).
-        bne     LC8CF                           ; C8C7 D0 06                    ..
-        jsr     PRIMM                  ; C8C9 20 5B FB                  [.
-        .byte   "  "                            ; C8CC 20 20
-        .byte   $00                             ; C8CE 00                       .
+MON_CMD_COMPARE:
+        stz     $D1
+        lda     #$00
+        sta     $D0
+        bra     LC909
 ; ----------------------------------------------------------------------------
-LC8CF:  jsr     LCC67                           ; C8CF 20 67 CC                  g.
-        jsr     PrintHexByteAndSpace            ; C8D2 20 CD CA                  ..
-        iny                                     ; C8D5 C8                       .
-        cpy     #$10                            ; C8D6 C0 10                    ..
-        bcc     LC8C4                           ; C8D8 90 EA                    ..
-        jsr     PRIMM                  ; C8DA 20 5B FB                  [.
-        .byte   ":"                             ; C8DD 3A                       :
-        .byte   $12,$00                         ; C8DE 12 00                    ..
+MON_CMD_TRANSFER:
+        lda     #$80
+        sta     $D0
+        jsr     LCB7E
+        bcs     LC952_JMP_MON_BAD_COMMAND
+        bra     LC913
+LC909:  jsr     LCB67
+        bcs     LC952_JMP_MON_BAD_COMMAND
+        jsr     LCA75
+        bcs     LC952_JMP_MON_BAD_COMMAND
+LC913:  jsr     PrintNewLine
+        ldy     #$00
+LC918:  jsr     LCC67
+        bit     $D0
+        bpl     LC922
+        jsr     LCC46
+LC922:  pha
+        jsr     LCC6A
+        sta     $D2
+        pla
+        cmp     $D2
+        beq     LC935
+        jsr     LFDB9
+        beq     LC94F
+        jsr     PrintHexWordAndSpaceFromMem
+LC935:  lda     $D1
+        beq     LC941
+        jsr     LCB30
+        jsr     LCB52
+        bra     LC94A
+LC941:  inc     $C7
+        bne     LC947
+        inc     $C8
+LC947:  jsr     LCB5B
+LC94A:  jsr     LCB44
+        bcs     LC918
+LC94F:  jmp     LC767
 ; ----------------------------------------------------------------------------
-        ldy     #$00                            ; C8E0 A0 00                    ..
-LC8E2:  jsr     LCC67                           ; C8E2 20 67 CC                  g.
-        and     #$7F                            ; C8E5 29 7F                    ).
-        cmp     #$20                            ; C8E7 C9 20                    .
-        bcs     LC8ED                           ; C8E9 B0 02                    ..
-        lda     #$2E ;CHR$(46) "."              ; C8EB A9 2E                    ..
-LC8ED:  jsr     ShowChar_                       ; C8ED 20 B3 AB                  ..
-        iny                                     ; C8F0 C8                       .
-        cpy     #$10                            ; C8F1 C0 10                    ..
-        bcc     LC8E2                           ; C8F3 90 ED                    ..
-        rts                                     ; C8F5 60                       `
+LC952_JMP_MON_BAD_COMMAND:
+        jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-        stz     $D1                             ; C8F6 64 D1                    d.
-        lda     #$00                            ; C8F8 A9 00                    ..
-        sta     $D0                             ; C8FA 85 D0                    ..
-        bra     LC909                           ; C8FC 80 0B                    ..
-        lda     #$80                            ; C8FE A9 80                    ..
-        sta     $D0                             ; C900 85 D0                    ..
-        jsr     LCB7E                           ; C902 20 7E CB                  ~.
-        bcs     LC952                           ; C905 B0 4B                    .K
-        bra     LC913                           ; C907 80 0A                    ..
-LC909:  jsr     LCB67                           ; C909 20 67 CB                  g.
-        bcs     LC952                           ; C90C B0 44                    .D
-        jsr     LCA75                           ; C90E 20 75 CA                  u.
-        bcs     LC952                           ; C911 B0 3F                    .?
-LC913:  jsr     PrintNewLine                    ; C913 20 D3 CA                  ..
-        ldy     #$00                            ; C916 A0 00                    ..
-LC918:  jsr     LCC67                           ; C918 20 67 CC                  g.
-        bit     $D0                             ; C91B 24 D0                    $.
-        bpl     LC922                           ; C91D 10 03                    ..
-        jsr     LCC46                           ; C91F 20 46 CC                  F.
-LC922:  pha                                     ; C922 48                       H
-        jsr     LCC6A                           ; C923 20 6A CC                  j.
-        sta     $D2                             ; C926 85 D2                    ..
-        pla                                     ; C928 68                       h
-        cmp     $D2                             ; C929 C5 D2                    ..
-        beq     LC935                           ; C92B F0 08                    ..
-        jsr     LFDB9                           ; C92D 20 B9 FD                  ..
-        beq     LC94F                           ; C930 F0 1D                    ..
-        jsr     PrintHexWordAndSpaceFromMem     ; C932 20 C3 CA                  ..
-LC935:  lda     $D1                             ; C935 A5 D1                    ..
-        beq     LC941                           ; C937 F0 08                    ..
-        jsr     LCB30                           ; C939 20 30 CB                  0.
-        jsr     LCB52                           ; C93C 20 52 CB                  R.
-        bra     LC94A                           ; C93F 80 09                    ..
-LC941:  inc     $C7                             ; C941 E6 C7                    ..
-        bne     LC947                           ; C943 D0 02                    ..
-        inc     $C8                             ; C945 E6 C8                    ..
-LC947:  jsr     LCB5B                           ; C947 20 5B CB                  [.
-LC94A:  jsr     LCB44                           ; C94A 20 44 CB                  D.
-        bcs     LC918                           ; C94D B0 C9                    ..
-LC94F:  jmp     LC767                           ; C94F 4C 67 C7                 Lg.
+MON_CMD_HUNT:
+        jsr     LCB67
+        bcs     LC9B6_JMP_MON_BAD_COMMAND
+        ldy     #$00
+        jsr     LCAFD
+        cmp     #$27
+        bne     LC975
+        jsr     LCAFD
+LC966:  sta     $0450,y
+        iny
+        jsr     LCAFD
+        beq     LC98A
+        cpy     #$20
+        bne     LC966
+        beq     LC98A
+LC975:  sty     $03A0
+        jsr     LCA73
+LC97B:  lda     $C7
+        sta     $0450,y
+        iny
+        jsr     LCA75
+        bcs     LC98A
+        cpy     #$20
+        bne     LC97B
+LC98A:  sty     $039F
+        jsr     PrintNewLine
+LC990:  ldx     #$00
+        ldy     #$00
+LC994:  jsr     LCC67
+        cmp     $0450,x
+        bne     LC9AB
+        iny
+        inx
+        cpx     $039F
+        bne     LC994
+        jsr     LFDB9
+        beq     LC9B3
+        jsr     PrintHexWordAndSpaceFromMem
+LC9AB:  jsr     LCB5B
+        jsr     LCB44
+        bcs     LC990
+LC9B3:  jmp     LC767
 ; ----------------------------------------------------------------------------
-LC952:  jmp     LC759                           ; C952 4C 59 C7                 LY.
+LC9B6_JMP_MON_BAD_COMMAND:
+        jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-        .byte   $20                             ; C955 20
-        .byte   $67                             ; C956 67                       g
-LC957:  .byte   $CB                             ; C957 CB                       .
-        bcs     LC9B6                           ; C958 B0 5C                    .\
-        ldy     #$00                            ; C95A A0 00                    ..
-        jsr     LCAFD                           ; C95C 20 FD CA                  ..
-        cmp     #$27                            ; C95F C9 27                    .'
-        bne     LC975                           ; C961 D0 12                    ..
-        jsr     LCAFD                           ; C963 20 FD CA                  ..
-LC966:  sta     $0450,y                         ; C966 99 50 04                 .P.
-        iny                                     ; C969 C8                       .
-        jsr     LCAFD                           ; C96A 20 FD CA                  ..
-        beq     LC98A                           ; C96D F0 1B                    ..
-        cpy     #$20                            ; C96F C0 20                    .
-        bne     LC966                           ; C971 D0 F3                    ..
-        beq     LC98A                           ; C973 F0 15                    ..
-LC975:  sty     $03A0                           ; C975 8C A0 03                 ...
-        jsr     LCA73                           ; C978 20 73 CA                  s.
-LC97B:  lda     $C7                             ; C97B A5 C7                    ..
-        sta     $0450,y                         ; C97D 99 50 04                 .P.
-        iny                                     ; C980 C8                       .
-        jsr     LCA75                           ; C981 20 75 CA                  u.
-        bcs     LC98A                           ; C984 B0 04                    ..
-        cpy     #$20                            ; C986 C0 20                    .
-        bne     LC97B                           ; C988 D0 F1                    ..
-LC98A:  sty     $039F                           ; C98A 8C 9F 03                 ...
-        jsr     PrintNewLine                    ; C98D 20 D3 CA                  ..
-LC990:  ldx     #$00                            ; C990 A2 00                    ..
-        ldy     #$00                            ; C992 A0 00                    ..
-LC994:  jsr     LCC67                           ; C994 20 67 CC                  g.
-        cmp     $0450,x                         ; C997 DD 50 04                 .P.
-        bne     LC9AB                           ; C99A D0 0F                    ..
-        iny                                     ; C99C C8                       .
-        inx                                     ; C99D E8                       .
-        cpx     $039F                           ; C99E EC 9F 03                 ...
-        bne     LC994                           ; C9A1 D0 F1                    ..
-        jsr     LFDB9                           ; C9A3 20 B9 FD                  ..
-        beq     LC9B3                           ; C9A6 F0 0B                    ..
-        jsr     PrintHexWordAndSpaceFromMem     ; C9A8 20 C3 CA                  ..
-LC9AB:  jsr     LCB5B                           ; C9AB 20 5B CB                  [.
-        jsr     LCB44                           ; C9AE 20 44 CB                  D.
-        bcs     LC990                           ; C9B1 B0 DD                    ..
-LC9B3:  jmp     LC767                           ; C9B3 4C 67 C7                 Lg.
+LC9B9:  ldy     #$01
+        sty     FA
+        sty     SA
+        dey
+        sty     FNLEN
+        sty     SATUS
+        sty     VERCHK
+        lda     #>L0450
+        sta     FNADR+1
+        lda     #<L0450
+        sta     FNADR
+LC9D0:  jsr     LCAFD
+        beq     LCA33
+        cmp     #$20
+        beq     LC9D0
+        cmp     #$22
+        bne     LC9F5_JMP_MON_BAD_COMMAND
+        ldx     $CD
+LC9DF:  cpx     $CE
+        bcs     LCA33
+        lda     L0470,x
+        inx
+        cmp     #$22
+        beq     LC9F8
+        sta     (FNADR),y
+        inc     FNLEN
+        iny
+        cpy     #$11
+        bcc     LC9DF
+LC9F5_JMP_MON_BAD_COMMAND:
+        jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-LC9B6:  jmp     LC759                           ; C9B6 4C 59 C7                 LY.
+LC9F8:  stx     $CD
+        jsr     LCAFD
+        jsr     LCA75
+        bcs     LCA33
+        lda     $C7
+        beq     LC9F5_JMP_MON_BAD_COMMAND
+        cmp     #$03
+        beq     LC9F5_JMP_MON_BAD_COMMAND
+        sta     FA
+        jsr     LCA75
+        bcs     LCA33
+        jsr     LCB19
+        jsr     LCA75
+        bcs     LC9F5_JMP_MON_BAD_COMMAND
+        jsr     PrintNewLine
+        ldx     $C7
+        ldy     $C8
+        lda     $039F
+        cmp     #$53
+        bne     LC9F5_JMP_MON_BAD_COMMAND
+        lda     #$00
+        sta     SA
+        lda     #$CB
+        jsr     LFD82
+LCA30:  jmp     LC767
 ; ----------------------------------------------------------------------------
-LC9B9:  ldy     #$01                            ; C9B9 A0 01                    ..
-        sty     FA                              ; C9BB 84 C5                    ..
-        sty     SA                              ; C9BD 84 C4                    ..
-        dey                                     ; C9BF 88                       .
-        sty     FNLEN                           ; C9C0 8C 87 03                 ...
-        sty     SATUS                           ; C9C3 84 BA                    ..
-        sty     VERCHK                          ; C9C5 8C 06 04                 ...
-        lda     #>L0450                         ; C9C8 A9 04                    ..
-        sta     FNADR+1                         ; C9CA 85 AF                    ..
-        lda     #<L0450                         ; C9CC A9 50                    .P
-        sta     FNADR                           ; C9CE 85 AE                    ..
-LC9D0:  jsr     LCAFD                           ; C9D0 20 FD CA                  ..
-        beq     LCA33                           ; C9D3 F0 5E                    .^
-        cmp     #$20                            ; C9D5 C9 20                    .
-        beq     LC9D0                           ; C9D7 F0 F7                    ..
-        cmp     #$22                            ; C9D9 C9 22                    ."
-        bne     LC9F5                           ; C9DB D0 18                    ..
-        ldx     $CD                             ; C9DD A6 CD                    ..
-LC9DF:  cpx     $CE                             ; C9DF E4 CE                    ..
-        bcs     LCA33                           ; C9E1 B0 50                    .P
-        lda     L0470,x                         ; C9E3 BD 70 04                 .p.
-        inx                                     ; C9E6 E8                       .
-        cmp     #$22                            ; C9E7 C9 22                    ."
-        beq     LC9F8                           ; C9E9 F0 0D                    ..
-        sta     (FNADR),y                    ; C9EB 91 AE                    ..
-        inc     FNLEN                        ; C9ED EE 87 03                 ...
-        iny                                     ; C9F0 C8                       .
-        cpy     #$11                            ; C9F1 C0 11                    ..
-        bcc     LC9DF                           ; C9F3 90 EA                    ..
-LC9F5:  jmp     LC759                           ; C9F5 4C 59 C7                 LY.
+LCA33:  lda     $039F
+        cmp     #$56
+        beq     LCA40
+        cmp     #$4C
+        bne     LC9F5_JMP_MON_BAD_COMMAND
+        lda     #$00
+LCA40:  jsr     LFD63
+        lda     SATUS
+        and     #$10
+        beq     LCA30
+        jsr     PRIMM
+        .byte   "ERROR",0
+        bra     LCA30
 ; ----------------------------------------------------------------------------
-LC9F8:  stx     $CD                             ; C9F8 86 CD                    ..
-        jsr     LCAFD                           ; C9FA 20 FD CA                  ..
-        jsr     LCA75                           ; C9FD 20 75 CA                  u.
-        bcs     LCA33                           ; CA00 B0 31                    .1
-        lda     $C7                             ; CA02 A5 C7                    ..
-        beq     LC9F5                           ; CA04 F0 EF                    ..
-        cmp     #$03                            ; CA06 C9 03                    ..
-        beq     LC9F5                           ; CA08 F0 EB                    ..
-        sta     FA                       ; CA0A 85 C5                    ..
-        jsr     LCA75                           ; CA0C 20 75 CA                  u.
-        bcs     LCA33                           ; CA0F B0 22                    ."
-        jsr     LCB19                           ; CA11 20 19 CB                  ..
-        jsr     LCA75                           ; CA14 20 75 CA                  u.
-        bcs     LC9F5                           ; CA17 B0 DC                    ..
-        jsr     PrintNewLine                    ; CA19 20 D3 CA                  ..
-        ldx     $C7                             ; CA1C A6 C7                    ..
-        ldy     $C8                             ; CA1E A4 C8                    ..
-        lda     $039F                           ; CA20 AD 9F 03                 ...
-        cmp     #$53                            ; CA23 C9 53                    .S
-        bne     LC9F5                           ; CA25 D0 CE                    ..
-        lda     #$00                            ; CA27 A9 00                    ..
-        sta     SA                      ; CA29 85 C4                    ..
-        lda     #$CB                            ; CA2B A9 CB                    ..
-        jsr     LFD82                           ; CA2D 20 82 FD                  ..
-LCA30:  jmp     LC767                           ; CA30 4C 67 C7                 Lg.
+MON_CMD_FILL:
+        jsr     LCB67
+        bcs     LCA70_JMP_MON_BAD_COMMAND
+        jsr     LCA75
+        bcs     LCA70_JMP_MON_BAD_COMMAND
+        ldy     #$00
+LCA60:  lda     $C7
+        jsr     LCC4B
+        jsr     LCB5B
+        jsr     LCB44
+        bcs     LCA60
+        jmp     LC767
 ; ----------------------------------------------------------------------------
-LCA33:  lda     $039F                           ; CA33 AD 9F 03                 ...
-        cmp     #$56                            ; CA36 C9 56                    .V
-        beq     LCA40                           ; CA38 F0 06                    ..
-        cmp     #$4C                            ; CA3A C9 4C                    .L
-        bne     LC9F5                           ; CA3C D0 B7                    ..
-        lda     #$00                            ; CA3E A9 00                    ..
-LCA40:  jsr     LFD63                           ; CA40 20 63 FD                  c.
-        lda     SATUS                             ; CA43 A5 BA                    ..
-        and     #$10                            ; CA45 29 10                    ).
-        beq     LCA30                           ; CA47 F0 E7                    ..
-        jsr     PRIMM                  ; CA49 20 5B FB                  [.
-        .byte   "ERROR"                         ; CA4C 45 52 52 4F 52           ERROR
-        .byte   $00                             ; CA51 00                       .
+LCA70_JMP_MON_BAD_COMMAND:
+        jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-        bra     LCA30                           ; CA52 80 DC                    ..
-        jsr     LCB67                           ; CA54 20 67 CB                  g.
-        bcs     LCA70                           ; CA57 B0 17                    ..
-        jsr     LCA75                           ; CA59 20 75 CA                  u.
-        bcs     LCA70                           ; CA5C B0 12                    ..
-        ldy     #$00                            ; CA5E A0 00                    ..
-LCA60:  lda     $C7                             ; CA60 A5 C7                    ..
-        jsr     LCC4B                           ; CA62 20 4B CC                  K.
-        jsr     LCB5B                           ; CA65 20 5B CB                  [.
-        jsr     LCB44                           ; CA68 20 44 CB                  D.
-        bcs     LCA60                           ; CA6B B0 F3                    ..
-        jmp     LC767                           ; CA6D 4C 67 C7                 Lg.
-; ----------------------------------------------------------------------------
-LCA70:  jmp     LC759                           ; CA70 4C 59 C7                 LY.
-; ----------------------------------------------------------------------------
-LCA73:  dec     $CD                             ; CA73 C6 CD                    ..
-LCA75:  lda     #$00                            ; CA75 A9 00                    ..
-        sta     $C7                             ; CA77 85 C7                    ..
-        sta     $C8                             ; CA79 85 C8                    ..
-        sta     $039E                           ; CA7B 8D 9E 03                 ...
-LCA7E:  jsr     LCAFD                           ; CA7E 20 FD CA                  ..
-        beq     LCABD                           ; CA81 F0 3A                    .:
-        cmp     #$20                            ; CA83 C9 20                    .
-        beq     LCA7E                           ; CA85 F0 F7                    ..
-LCA87:  cmp     #$20                            ; CA87 C9 20                    .
-        beq     LCAB9                           ; CA89 F0 2E                    ..
-        cmp     #$2C                            ; CA8B C9 2C                    .,
-        beq     LCAB9                           ; CA8D F0 2A                    .*
-        cmp     #$30                            ; CA8F C9 30                    .0
-        bcc     LCABE                           ; CA91 90 2B                    .+
-        cmp     #$47                            ; CA93 C9 47                    .G
-        bcs     LCABE                           ; CA95 B0 27                    .'
-        cmp     #$3A                            ; CA97 C9 3A                    .:
-        bcc     LCAA1                           ; CA99 90 06                    ..
-        cmp     #$41                            ; CA9B C9 41                    .A
-        bcc     LCABE                           ; CA9D 90 1F                    ..
-        sbc     #$08                            ; CA9F E9 08                    ..
-LCAA1:  sbc     #$2F                            ; CAA1 E9 2F                    ./
-        asl     a                               ; CAA3 0A                       .
-        asl     a                               ; CAA4 0A                       .
-        asl     a                               ; CAA5 0A                       .
-        asl     a                               ; CAA6 0A                       .
-        ldx     #$04                            ; CAA7 A2 04                    ..
-LCAA9:  asl     a                               ; CAA9 0A                       .
-        rol     $C7                             ; CAAA 26 C7                    &.
-        rol     $C8                             ; CAAC 26 C8                    &.
-        dex                                     ; CAAE CA                       .
-        bne     LCAA9                           ; CAAF D0 F8                    ..
-        inc     $039E                           ; CAB1 EE 9E 03                 ...
-        jsr     LCAFD                           ; CAB4 20 FD CA                  ..
-        bne     LCA87                           ; CAB7 D0 CE                    ..
-LCAB9:  lda     $039E                           ; CAB9 AD 9E 03                 ...
-        clc                                     ; CABC 18                       .
-LCABD:  rts                                     ; CABD 60                       `
-; ----------------------------------------------------------------------------
-LCABE:  pla                                     ; CABE 68                       h
-        pla                                     ; CABF 68                       h
-        jmp     LC759                           ; CAC0 4C 59 C7                 LY.
+LCA73:  dec     $CD
+LCA75:  lda     #$00
+        sta     $C7
+        sta     $C8
+        sta     $039E
+LCA7E:  jsr     LCAFD
+        beq     LCABD
+        cmp     #' '
+        beq     LCA7E
+LCA87:  cmp     #' '
+        beq     LCAB9
+        cmp     #','
+        beq     LCAB9
+        cmp     #'0'
+        bcc     LCABE_PLA_PLA_JMP_MON_BAD_COMMAND
+        cmp     #'G'
+        bcs     LCABE_PLA_PLA_JMP_MON_BAD_COMMAND
+        cmp     #':'
+        bcc     LCAA1
+        cmp     #'A'
+        bcc     LCABE_PLA_PLA_JMP_MON_BAD_COMMAND
+        sbc     #$08
+LCAA1:  sbc     #$2F
+        asl     a
+        asl     a
+        asl     a
+        asl     a
+        ldx     #$04
+LCAA9:  asl     a
+        rol     $C7
+        rol     $C8
+        dex
+        bne     LCAA9
+        inc     $039E
+        jsr     LCAFD
+        bne     LCA87
+LCAB9:  lda     $039E
+        clc
+LCABD:  rts
+LCABE_PLA_PLA_JMP_MON_BAD_COMMAND:
+        pla
+        pla
+        jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
 PrintHexWordAndSpaceFromMem:
 ; Prints a hex word given at ZP locs and then a space.
 ; Input: $CC = high byte, $CB = low byte
-        lda     $CB                             ; CAC3 A5 CB                    ..
-        ldx     $CC                             ; CAC5 A6 CC                    ..
+        lda     $CB
+        ldx     $CC
 PrintHexWordAndSpace:
 ; Prints a hex word and then a space.
 ; Input: X = high byte, A = low byte
-        pha                                     ; CAC7 48                       H
-        txa                                     ; CAC8 8A                       .
-        jsr     PrintHexByte                    ; CAC9 20 D8 CA                  ..
-        pla                                     ; CACC 68                       h
+        pha
+        txa
+        jsr     PrintHexByte
+        pla
 PrintHexByteAndSpace:
-        jsr     PrintHexByte                    ; CACD 20 D8 CA                  ..
+        jsr     PrintHexByte
 PrintSpace:
-        lda     #$20                            ; CAD0 A9 20                    .
-        .byte   $2C                             ; CAD2 2C                       ,
+        lda     #$20
+        .byte   $2C
 PrintNewLine:
-        lda     #$0D ;CHR$(13) Carriage Return  ; CAD3 A9 0D                    ..
-        jmp     ShowChar_                       ; CAD5 4C B3 AB                 L..
+        lda     #$0D ;CHR$(13) Carriage Return
+        jmp     ShowChar_
 ; ----------------------------------------------------------------------------
 PrintHexByte:
 ; Byte as hex print function, prints byte in A as hex number.
 ; X is saved to $39D and loaded back then.
-        stx     $039D                           ; CAD8 8E 9D 03                 ...
-        jsr     Byte2HexChars                   ; CADB 20 E8 CA                  ..
-        jsr     ShowChar_                       ; CADE 20 B3 AB                  ..
-        txa                                     ; CAE1 8A                       .
-        ldx     $039D                           ; CAE2 AE 9D 03                 ...
-        jmp     ShowChar_                       ; CAE5 4C B3 AB                 L..
+        stx     $039D
+        jsr     Byte2HexChars
+        jsr     ShowChar_
+        txa
+        ldx     $039D
+        jmp     ShowChar_
 ; ----------------------------------------------------------------------------
 Byte2HexChars:
 ; Byte to hex converter
 ; Input: A = byte
 ; Output: A = high nibble hex ASCII digit, X = low nibble hex ASCII digit
-        pha                                     ; CAE8 48                       H
-        jsr     Nibble2HexChar                  ; CAE9 20 F2 CA                  ..
-        tax                                     ; CAEC AA                       .
-        pla                                     ; CAED 68                       h
-        lsr     a                               ; CAEE 4A                       J
-        lsr     a                               ; CAEF 4A                       J
-        lsr     a                               ; CAF0 4A                       J
-        lsr     a                               ; CAF1 4A                       J
+        pha
+        jsr     Nibble2HexChar
+        tax
+        pla
+        lsr     a
+        lsr     a
+        lsr     a
+        lsr     a
 Nibble2HexChar:
 ; Nibble to hex converter
 ; Input: A = byte (low nibble is used only)
 ; Output: A = hex ASCII digit
-        and     #$0F                            ; CAF2 29 0F                    ).
-        cmp     #$0A                            ; CAF4 C9 0A                    ..
-        bcc     LCAFA                           ; CAF6 90 02                    ..
-        adc     #$06                            ; CAF8 69 06                    i.
-LCAFA:  adc     #$30                            ; CAFA 69 30                    i0
-        rts                                     ; CAFC 60                       `
+        and     #$0F
+        cmp     #$0A
+        bcc     LCAFA
+        adc     #$06
+LCAFA:  adc     #$30
+        rts
 ; ----------------------------------------------------------------------------
-LCAFD:  stx     $039D                           ; CAFD 8E 9D 03                 ...
-        ldx     $CD                             ; CB00 A6 CD                    ..
-        cpx     $CE                             ; CB02 E4 CE                    ..
-        bcs     LCB15                           ; CB04 B0 0F                    ..
-        lda     L0470,x                         ; CB06 BD 70 04                 .p.
-        cmp     #$3A                            ; CB09 C9 3A                    .:
-        beq     LCB15                           ; CB0B F0 08                    ..
-        inc     $CD                             ; CB0D E6 CD                    ..
-LCB0F:  php                                     ; CB0F 08                       .
-        ldx     $039D                           ; CB10 AE 9D 03                 ...
-        plp                                     ; CB13 28                       (
-        rts                                     ; CB14 60                       `
+LCAFD:  stx     $039D
+        ldx     $CD
+        cpx     $CE
+        bcs     LCB15
+        lda     L0470,x
+        cmp     #$3A
+        beq     LCB15
+        inc     $CD
+LCB0F:  php
+        ldx     $039D
+        plp
+        rts
 ; ----------------------------------------------------------------------------
-LCB15:  lda     #$00                            ; CB15 A9 00                    ..
-        beq     LCB0F                           ; CB17 F0 F6                    ..
-LCB19:  lda     $C7                             ; CB19 A5 C7                    ..
-        sta     $CB                             ; CB1B 85 CB                    ..
-        lda     $C8                             ; CB1D A5 C8                    ..
-        sta     $CC                             ; CB1F 85 CC                    ..
-        rts                                     ; CB21 60                       `
+LCB15:  lda     #$00
+        beq     LCB0F
+LCB19:  lda     $C7
+        sta     $CB
+        lda     $C8
+        sta     $CC
+        rts
 ; ----------------------------------------------------------------------------
-LCB22:  sec                                     ; CB22 38                       8
-        lda     $C7                             ; CB23 A5 C7                    ..
-        sbc     $CB                             ; CB25 E5 CB                    ..
-        sta     $C7                             ; CB27 85 C7                    ..
-        lda     $C8                             ; CB29 A5 C8                    ..
-        sbc     $CC                             ; CB2B E5 CC                    ..
-        sta     $C8                             ; CB2D 85 C8                    ..
-        rts                                     ; CB2F 60                       `
+LCB22:  sec
+        lda     $C7
+        sbc     $CB
+        sta     $C7
+        lda     $C8
+        sbc     $CC
+        sta     $C8
+        rts
 ; ----------------------------------------------------------------------------
-LCB30:  lda     #$01                            ; CB30 A9 01                    ..
-LCB32:  sta     $039D                           ; CB32 8D 9D 03                 ...
-        sec                                     ; CB35 38                       8
-        lda     $C7                             ; CB36 A5 C7                    ..
-        sbc     $039D                           ; CB38 ED 9D 03                 ...
-        sta     $C7                             ; CB3B 85 C7                    ..
-        lda     $C8                             ; CB3D A5 C8                    ..
-        sbc     #$00                            ; CB3F E9 00                    ..
-        sta     $C8                             ; CB41 85 C8                    ..
-        rts                                     ; CB43 60                       `
+LCB30:  lda     #$01
+LCB32:  sta     $039D
+        sec
+        lda     $C7
+        sbc     $039D
+        sta     $C7
+        lda     $C8
+        sbc     #$00
+        sta     $C8
+        rts
 ; ----------------------------------------------------------------------------
-LCB44:  sec                                     ; CB44 38                       8
-        lda     $C9                             ; CB45 A5 C9                    ..
-        sbc     #$01                            ; CB47 E9 01                    ..
-        sta     $C9                             ; CB49 85 C9                    ..
-        lda     $CA                             ; CB4B A5 CA                    ..
-        sbc     #$00                            ; CB4D E9 00                    ..
-        sta     $CA                             ; CB4F 85 CA                    ..
-        rts                                     ; CB51 60                       `
+LCB44:  sec
+        lda     $C9
+        sbc     #$01
+        sta     $C9
+        lda     $CA
+        sbc     #$00
+        sta     $CA
+        rts
 ; ----------------------------------------------------------------------------
-LCB52:  lda     $CB                             ; CB52 A5 CB                    ..
-        bne     LCB58                           ; CB54 D0 02                    ..
-        dec     $CC                             ; CB56 C6 CC                    ..
-LCB58:  dec     $CB                             ; CB58 C6 CB                    ..
-        rts                                     ; CB5A 60                       `
+LCB52:  lda     $CB
+        bne     LCB58
+        dec     $CC
+LCB58:  dec     $CB
+        rts
 ; ----------------------------------------------------------------------------
-LCB5B:  lda     #$01                            ; CB5B A9 01                    ..
-LCB5D:  clc                                     ; CB5D 18                       .
-        adc     $CB                             ; CB5E 65 CB                    e.
-        sta     $CB                             ; CB60 85 CB                    ..
-        bcc     LCB66                           ; CB62 90 02                    ..
-        inc     $CC                             ; CB64 E6 CC                    ..
-LCB66:  rts                                     ; CB66 60                       `
+LCB5B:  lda     #$01
+LCB5D:  clc
+        adc     $CB
+        sta     $CB
+        bcc     LCB66
+        inc     $CC
+LCB66:  rts
 ; ----------------------------------------------------------------------------
-LCB67:  bcs     LCB7D                           ; CB67 B0 14                    ..
-        jsr     LCB19                           ; CB69 20 19 CB                  ..
-        jsr     LCA75                           ; CB6C 20 75 CA                  u.
-        bcs     LCB7D                           ; CB6F B0 0C                    ..
-        jsr     LCB22                           ; CB71 20 22 CB                  ".
-        lda     $C7                             ; CB74 A5 C7                    ..
-        sta     $C9                             ; CB76 85 C9                    ..
-        lda     $C8                             ; CB78 A5 C8                    ..
-        sta     $CA                             ; CB7A 85 CA                    ..
-        clc                                     ; CB7C 18                       .
-LCB7D:  rts                                     ; CB7D 60                       `
+LCB67:  bcs     LCB7D
+        jsr     LCB19
+        jsr     LCA75
+        bcs     LCB7D
+        jsr     LCB22
+        lda     $C7
+        sta     $C9
+        lda     $C8
+        sta     $CA
+        clc
+LCB7D:  rts
 ; ----------------------------------------------------------------------------
-LCB7E:  bcs     LCBE0                           ; CB7E B0 60                    .`
-        jsr     LCB19                           ; CB80 20 19 CB                  ..
-        jsr     LCA75                           ; CB83 20 75 CA                  u.
-        bcs     LCBE0                           ; CB86 B0 58                    .X
-        lda     $C7                             ; CB88 A5 C7                    ..
-        sta     $D2                             ; CB8A 85 D2                    ..
-        lda     $C8                             ; CB8C A5 C8                    ..
-        sta     $D3                             ; CB8E 85 D3                    ..
-        jsr     LCA75                           ; CB90 20 75 CA                  u.
-        lda     $C8                             ; CB93 A5 C8                    ..
-        pha                                     ; CB95 48                       H
-        lda     $C7                             ; CB96 A5 C7                    ..
-        pha                                     ; CB98 48                       H
-        cmp     $CB                             ; CB99 C5 CB                    ..
-        bcc     LCBAB                           ; CB9B 90 0E                    ..
-        bne     LCBA5                           ; CB9D D0 06                    ..
-        lda     $C8                             ; CB9F A5 C8                    ..
-        cmp     $CC                             ; CBA1 C5 CC                    ..
-        bcc     LCBAB                           ; CBA3 90 06                    ..
-LCBA5:  lda     #$01                            ; CBA5 A9 01                    ..
-        sta     $D1                             ; CBA7 85 D1                    ..
-        bra     LCBAD                           ; CBA9 80 02                    ..
-LCBAB:  stz     $D1                             ; CBAB 64 D1                    d.
-LCBAD:  lda     $D2                             ; CBAD A5 D2                    ..
-        sta     $C7                             ; CBAF 85 C7                    ..
-        lda     $D3                             ; CBB1 A5 D3                    ..
-        sta     $C8                             ; CBB3 85 C8                    ..
-        jsr     LCB22                           ; CBB5 20 22 CB                  ".
-        lda     $C7                             ; CBB8 A5 C7                    ..
-        sta     $C9                             ; CBBA 85 C9                    ..
-        lda     $C8                             ; CBBC A5 C8                    ..
-        sta     $CA                             ; CBBE 85 CA                    ..
-        lda     $D1                             ; CBC0 A5 D1                    ..
-        beq     LCBD9                           ; CBC2 F0 15                    ..
-        lda     $D2                             ; CBC4 A5 D2                    ..
-        sta     $CB                             ; CBC6 85 CB                    ..
-        lda     $D3                             ; CBC8 A5 D3                    ..
-        sta     $CC                             ; CBCA 85 CC                    ..
-        pla                                     ; CBCC 68                       h
-        clc                                     ; CBCD 18                       .
-        adc     $C9                             ; CBCE 65 C9                    e.
-        sta     $C7                             ; CBD0 85 C7                    ..
-        pla                                     ; CBD2 68                       h
-        adc     $CA                             ; CBD3 65 CA                    e.
-        sta     $C8                             ; CBD5 85 C8                    ..
-        clc                                     ; CBD7 18                       .
-        rts                                     ; CBD8 60                       `
+LCB7E:  bcs     LCBE0
+        jsr     LCB19
+        jsr     LCA75
+        bcs     LCBE0
+        lda     $C7
+        sta     $D2
+        lda     $C8
+        sta     $D3
+        jsr     LCA75
+        lda     $C8
+        pha
+        lda     $C7
+        pha
+        cmp     $CB
+        bcc     LCBAB
+        bne     LCBA5
+        lda     $C8
+        cmp     $CC
+        bcc     LCBAB
+LCBA5:  lda     #$01
+        sta     $D1
+        bra     LCBAD
+LCBAB:  stz     $D1
+LCBAD:  lda     $D2
+        sta     $C7
+        lda     $D3
+        sta     $C8
+        jsr     LCB22
+        lda     $C7
+        sta     $C9
+        lda     $C8
+        sta     $CA
+        lda     $D1
+        beq     LCBD9
+        lda     $D2
+        sta     $CB
+        lda     $D3
+        sta     $CC
+        pla
+        clc
+        adc     $C9
+        sta     $C7
+        pla
+        adc     $CA
+        sta     $C8
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-LCBD9:  pla                                     ; CBD9 68                       h
-        sta     $C7                             ; CBDA 85 C7                    ..
-        pla                                     ; CBDC 68                       h
-        sta     $C8                             ; CBDD 85 C8                    ..
-        clc                                     ; CBDF 18                       .
-LCBE0:  rts                                     ; CBE0 60                       `
+LCBD9:  pla
+        sta     $C7
+        pla
+        sta     $C8
+        clc
+LCBE0:  rts
 ; ----------------------------------------------------------------------------
-LCBE1:  jsr     PRIMM                  ; CBE1 20 5B FB                  [.
-        .byte   $0D                             ; CBE4 0D                       .
-        .byte   "   PC  SR AC XR YR SP MODE OPCO"; CBE5 20 20 20 50 43 20 20 53    PC  S
-                                                ; CBED 52 20 41 43 20 58 52 20  R AC XR
-                                                ; CBF5 59 52 20 53 50 20 4D 4F  YR SP MO
-                                                ; CBFD 44 45 20 4F 50 43 4F     DE OPCO
-        .byte   "DE   MNEMONIC"                 ; CC04 44 45 20 20 20 4D 4E 45  DE   MNE
-                                                ; CC0C 4D 4F 4E 49 43           MONIC
-        .byte   $00                             ; CC11 00                       .
+LCBE1_PRINT_MON_STATUS_LINE:
+        jsr     PRIMM
+        .byte   $0d,"   PC  SR AC XR YR SP MODE OPCODE   MNEMONIC",0
+        rts
 ; ----------------------------------------------------------------------------
-        rts                                     ; CC12 60                       `
+; Prints PC as hex word and registers
+LCC13_PRINT_REGISTERS:
+        jsr     LCBE1_PRINT_MON_STATUS_LINE
+        jsr     PRIMM
+        .byte   $0D,"; ",0
+        lda     $03B5
+        jsr     PrintHexByte
+        ldy     #$00
+LCC25:  lda     $03B6,y
+        jsr     PrintHexByteAndSpace
+        iny
+        cpy     #$06
+        bcc     LCC25
+        jsr     PrintSpace
+        lda     $03A1
+        jsr     PrintHexByteAndSpace
+        lda     $03B6
+        sta     $CB
+        lda     $03B5
+        sta     $CC
+        jmp     LCCC7
 ; ----------------------------------------------------------------------------
-LCC13:  jsr     LCBE1                           ; CC13 20 E1 CB                  ..
-        jsr     PRIMM                  ; CC16 20 5B FB                  [.
-        .byte   $0D                             ; CC19 0D                       .
-        .byte   "; "                            ; CC1A 3B 20                    ;
-        .byte   $00                             ; CC1C 00                       .
+LCC46:  pha
+        lda     #$C7
+        bra     LCC4E
+LCC4B:  pha
+LCC4C:  lda     #$CB
+LCC4E:  sta     $0360
+        sta     $0360
+        lda     $03A1
+        and     #$03
+        asl     a
+        tax
+        pla
+        jmp     (LCC5F,x)
+LCC5F:  .addr   GO_RAM_STORE_GO_KERN
+        .addr   GO_APPL_STORE_GO_KERN
+        .addr   GO_NOWHERE_STORE_GO_KERN
+        .addr   GO_RAM_STORE_GO_KERN
 ; ----------------------------------------------------------------------------
-; Prints PC as hex word, and registers?
-        lda     $03B5                           ; CC1D AD B5 03                 ...
-        jsr     PrintHexByte                    ; CC20 20 D8 CA                  ..
-        ldy     #$00                            ; CC23 A0 00                    ..
-LCC25:  lda     $03B6,y                         ; CC25 B9 B6 03                 ...
-        jsr     PrintHexByteAndSpace            ; CC28 20 CD CA                  ..
-        iny                                     ; CC2B C8                       .
-        cpy     #$06                            ; CC2C C0 06                    ..
-        bcc     LCC25                           ; CC2E 90 F5                    ..
-        jsr     PrintSpace                      ; CC30 20 D0 CA                  ..
-        lda     $03A1                           ; CC33 AD A1 03                 ...
-        jsr     PrintHexByteAndSpace            ; CC36 20 CD CA                  ..
-        lda     $03B6                           ; CC39 AD B6 03                 ...
-        sta     $CB                             ; CC3C 85 CB                    ..
-        lda     $03B5                           ; CC3E AD B5 03                 ...
-        sta     $CC                             ; CC41 85 CC                    ..
-        jmp     LCCC7                           ; CC43 4C C7 CC                 L..
+LCC67:  lda     #$CB
+        .byte   $2C
+LCC6A:  lda     #$C7
+        .byte   $2C
+LCC6D:  lda     #$D0
+        phx
+        jsr     LCC77
+        plx
+        eor     #$00
+        rts
 ; ----------------------------------------------------------------------------
-LCC46:  pha                                     ; CC46 48                       H
-        lda     #$C7                            ; CC47 A9 C7                    ..
-        bra     LCC4E                           ; CC49 80 03                    ..
-LCC4B:  pha                                     ; CC4B 48                       H
-LCC4C:  lda     #$CB                            ; CC4C A9 CB                    ..
-LCC4E:  sta     $0360                           ; CC4E 8D 60 03                 .`.
-        sta     $0360                           ; CC51 8D 60 03                 .`.
-        lda     $03A1                           ; CC54 AD A1 03                 ...
-        and     #$03                            ; CC57 29 03                    ).
-        asl     a                               ; CC59 0A                       .
-        tax                                     ; CC5A AA                       .
-        pla                                     ; CC5B 68                       h
-        jmp     (LCC5F,x)                       ; CC5C 7C 5F CC                 |_.
-LCC5F:  .addr   GO_RAM_STORE_GO_KERN            ; CC5F 5C 03                    \.
-        .addr   GO_APPL_STORE_GO_KERN           ; CC61 72 FA                    r.
-        .addr   GO_NOWHERE_STORE_GO_KERN        ; CC63 5F 03                    _.
-        .addr   GO_RAM_STORE_GO_KERN            ; CC65 5C 03                    \.
+LCC77:  sta     $034E
+        sta     $0357
+        lda     $03A1
+        and     #$03
+        asl     a
+        tax
+        jmp     (LCC87,x)
+LCC87:  .addr   GO_RAM_LOAD_GO_KERN
+        .addr   GO_APPL_LOAD_GO_KERN
+        .addr   GO_NOWHERE_LOAD_GO_KERN
+        .addr   GO_RAM_LOAD_GO_KERN
 ; ----------------------------------------------------------------------------
-LCC67:  lda     #$CB                            ; CC67 A9 CB                    ..
-        .byte   $2C                             ; CC69 2C                       ,
-LCC6A:  lda     #$C7                            ; CC6A A9 C7                    ..
-        .byte   $2C                             ; CC6C 2C                       ,
-LCC6D:  lda     #$D0                            ; CC6D A9 D0                    ..
-        phx                                     ; CC6F DA                       .
-        jsr     LCC77                           ; CC70 20 77 CC                  w.
-        plx                                     ; CC73 FA                       .
-        eor     #$00                            ; CC74 49 00                    I.
-        rts                                     ; CC76 60                       `
+MON_CMD_DISASSEMBLE:
+        bcs     LCC99
+        jsr     LCB19
+        jsr     LCA75
+        bcc     LCC9F
+LCC99:  lda     #$14
+        sta     $C7
+        bne     LCCA2
+LCC9F:  jsr     LCB22
+LCCA2:  jsr     PrintNewLine
+        jsr     LFDB9
+        beq     LCCBB
+        jsr     LCCBE
+        inc     $CF
+        lda     $CF
+        jsr     LCB5D
+        lda     $CF
+        jsr     LCB32
+        bcs     LCCA2
+LCCBB:  jmp     LC767
 ; ----------------------------------------------------------------------------
-LCC77:  sta     $034E                           ; CC77 8D 4E 03                 .N.
-        sta     $0357                           ; CC7A 8D 57 03                 .W.
-        lda     $03A1                           ; CC7D AD A1 03                 ...
-        and     #$03                            ; CC80 29 03                    ).
-        asl     a                               ; CC82 0A                       .
-        tax                                     ; CC83 AA                       .
-        jmp     (LCC87,x)                       ; CC84 7C 87 CC                 |..
-LCC87:  .addr   GO_RAM_LOAD_GO_KERN             ; CC87 4A 03                    J.
-        .addr   GO_APPL_LOAD_GO_KERN            ; CC89 53 03                    S.
-        .addr   GO_NOWHERE_LOAD_GO_KERN         ; CC8B 4D 03                    M.
-        .addr   GO_RAM_LOAD_GO_KERN             ; CC8D 4A 03                    J.
+LCCBE:  jsr     PRIMM
+        .byte   ". ",0
 ; ----------------------------------------------------------------------------
-        bcs     LCC99                           ; CC8F B0 08                    ..
-        jsr     LCB19                           ; CC91 20 19 CB                  ..
-        jsr     LCA75                           ; CC94 20 75 CA                  u.
-        bcc     LCC9F                           ; CC97 90 06                    ..
-LCC99:  lda     #$14                            ; CC99 A9 14                    ..
-        sta     $C7                             ; CC9B 85 C7                    ..
-        bne     LCCA2                           ; CC9D D0 03                    ..
-LCC9F:  jsr     LCB22                           ; CC9F 20 22 CB                  ".
-LCCA2:  jsr     PrintNewLine                    ; CCA2 20 D3 CA                  ..
-        jsr     LFDB9                           ; CCA5 20 B9 FD                  ..
-        beq     LCCBB                           ; CCA8 F0 11                    ..
-        jsr     LCCBE                           ; CCAA 20 BE CC                  ..
-        inc     $CF                             ; CCAD E6 CF                    ..
-        lda     $CF                             ; CCAF A5 CF                    ..
-        jsr     LCB5D                           ; CCB1 20 5D CB                  ].
-        lda     $CF                             ; CCB4 A5 CF                    ..
-        jsr     LCB32                           ; CCB6 20 32 CB                  2.
-        bcs     LCCA2                           ; CCB9 B0 E7                    ..
-LCCBB:  jmp     LC767                           ; CCBB 4C 67 C7                 Lg.
+LCCC4:  jsr     PrintHexWordAndSpaceFromMem
+LCCC7:  jsr     PrintSpace
+        ldy     #$00
+        jsr     LCC67
+        sta     $03A2
+        jsr     LCD55
+        pha
+        ldx     $CF
+        inx
+LCCD9:  dex
+        bpl     LCCE6
+        jsr     PRIMM
+        .byte   "   ",0
 ; ----------------------------------------------------------------------------
-LCCBE:  jsr     PRIMM                  ; CCBE 20 5B FB                  [.
-        .byte   ". "                            ; CCC1 2E 20                    .
-        .byte   $00                             ; CCC3 00                       .
+        jmp     LCCEC
 ; ----------------------------------------------------------------------------
-LCCC4:  jsr     PrintHexWordAndSpaceFromMem     ; CCC4 20 C3 CA                  ..
-LCCC7:  jsr     PrintSpace                      ; CCC7 20 D0 CA                  ..
-        ldy     #$00                            ; CCCA A0 00                    ..
-        jsr     LCC67                           ; CCCC 20 67 CC                  g.
-        sta     $03A2                           ; CCCF 8D A2 03                 ...
-        jsr     LCD55                           ; CCD2 20 55 CD                  U.
-        pha                                     ; CCD5 48                       H
-        ldx     $CF                             ; CCD6 A6 CF                    ..
-        inx                                     ; CCD8 E8                       .
-LCCD9:  dex                                     ; CCD9 CA                       .
-        bpl     LCCE6                           ; CCDA 10 0A                    ..
-        jsr     PRIMM                  ; CCDC 20 5B FB                  [.
-        .byte   "   "                           ; CCDF 20 20 20
-        .byte   $00                             ; CCE2 00                       .
+LCCE6:  jsr     LCC67
+        jsr     PrintHexByteAndSpace
+LCCEC:  iny
+        cpy     #$03
+        bcc     LCCD9
+        pla
+        ldx     #$03
+        jsr     LCD98
+        ldx     #$06
+LCCF9:  cpx     #$03
+        bne     LCD11
+        ldy     $CF
+        beq     LCD11
+LCD01:  lda     $03B4
+        cmp     #$E8
+        bcs     LCD39
+        jsr     LCC67
+        jsr     PrintHexByte
+        dey
+        bne     LCD01
+LCD11:  asl     $03B4
+        bcc     LCD35
+        lda     LCE12,x
+        jsr     ShowChar_
+        pha
+        lda     $03A2
+        cmp     #$7C
+        bne     LCD2C
+        pla
+        lda     LCE1E,x
+        beq     LCD35
+        bra     LCD32
+LCD2C:  pla
+LCD2D:  lda     LCE18,x
+        beq     LCD35
+LCD32:  jsr     ShowChar_
+LCD35:  dex
+        bne     LCCF9
+        rts
 ; ----------------------------------------------------------------------------
-        jmp     LCCEC                           ; CCE3 4C EC CC                 L..
+LCD39:  jsr     LCC67
+        jsr     LCD48
+        clc
+        adc     #$01
+        bne     LCD45
+        inx
+LCD45:  jmp     PrintHexWordAndSpace
 ; ----------------------------------------------------------------------------
-LCCE6:  jsr     LCC67                           ; CCE6 20 67 CC                  g.
-        jsr     PrintHexByteAndSpace            ; CCE9 20 CD CA                  ..
-LCCEC:  iny                                     ; CCEC C8                       .
-        cpy     #$03                            ; CCED C0 03                    ..
-        bcc     LCCD9                           ; CCEF 90 E8                    ..
-        pla                                     ; CCF1 68                       h
-        ldx     #$03                            ; CCF2 A2 03                    ..
-        jsr     LCD98                           ; CCF4 20 98 CD                  ..
-        ldx     #$06                            ; CCF7 A2 06                    ..
-LCCF9:  cpx     #$03                            ; CCF9 E0 03                    ..
-        bne     LCD11                           ; CCFB D0 14                    ..
-        ldy     $CF                             ; CCFD A4 CF                    ..
-        beq     LCD11                           ; CCFF F0 10                    ..
-LCD01:  lda     $03B4                           ; CD01 AD B4 03                 ...
-        cmp     #$E8                            ; CD04 C9 E8                    ..
-        bcs     LCD39                           ; CD06 B0 31                    .1
-        jsr     LCC67                           ; CD08 20 67 CC                  g.
-        jsr     PrintHexByte                    ; CD0B 20 D8 CA                  ..
-        dey                                     ; CD0E 88                       .
-        bne     LCD01                           ; CD0F D0 F0                    ..
-LCD11:  asl     $03B4                           ; CD11 0E B4 03                 ...
-        bcc     LCD35                           ; CD14 90 1F                    ..
-        lda     LCE12,x                         ; CD16 BD 12 CE                 ...
-        jsr     ShowChar_                       ; CD19 20 B3 AB                  ..
-        pha                                     ; CD1C 48                       H
-        lda     $03A2                           ; CD1D AD A2 03                 ...
-        cmp     #$7C                            ; CD20 C9 7C                    .|
-        bne     LCD2C                           ; CD22 D0 08                    ..
-        pla                                     ; CD24 68                       h
-        lda     LCE1E,x                         ; CD25 BD 1E CE                 ...
-        beq     LCD35                           ; CD28 F0 0B                    ..
-        bra     LCD32                           ; CD2A 80 06                    ..
-LCD2C:  pla                                     ; CD2C 68                       h
-LCD2D:  lda     LCE18,x                         ; CD2D BD 18 CE                 ...
-        beq     LCD35                           ; CD30 F0 03                    ..
-LCD32:  jsr     ShowChar_                       ; CD32 20 B3 AB                  ..
-LCD35:  dex                                     ; CD35 CA                       .
-        bne     LCCF9                           ; CD36 D0 C1                    ..
-        rts                                     ; CD38 60                       `
+LCD48:  ldx     $CC
+        tay
+        bpl     LCD4E
+        dex
+LCD4E:  sec
+        adc     $CB
+        bcc     LCD54
+        inx
+LCD54:  rts
 ; ----------------------------------------------------------------------------
-LCD39:  jsr     LCC67                           ; CD39 20 67 CC                  g.
-        jsr     LCD48                           ; CD3C 20 48 CD                  H.
-        clc                                     ; CD3F 18                       .
-        adc     #$01                            ; CD40 69 01                    i.
-        bne     LCD45                           ; CD42 D0 01                    ..
-        inx                                     ; CD44 E8                       .
-LCD45:  jmp     PrintHexWordAndSpace            ; CD45 4C C7 CA                 L..
+LCD55:  lsr     a
+        tay
+        bcc     LCD70
+        lsr     a
+        bcs     LCD7F
+        tax
+        cmp     #$22
+        beq     LCD92
+        lsr     a
+        lsr     a
+        lsr     a
+        ora     #$80
+        tay
+        txa
+        and     #$03
+        bcc     LCD6E
+        adc     #$03
+LCD6E:  ora     #$80
+LCD70:  lsr     a
+        tax
+        lda     LCDBF,x
+        bcs     LCD7B
+        lsr     a
+        lsr     a
+        lsr     a
+        lsr     a
+LCD7B:  and     #$0F
+        bne     LCD83
+LCD7F:  ldy     #$88
+        lda     #$00
+LCD83:  tax
+        lda     LCE03,x
+        sta     $03B4
+        and     #$03
+        sta     $CF
+        tya
+        ldy     #$00
+        rts
 ; ----------------------------------------------------------------------------
-LCD48:  ldx     $CC                             ; CD48 A6 CC                    ..
-        tay                                     ; CD4A A8                       .
-        bpl     LCD4E                           ; CD4B 10 01                    ..
-        dex                                     ; CD4D CA                       .
-LCD4E:  sec                                     ; CD4E 38                       8
-        adc     $CB                             ; CD4F 65 CB                    e.
-        bcc     LCD54                           ; CD51 90 01                    ..
-        inx                                     ; CD53 E8                       .
-LCD54:  rts                                     ; CD54 60                       `
-; ----------------------------------------------------------------------------
-LCD55:  lsr     a                               ; CD55 4A                       J
-        tay                                     ; CD56 A8                       .
-        bcc     LCD70                           ; CD57 90 17                    ..
-        lsr     a                               ; CD59 4A                       J
-        bcs     LCD7F                           ; CD5A B0 23                    .#
-        tax                                     ; CD5C AA                       .
-        cmp     #$22                            ; CD5D C9 22                    ."
-        beq     LCD92                           ; CD5F F0 31                    .1
-        lsr     a                               ; CD61 4A                       J
-        lsr     a                               ; CD62 4A                       J
-        lsr     a                               ; CD63 4A                       J
-        ora     #$80                            ; CD64 09 80                    ..
-        tay                                     ; CD66 A8                       .
-        txa                                     ; CD67 8A                       .
-        and     #$03                            ; CD68 29 03                    ).
-        bcc     LCD6E                           ; CD6A 90 02                    ..
-        adc     #$03                            ; CD6C 69 03                    i.
-LCD6E:  ora     #$80                            ; CD6E 09 80                    ..
-LCD70:  lsr     a                               ; CD70 4A                       J
-        tax                                     ; CD71 AA                       .
-        lda     LCDBF,x                         ; CD72 BD BF CD                 ...
-        bcs     LCD7B                           ; CD75 B0 04                    ..
-        lsr     a                               ; CD77 4A                       J
-        lsr     a                               ; CD78 4A                       J
-        lsr     a                               ; CD79 4A                       J
-        lsr     a                               ; CD7A 4A                       J
-LCD7B:  and     #$0F                            ; CD7B 29 0F                    ).
-        bne     LCD83                           ; CD7D D0 04                    ..
-LCD7F:  ldy     #$88                            ; CD7F A0 88                    ..
-        lda     #$00                            ; CD81 A9 00                    ..
-LCD83:  tax                                     ; CD83 AA                       .
-        lda     LCE03,x                         ; CD84 BD 03 CE                 ...
-        sta     $03B4                           ; CD87 8D B4 03                 ...
-        and     #$03                            ; CD8A 29 03                    ).
-        sta     $CF                             ; CD8C 85 CF                    ..
-        tya                                     ; CD8E 98                       .
-        ldy     #$00                            ; CD8F A0 00                    ..
-        rts                                     ; CD91 60                       `
-; ----------------------------------------------------------------------------
-LCD92:  ldy     #$16                            ; CD92 A0 16                    ..
-        lda     #$01                            ; CD94 A9 01                    ..
-        bra     LCD83                           ; CD96 80 EB                    ..
-LCD98:  tay                                     ; CD98 A8                       .
-        lda     LCEA7,y                         ; CD99 B9 A7 CE                 ...
-        tay                                     ; CD9C A8                       .
-        lda     LCE25,y                         ; CD9D B9 25 CE                 .%.
-        sta     $C9                             ; CDA0 85 C9                    ..
-        iny                                     ; CDA2 C8                       .
-        lda     LCE25,y                         ; CDA3 B9 25 CE                 .%.
-        sta     $CA                             ; CDA6 85 CA                    ..
-LCDA8:  lda     #$00                            ; CDA8 A9 00                    ..
-        ldy     #$05                            ; CDAA A0 05                    ..
-LCDAC:  asl     $CA                             ; CDAC 06 CA                    ..
-        rol     $C9                             ; CDAE 26 C9                    &.
-        rol     a                               ; CDB0 2A                       *
-        dey                                     ; CDB1 88                       .
-        bne     LCDAC                           ; CDB2 D0 F8                    ..
-        adc     #$3F                            ; CDB4 69 3F                    i?
-        jsr     ShowChar_                       ; CDB6 20 B3 AB                  ..
-        dex                                     ; CDB9 CA                       .
-        bne     LCDA8                           ; CDBA D0 EC                    ..
-        jmp     PrintSpace                      ; CDBC 4C D0 CA                 L..
+LCD92:  ldy     #$16
+        lda     #$01
+        bra     LCD83
+LCD98:  tay
+        lda     LCEA7,y
+        tay
+        lda     LCE25,y
+        sta     $C9
+        iny
+        lda     LCE25,y
+        sta     $CA
+LCDA8:  lda     #$00
+        ldy     #$05
+LCDAC:  asl     $CA
+        rol     $C9
+        rol     a
+        dey
+        bne     LCDAC
+        adc     #$3F
+        jsr     ShowChar_
+        dex
+        bne     LCDA8
+        jmp     PrintSpace
 ; ----------------------------------------------------------------------------
 LCDBF:  .byte   $40,$22,$45,$33,$D8,$2F,$45,$39 ; CDBF 40 22 45 33 D8 2F 45 39  @"E3./E9
         .byte   $30,$22,$45,$33,$D8,$FF,$45,$99 ; CDC7 30 22 45 33 D8 FF 45 99  0"E3..E.
@@ -10797,7 +10806,7 @@ LCED2:  .byte   $42                             ; CED2 42                       
         .byte   $42                             ; CED6 42                       B
         lsr     $6E00,x                         ; CED7 5E 00 6E                 ^.n
         phy                                     ; CEDA 5A                       Z
-        bvc     LCF37                           ; CEDB 50 5A                    PZ
+        bvc     $CF37                           ; CEDB 50 5A                    PZ
         sec                                     ; CEDD 38                       8
         phy                                     ; CEDE 5A                       Z
         inc     a                               ; CEDF 1A                       .
@@ -10833,7 +10842,7 @@ LCED2:  .byte   $42                             ; CED2 42                       
         rol     $2C,x                           ; CF0B 36 2C                    6,
         plp                                     ; CF0D 28                       (
         rol     a                               ; CF0E 2A                       *
-        bpl     LCF35                           ; CF0F 10 24                    .$
+        bpl     $CF35                           ; CF0F 10 24                    .$
         brk                                     ; CF11 00                       .
         rol     a                               ; CF12 2A                       *
         asl     a:$4C,x                         ; CF13 1E 4C 00                 .L.
@@ -10855,19 +10864,18 @@ LCF2B:  pla                                     ; CF2B 68                       
         bit     $6024,x                         ; CF2C 3C 24 60                 <$`
         bra     LCF3E                           ; CF2F 80 0D                    ..
         jsr     L2020                           ; CF31 20 20 20
-        .byte   $90                             ; CF34 90                       .
-LCF35:  .byte   $03                             ; CF35 03                       .
-        .byte   $4C                             ; CF36 4C                       L
-LCF37:  eor     $20C7,y                         ; CF37 59 C7 20                 Y.
-        .byte   $19                             ; CF3A 19                       .
-        .byte   $CB                             ; CF3B CB                       .
-LCF3C:  ldx     #$00                            ; CF3C A2 00                    ..
-LCF3E:  stx     $0451                           ; CF3E 8E 51 04                 .Q.
-LCF41:  jsr     LCAFD                           ; CF41 20 FD CA                  ..
-        bne     LCF4D                           ; CF44 D0 07                    ..
-        cpx     #$00                            ; CF46 E0 00                    ..
-        bne     LCF4D                           ; CF48 D0 03                    ..
-        jmp     LC767                           ; CF4A 4C 67 C7                 Lg.
+; ----------------------------------------------------------------------------
+MON_CMD_ASSEMBLE:
+        bcc     LCF39
+        jmp     MON_BAD_COMMAND
+LCF39:  jsr     LCB19
+LCF3C:  ldx     #$00
+LCF3E:  stx     $0451
+LCF41:  jsr     LCAFD
+        bne     LCF4D
+        cpx     #$00
+        bne     LCF4D
+        jmp     LC767
 ; ----------------------------------------------------------------------------
 LCF4D:  cmp     #$20                            ; CF4D C9 20                    .
         beq     LCF3C                           ; CF4F F0 EB                    ..
@@ -10989,100 +10997,99 @@ LD035:  lda     $C9                             ; D035 A5 C9                    
         beq     LD03E                           ; D039 F0 03                    ..
         jmp     LD0C0                           ; D03B 4C C0 D0                 L..
 ; ----------------------------------------------------------------------------
-LD03E:  ldy     $CF                             ; D03E A4 CF                    ..
-        beq     LD073                           ; D040 F0 31                    .1
-        lda     $CA                             ; D042 A5 CA                    ..
-        cmp     #$9D                            ; D044 C9 9D                    ..
-        bne     LD06A                           ; D046 D0 22                    ."
-        lda     $C7                             ; D048 A5 C7                    ..
-        sbc     $CB                             ; D04A E5 CB                    ..
-        tax                                     ; D04C AA                       .
-        lda     $C8                             ; D04D A5 C8                    ..
-        sbc     $CC                             ; D04F E5 CC                    ..
-        bcc     LD05B                           ; D051 90 08                    ..
-        bne     LD0C7                           ; D053 D0 72                    .r
-        cpx     #$82                            ; D055 E0 82                    ..
-        bcs     LD0C7                           ; D057 B0 6E                    .n
-        bcc     LD063                           ; D059 90 08                    ..
-LD05B:  tay                                     ; D05B A8                       .
-        iny                                     ; D05C C8                       .
-        bne     LD0C7                           ; D05D D0 68                    .h
-        cpx     #$82                            ; D05F E0 82                    ..
-        bcc     LD0C7                           ; D061 90 64                    .d
-LD063:  dex                                     ; D063 CA                       .
-        dex                                     ; D064 CA                       .
-        txa                                     ; D065 8A                       .
-        ldy     $CF                             ; D066 A4 CF                    ..
-        bne     LD06D                           ; D068 D0 03                    ..
-LD06A:  lda     LA,y                     ; D06A B9 C6 00                 ...
-LD06D:  jsr     LCC4B                           ; D06D 20 4B CC                  K.
-        dey                                     ; D070 88                       .
-        bne     LD06A                           ; D071 D0 F7                    ..
-LD073:  lda     $D0                             ; D073 A5 D0                    ..
-        jsr     LCC4B                           ; D075 20 4B CC                  K.
-        jsr     PRIMM                  ; D078 20 5B FB                  [.
-        .byte   $0D,$91                         ; D07B 0D 91                    ..
-        .byte   "A "                            ; D07D 41 20                    A
-        .byte   $00                             ; D07F 00                       .
+LD03E:  ldy     $CF
+        beq     LD073
+        lda     $CA
+        cmp     #$9D
+        bne     LD06A
+        lda     $C7
+        sbc     $CB
+        tax
+        lda     $C8
+        sbc     $CC
+        bcc     LD05B
+        bne     LD0C7_JMP_MON_BAD_COMMAND
+        cpx     #$82
+        bcs     LD0C7_JMP_MON_BAD_COMMAND
+        bcc     LD063
+LD05B:  tay
+        iny
+        bne     LD0C7_JMP_MON_BAD_COMMAND
+        cpx     #$82
+        bcc     LD0C7_JMP_MON_BAD_COMMAND
+LD063:  dex
+        dex
+        txa
+        ldy     $CF
+        bne     LD06D
+LD06A:  lda     LA,y
+LD06D:  jsr     LCC4B
+        dey
+        bne     LD06A
+LD073:  lda     $D0
+        jsr     LCC4B
+        jsr     PRIMM
+        .byte   $0D,$91,"A ",0
+        jsr     LCCC4
+        inc     $CF
+        lda     $CF
+        jsr     LCB5D
+        jsr     LB4FB
+        lda     #$41
+        ldx     #$20
+        jsr     LD0A9
+        lda     $CC
+        jsr     LD0A6
+        lda     $CB
+        jsr     LD0A6
+        lda     #$20
+        jsr     LB640
+        jmp     LC767
 ; ----------------------------------------------------------------------------
-        jsr     LCCC4                           ; D080 20 C4 CC                  ..
-        inc     $CF                             ; D083 E6 CF                    ..
-        lda     $CF                             ; D085 A5 CF                    ..
-        jsr     LCB5D                           ; D087 20 5D CB                  ].
-        jsr     LB4FB                           ; D08A 20 FB B4                  ..
-        lda     #$41                            ; D08D A9 41                    .A
-        ldx     #$20                            ; D08F A2 20                    .
-        jsr     LD0A9                           ; D091 20 A9 D0                  ..
-        lda     $CC                             ; D094 A5 CC                    ..
-        jsr     LD0A6                           ; D096 20 A6 D0                  ..
-        lda     $CB                             ; D099 A5 CB                    ..
-        jsr     LD0A6                           ; D09B 20 A6 D0                  ..
-        lda     #$20                            ; D09E A9 20                    .
-        jsr     LB640                           ; D0A0 20 40 B6                  @.
-        jmp     LC767                           ; D0A3 4C 67 C7                 Lg.
+LD0A6:  jsr     Byte2HexChars
+LD0A9:  phx
+        jsr     LB640
+        pla
+        jmp     LB640
 ; ----------------------------------------------------------------------------
-LD0A6:  jsr     Byte2HexChars                   ; D0A6 20 E8 CA                  ..
-LD0A9:  phx                                     ; D0A9 DA                       .
-        jsr     LB640                           ; D0AA 20 40 B6                  @.
-        pla                                     ; D0AD 68                       h
-        jmp     LB640                           ; D0AE 4C 40 B6                 L@.
+LD0B1:  jsr     LD0B4
+LD0B4:  stx     $039D
+        ldx     $D1
+        cmp     $0450,x
+        beq     LD0CA
+        pla
+        pla
+LD0C0:  inc     $D0
+        beq     LD0C7_JMP_MON_BAD_COMMAND
+        jmp     LCFCA
 ; ----------------------------------------------------------------------------
-LD0B1:  jsr     LD0B4                           ; D0B1 20 B4 D0                  ..
-LD0B4:  stx     $039D                           ; D0B4 8E 9D 03                 ...
-        ldx     $D1                             ; D0B7 A6 D1                    ..
-        cmp     $0450,x                         ; D0B9 DD 50 04                 .P.
-        beq     LD0CA                           ; D0BC F0 0C                    ..
-        pla                                     ; D0BE 68                       h
-        pla                                     ; D0BF 68                       h
-LD0C0:  inc     $D0                             ; D0C0 E6 D0                    ..
-        beq     LD0C7                           ; D0C2 F0 03                    ..
-        jmp     LCFCA                           ; D0C4 4C CA CF                 L..
+LD0C7_JMP_MON_BAD_COMMAND:
+        jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-LD0C7:  jmp     LC759                           ; D0C7 4C 59 C7                 LY.
+LD0CA:  inx
+        stx     $D1
+        ldx     $039D
+        rts
 ; ----------------------------------------------------------------------------
-LD0CA:  inx                                     ; D0CA E8                       .
-        stx     $D1                             ; D0CB 86 D1                    ..
-        ldx     $039D                           ; D0CD AE 9D 03                 ...
-        rts                                     ; D0D0 60                       `
-; ----------------------------------------------------------------------------
-        lda     #$01                            ; D0D1 A9 01                    ..
-        bcs     LD0D7                           ; D0D3 B0 02                    ..
-        lda     $C7                             ; D0D5 A5 C7                    ..
-LD0D7:  sta     $03A3                           ; D0D7 8D A3 03                 ...
-        jsr     LCBE1                           ; D0DA 20 E1 CB                  ..
-        bra     LD11C                           ; D0DD 80 3D                    .=
-LD0DF:  .byte   $20                             ; D0DF 20
-        .byte   $16                             ; D0E0 16                       .
-LD0E1:  cpy     LB91F+1                           ; D0E1 CC 20 B9                 . .
-        sbc     $12F0,x                         ; D0E4 FD F0 12                 ...
-        dec     $03A3                           ; D0E7 CE A3 03                 ...
-        bne     LD11C                           ; D0EA D0 30                    .0
-        jsr     LB4FB                           ; D0EC 20 FB B4                  ..
-        lda     #$57                            ; D0EF A9 57                    .W
-        jsr     LB640                           ; D0F1 20 40 B6                  @.
-        lda     #$20                            ; D0F4 A9 20                    .
-        jsr     LB640                           ; D0F6 20 40 B6                  @.
-        jmp     LC767                           ; D0F9 4C 67 C7                 Lg.
+MON_CMD_LOAD_SAVE_VERIFY:
+        lda     #$01
+        bcs     LD0D7
+        lda     $C7
+LD0D7:  sta     $03A3
+        jsr     LCBE1_PRINT_MON_STATUS_LINE
+        bra     LD11C
+LD0DF:  .byte   $20
+        .byte   $16
+LD0E1:  cpy     LB91F+1
+        sbc     $12F0,x
+        dec     $03A3
+        bne     LD11C
+        jsr     LB4FB
+        lda     #$57
+        jsr     LB640
+        lda     #$20
+        jsr     LB640
+        jmp     LC767
 ; ----------------------------------------------------------------------------
 LD0FC:  tsx                                     ; D0FC BA                       .
         .byte   $D1                             ; D0FD D1                       .
@@ -12144,7 +12151,7 @@ LD934:  jsr     L99A6                           ; D934 20 A6 99                 
 LD93E:  inc     stack+44,x                      ; D93E FE 2C 01                 .,.
         jmp     L991A                           ; D941 4C 1A 99                 L..
 ; ----------------------------------------------------------------------------
-LD944:  cmp     #$24                            ; D944 C9 24                    .$
+LD944:  cmp     #'$'                            ; D944 C9 24                    .$
         bne     LD957                           ; D946 D0 0F                    ..
         bit     stack+37                        ; D948 2C 25 01                 ,%.
         bpl     LD93E                           ; D94B 10 F1                    ..
@@ -12178,24 +12185,24 @@ LD97F:  lda     stack+46                        ; D97F AD 2E 01                 
         inc     stack+49                        ; D98A EE 31 01                 .1.
 LD98D:  rts                                     ; D98D 60                       `
 ; ----------------------------------------------------------------------------
-LD98E:  cmp     #$2D                            ; D98E C9 2D                    .-
+LD98E:  cmp     #'-'                            ; D98E C9 2D                    .-
         beq     LD97F                           ; D990 F0 ED                    ..
         sec                                     ; D992 38                       8
 LD993:  sty     stack+54                        ; D993 8C 36 01                 .6.
         dec     stack+54                        ; D996 CE 36 01                 .6.
         rts                                     ; D999 60                       `
 ; ----------------------------------------------------------------------------
-        cmp     #$2B                            ; D99A C9 2B                    .+
+        cmp     #'+'                            ; D99A C9 2B                    .+
         beq     LD9B3                           ; D99C F0 15                    ..
-        cmp     #$2D                            ; D99E C9 2D                    .-
+        cmp     #'-'                            ; D99E C9 2D                    .-
         beq     LD9B3                           ; D9A0 F0 11                    ..
-        cmp     #$2E                            ; D9A2 C9 2E                    ..
+        cmp     #'.'                            ; D9A2 C9 2E                    ..
         beq     LD9B3                           ; D9A4 F0 0D                    ..
-        cmp     #$3D                            ; D9A6 C9 3D                    .=
+        cmp     #'='                            ; D9A6 C9 3D                    .=
         beq     LD9B3                           ; D9A8 F0 09                    ..
-        cmp     #$3E                            ; D9AA C9 3E                    .>
+        cmp     #'>'                            ; D9AA C9 3E                    .>
         beq     LD9B3                           ; D9AC F0 05                    ..
-        cmp     #$23                            ; D9AE C9 23                    .#
+        cmp     #'#'                            ; D9AE C9 23                    .#
         bne     LD9B3                           ; D9B0 D0 01                    ..
         clc                                     ; D9B2 18                       .
 LD9B3:  rts                                     ; D9B3 60                       `
@@ -12213,7 +12220,7 @@ LD9B3:  rts                                     ; D9B3 60                       
         ldx     #$01                            ; D9CE A2 01                    ..
         stx     $67                             ; D9D0 86 67                    .g
         jsr     DFLTO                           ; D9D2 20 86 03                  ..
-        cmp     #$29                            ; D9D5 C9 29                    .)
+        cmp     #')'                            ; D9D5 C9 29                    .)
         beq     LD9DC                           ; D9D7 F0 03                    ..
         jsr     L8805                           ; D9D9 20 05 88                  ..
 LD9DC:  jsr     L7944                           ; D9DC 20 44 79                  Dy
