@@ -178,22 +178,21 @@ Commodore_LCD:
         .word L804C_COMMAND_CMD
         .byte "COMMAND.CMD"
 
-        .byte $00
+        .byte 0
 ; ----------------------------------------------------------------------------
 ; It seems to be the entry point of "MONITOR.MON".
 L8038_MONITOR_MON:
         cpx     #$0E
         bne     L8040
         clc
-        jmp     L84FA
-; ----------------------------------------------------------------------------
+        jmp     L84FA_MAYBE_SHUTDOWN
 L8040:  cpx     #$06
-        beq     L8049
+        beq     JMP_MON_START
         cpx     #$04
-        beq     L8049
+        beq     JMP_MON_START
         rts
-; ----------------------------------------------------------------------------
-L8049:  jmp     LC6DF
+JMP_MON_START:
+        jmp     MON_START
 ; ----------------------------------------------------------------------------
 ; It seems to be the entry point of "COMMAND.CMD".
 L804C_COMMAND_CMD:
@@ -838,7 +837,7 @@ L84EA:  jmp     L843F                           ; 84EA 4C 3F 84                 
 ; ----------------------------------------------------------------------------
 L84ED:  ldx     $0200                           ; 84ED AE 00 02                 ...
         jsr     L840F                           ; 84F0 20 0F 84                  ..
-        beq     L84FA                           ; 84F3 F0 05                    ..
+        beq     L84FA_MAYBE_SHUTDOWN            ; 84F3 F0 05                    ..
         ldx     #$0E                            ; 84F5 A2 0E                    ..
         jmp     L8420                           ; 84F7 4C 20 84                 L .
 ; ----------------------------------------------------------------------------
@@ -846,7 +845,8 @@ L84ED:  ldx     $0200                           ; 84ED AE 00 02                 
 ; saved (which is checked on next reset to see it was a clean shutdown) and
 ; then it used /POWEROFF line to actually switch the power off (the RAM is
 ; still powered at least on CLCD!)
-L84FA:  sec
+L84FA_MAYBE_SHUTDOWN:
+        sec
 L84FB:  php
         sei
         php
@@ -4130,7 +4130,7 @@ L9EA7:  ror     $7F                             ; 9EA7 66 7F                    
         smb0    $7C                             ; 9EBC 87 7C                    .|
         bbs5    $EE,L9E41                       ; 9EBE DF EE 80                 ...
         ror     $38,x                           ; 9EC1 76 38                    v8
-        lsr     LD0E1                           ; 9EC3 4E E1 D0                 N..
+        lsr     $D0E1                           ; 9EC3 4E E1 D0                 N..
         bbr1    $E8,L9E4B                       ; 9EC6 1F E8 82                 ...
         sec                                     ; 9EC9 38                       8
         tax                                     ; 9ECA AA                       .
@@ -8553,7 +8553,7 @@ DATALO:
         rts
 ; ----------------------------------------------------------------------------
 DEBPIA:
-;Debounce VIA PA then ASL A
+;Debounce VIA PA, invert bits 7 (data in) and 6 (clock in), then ASL A
         lda     VIA1_PORTB
         cmp     VIA1_PORTB
         bne     DEBPIA
@@ -9785,7 +9785,8 @@ LC6CE:  ldy     RAMVEC_IRQ,x
         bpl     LC6CE
         rts
 ; ----------------------------------------------------------------------------
-LC6DF:  stz     L03B7
+MON_START:
+        stz     L03B7
         stz     $03A1
         ldx     #$FF
         stx     $03BB
@@ -9796,7 +9797,8 @@ LC6DF:  stz     L03B7
         .byte   $0D,"COMMODORE LCD MONITOR",0
         bra     LC748
 ; ----------------------------------------------------------------------------
-LC70C:  cld
+MON_BRK:
+        cld
         ldx     #$05
 LC70F:  pla
         sta     $03B5,x
@@ -9814,43 +9816,48 @@ LC70F:  pla
 LC72A:  php
         jsr     PRIMM
         .byte   $0D,"BREAK",0
-; ----------------------------------------------------------------------------
         plp
         bcs     LC748
         jsr     PRIMM
         .byte   " STACK RESET",0
-; ----------------------------------------------------------------------------
 LC748:  lda     #$C0
         sta     MSGFLG
         lda     #$00
         sta     $CB
         sta     $CC
         cli
+        ;Fall through
+; ----------------------------------------------------------------------------
 MON_CMD_REGISTERS:
-        jsr     LCC13_PRINT_REGISTERS
-        bra     LC767
+        jsr     MON_PRINT_REGS
+        bra     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
 MON_BAD_COMMAND:
         jsr     KL_RESTOR
         jsr     CLRCH
         jsr     PRIMM
         .byte   $1D,$1D,":?",0
+        ;Fall through
 ; ----------------------------------------------------------------------------
-LC767:  jsr     PrintNewLine
+;Input a monitor command and dispatch it
+MON_MAIN_INPUT:
+        jsr     PrintNewLine
         stz     $CD
         ldx     #$00
-LC76E:  jsr     LFD3D
+LC76E_GET_NEXT_CHAR:
+        jsr     LFD3D_CHRIN
         sta     L0470,x
         stx     $CE
         inx
-        cpx     #$50
-        beq     LC77F
-        cmp     #$0D
-        bne     LC76E
-LC77F:  jsr     LCAFD
-        beq     LC767
-        cmp     #$20
-        beq     LC77F
+        cpx     #80
+        beq     LC77F_GOT_LINE
+        cmp     #$0D ;Return
+        bne     LC76E_GET_NEXT_CHAR
+LC77F_GOT_LINE:
+        jsr     LCAFD
+        beq     MON_MAIN_INPUT
+        cmp     #' '
+        beq     LC77F_GOT_LINE
         ldx     #$10
 LC78A:  cmp     MON_COMMANDS,x
         beq     LC794
@@ -9866,20 +9873,19 @@ LC794:  cpx     #$0E
         pha
         lda     MON_CMD_ENTRIES,x
         pha
-        jmp     LCA75
-; ----------------------------------------------------------------------------
+        jmp     MON_PARSE_HEX_WORD
 LC7A6:  sta     $039F
         jsr     PrintNewLine
-        jmp     LC9B9
+        jmp     MON_CMD_LOAD_SAVE_VERIFY
 ; ----------------------------------------------------------------------------
 MON_CMD_MEMORY:
         bcs     LC7B9
         jsr     LCB19
-        jsr     LCA75
+        jsr     MON_PARSE_HEX_WORD
         bcc     LC7BF
-LC7B9:  lda     #$07
+LC7B9:  lda     #8-1  ;8 lines of memory to print
         sta     $C7
-        bne     LC7D0
+        bne     LC7D0_LOOP
 LC7BF:  jsr     LCB22
         lsr     a
         ror     $C7
@@ -9890,41 +9896,45 @@ LC7BF:  jsr     LCB22
         lsr     a
         ror     $C7
         sta     $C8
-LC7D0:  jsr     LFDB9
+LC7D0_LOOP:
+        jsr     LFDB9
         beq     LC7E2
-        jsr     LC8B9
+        jsr     MON_PRINT_LINE_OF_MEMORY
         lda     #$10
         jsr     LCB5D
         jsr     LCB30
-        bcs     LC7D0
-LC7E2:  jmp     LC767
+        bcs     LC7D0_LOOP
+LC7E2:  jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
-MON_CMD_WALK:
-        bcs     LC81B
+MON_CMD_WALK_START:
+        bcs     LC81B_DONE
         lda     $C7
         ldy     $C8
         sta     $03B6
         sty     $03B5
         ldy     #$00
-LC7F3:  jsr     LCA75
-        bcs     LC81B
+LC7F3_LOOP:
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LC81B_DONE
         lda     $C7
         sta     L03B7,y
         iny
         cpy     #$05
-        bcc     LC7F3
-        jsr     LCA75
-        bcs     LC81B
+        bcc     LC7F3_LOOP
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LC81B_DONE
         lda     $C7
         bne     LC810
         stz     $03A1
-        bra     LC81B
+        bra     LC81B_DONE
 LC810:  cmp     #$01
-        beq     LC818
+        beq     LC818_STA_03A1_DONE
         cmp     #$02
-        bne     LC81B
-LC818:  sta     $03A1
-LC81B:  jsr     PRIMM
+        bne     LC81B_DONE
+LC818_STA_03A1_DONE:
+        sta     $03A1
+LC81B_DONE:
+        jsr     PRIMM
         .byte   $91,$91,$00  ;Cursor Up twice
         jmp     MON_CMD_REGISTERS
 ; ----------------------------------------------------------------------------
@@ -9932,7 +9942,7 @@ MON_CMD_MODIFY:
         bcs     LC83A
         jsr     LCB19
         ldy     #$00
-LC82B:  jsr     LCA75
+LC82B:  jsr     MON_PARSE_HEX_WORD
         bcs     LC83A
         lda     $C7
         jsr     LCC4B
@@ -9942,8 +9952,8 @@ LC82B:  jsr     LCA75
 LC83A:  jsr     ESC_O_CANCEL_MODES
         lda     #$91 ;CHR($145) Cursor Up
         jsr     ShowChar_
-        jsr     LC8B9
-        jmp     LC767
+        jsr     MON_PRINT_LINE_OF_MEMORY
+        jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
 MON_CMD_GO:
         bcs     LC854
@@ -9994,9 +10004,9 @@ MON_COMMANDS:
         .byte   ">" ;Modify Memory
         .byte   ";" ;Modify Registers
         .byte   "W" ;Walk
-        .byte   "L" ;Load
-        .byte   "S" ;Save
-        .byte   "V" ;Verify
+        .byte   "L" ;Load     \
+        .byte   "S" ;Save      | L,S,V are handled separately, not in the table below
+        .byte   "V" ;Verify   /
 
 MON_CMD_ENTRIES:
         .word  MON_CMD_EXIT-1
@@ -10011,10 +10021,11 @@ MON_CMD_ENTRIES:
         .word  MON_CMD_HUNT-1
         .word  MON_CMD_FILL-1
         .word  MON_CMD_MODIFY-1
-        .word  MON_CMD_WALK-1
-        .word  MON_CMD_LOAD_SAVE_VERIFY-1
+        .word  MON_CMD_WALK_START-1
+        .word  MON_CMD_WALK_CONTINUE-1
 ; ----------------------------------------------------------------------------
-LC8B9:  jsr     PRIMM
+MON_PRINT_LINE_OF_MEMORY:
+        jsr     PRIMM
         .byte   $0D,">",0
         jsr     PrintHexWordAndSpaceFromMem
         ldy     #0
@@ -10046,18 +10057,20 @@ MON_CMD_COMPARE:
         stz     $D1
         lda     #$00
         sta     $D0
-        bra     LC909
+        bra     LC909_TRANSFER_OR_COMPARE
 ; ----------------------------------------------------------------------------
 MON_CMD_TRANSFER:
         lda     #$80
         sta     $D0
         jsr     LCB7E
-        bcs     LC952_JMP_MON_BAD_COMMAND
+        bcs     LC952_TRANSFER_BAD_ARG
         bra     LC913
-LC909:  jsr     LCB67
-        bcs     LC952_JMP_MON_BAD_COMMAND
-        jsr     LCA75
-        bcs     LC952_JMP_MON_BAD_COMMAND
+
+LC909_TRANSFER_OR_COMPARE:
+        jsr     LCB67
+        bcs     LC952_TRANSFER_BAD_ARG
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LC952_TRANSFER_BAD_ARG
 LC913:  jsr     PrintNewLine
         ldy     #$00
 LC918:  jsr     LCC67
@@ -10071,7 +10084,7 @@ LC922:  pha
         cmp     $D2
         beq     LC935
         jsr     LFDB9
-        beq     LC94F
+        beq     LC94F_TRANSFER_DONE
         jsr     PrintHexWordAndSpaceFromMem
 LC935:  lda     $D1
         beq     LC941
@@ -10084,14 +10097,14 @@ LC941:  inc     $C7
 LC947:  jsr     LCB5B
 LC94A:  jsr     LCB44
         bcs     LC918
-LC94F:  jmp     LC767
-; ----------------------------------------------------------------------------
-LC952_JMP_MON_BAD_COMMAND:
+LC94F_TRANSFER_DONE:
+        jmp     MON_MAIN_INPUT
+LC952_TRANSFER_BAD_ARG:
         jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
 MON_CMD_HUNT:
         jsr     LCB67
-        bcs     LC9B6_JMP_MON_BAD_COMMAND
+        bcs     LC9B6_HUNT_BAD_ARG
         ldy     #$00
         jsr     LCAFD
         cmp     #$27
@@ -10105,11 +10118,11 @@ LC966:  sta     $0450,y
         bne     LC966
         beq     LC98A
 LC975:  sty     $03A0
-        jsr     LCA73
+        jsr     MON_DEC_CD_THEN_PARSE_HEX_WORD
 LC97B:  lda     $C7
         sta     $0450,y
         iny
-        jsr     LCA75
+        jsr     MON_PARSE_HEX_WORD
         bcs     LC98A
         cpy     #$20
         bne     LC97B
@@ -10125,17 +10138,18 @@ LC994:  jsr     LCC67
         cpx     $039F
         bne     LC994
         jsr     LFDB9
-        beq     LC9B3
+        beq     LC9B3_HUNT_DONE
         jsr     PrintHexWordAndSpaceFromMem
 LC9AB:  jsr     LCB5B
         jsr     LCB44
         bcs     LC990
-LC9B3:  jmp     LC767
-; ----------------------------------------------------------------------------
-LC9B6_JMP_MON_BAD_COMMAND:
+LC9B3_HUNT_DONE:
+        jmp     MON_MAIN_INPUT
+LC9B6_HUNT_BAD_ARG:
         jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-LC9B9:  ldy     #$01
+MON_CMD_LOAD_SAVE_VERIFY:
+        ldy     #$01
         sty     FA
         sty     SA
         dey
@@ -10147,103 +10161,114 @@ LC9B9:  ldy     #$01
         lda     #<L0450
         sta     FNADR
 LC9D0:  jsr     LCAFD
-        beq     LCA33
-        cmp     #$20
+        beq     LCA33_TRY_LOAD_OR_VERIFY
+        cmp     #' '
         beq     LC9D0
-        cmp     #$22
-        bne     LC9F5_JMP_MON_BAD_COMMAND
+        cmp     #'"'
+        bne     LC9F5_LSV_BAD_ARG
         ldx     $CD
-LC9DF:  cpx     $CE
-        bcs     LCA33
+LC9DF_LOOP:
+        cpx     $CE
+        bcs     LCA33_TRY_LOAD_OR_VERIFY
         lda     L0470,x
         inx
-        cmp     #$22
-        beq     LC9F8
+        cmp     #'"'
+        beq     LC9F8_TRY_SAVE
         sta     (FNADR),y
         inc     FNLEN
         iny
         cpy     #$11
-        bcc     LC9DF
-LC9F5_JMP_MON_BAD_COMMAND:
+        bcc     LC9DF_LOOP
+LC9F5_LSV_BAD_ARG:
         jmp     MON_BAD_COMMAND
-; ----------------------------------------------------------------------------
-LC9F8:  stx     $CD
+
+LC9F8_TRY_SAVE:
+        stx     $CD
         jsr     LCAFD
-        jsr     LCA75
-        bcs     LCA33
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LCA33_TRY_LOAD_OR_VERIFY
         lda     $C7
-        beq     LC9F5_JMP_MON_BAD_COMMAND
+        beq     LC9F5_LSV_BAD_ARG
         cmp     #$03
-        beq     LC9F5_JMP_MON_BAD_COMMAND
+        beq     LC9F5_LSV_BAD_ARG
         sta     FA
-        jsr     LCA75
-        bcs     LCA33
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LCA33_TRY_LOAD_OR_VERIFY
         jsr     LCB19
-        jsr     LCA75
-        bcs     LC9F5_JMP_MON_BAD_COMMAND
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LC9F5_LSV_BAD_ARG
         jsr     PrintNewLine
         ldx     $C7
         ldy     $C8
         lda     $039F
-        cmp     #$53
-        bne     LC9F5_JMP_MON_BAD_COMMAND
+        cmp     #'S' ;SAVE
+        bne     LC9F5_LSV_BAD_ARG
         lda     #$00
         sta     SA
         lda     #$CB
-        jsr     LFD82
-LCA30:  jmp     LC767
-; ----------------------------------------------------------------------------
-LCA33:  lda     $039F
-        cmp     #$56
+        jsr     LFD82_SAVE_AND_GO_KERN
+LCA30_LSV_DONE:
+        jmp     MON_MAIN_INPUT
+
+LCA33_TRY_LOAD_OR_VERIFY:
+        lda     $039F
+        cmp     #'V' ;VERIFY
         beq     LCA40
-        cmp     #$4C
-        bne     LC9F5_JMP_MON_BAD_COMMAND
+        cmp     #'L' ;LOAD
+        bne     LC9F5_LSV_BAD_ARG
         lda     #$00
-LCA40:  jsr     LFD63
+LCA40:  jsr     LFD63_LOAD_THEN_GO_KERN
         lda     SATUS
         and     #$10
-        beq     LCA30
+        beq     LCA30_LSV_DONE
         jsr     PRIMM
         .byte   "ERROR",0
-        bra     LCA30
+        bra     LCA30_LSV_DONE
 ; ----------------------------------------------------------------------------
 MON_CMD_FILL:
         jsr     LCB67
-        bcs     LCA70_JMP_MON_BAD_COMMAND
-        jsr     LCA75
-        bcs     LCA70_JMP_MON_BAD_COMMAND
+        bcs     LCA70_FILL_BAD_ARG
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LCA70_FILL_BAD_ARG
         ldy     #$00
-LCA60:  lda     $C7
+LCA60_FILL_LOOP:
+        lda     $C7
         jsr     LCC4B
         jsr     LCB5B
         jsr     LCB44
-        bcs     LCA60
-        jmp     LC767
-; ----------------------------------------------------------------------------
-LCA70_JMP_MON_BAD_COMMAND:
+        bcs     LCA60_FILL_LOOP
+        jmp     MON_MAIN_INPUT
+LCA70_FILL_BAD_ARG:
         jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-LCA73:  dec     $CD
-LCA75:  lda     #$00
+;Decrement $CD then parse 16-bit hex value from user input into $C7/C8
+MON_DEC_CD_THEN_PARSE_HEX_WORD:
+        dec     $CD
+
+;Parse 16-bit hex value from user input into $C7/C8
+MON_PARSE_HEX_WORD:
+        lda     #$00
         sta     $C7
         sta     $C8
         sta     $039E
-LCA7E:  jsr     LCAFD
-        beq     LCABD
+LCA7E_CONSUME_SPACES:
+        jsr     LCAFD
+        beq     LCABD_RTS
         cmp     #' '
-        beq     LCA7E
-LCA87:  cmp     #' '
-        beq     LCAB9
+        beq     LCA7E_CONSUME_SPACES
+LCA87_NEXT_DIGIT:
+        cmp     #' '
+        beq     LCAB9_LDA_039E_CLC_RTS
         cmp     #','
-        beq     LCAB9
+        beq     LCAB9_LDA_039E_CLC_RTS
         cmp     #'0'
-        bcc     LCABE_PLA_PLA_JMP_MON_BAD_COMMAND
-        cmp     #'G'
-        bcs     LCABE_PLA_PLA_JMP_MON_BAD_COMMAND
-        cmp     #':'
+        bcc     LCABE_BAD_DIGIT
+        cmp     #'F'+1
+        bcs     LCABE_BAD_DIGIT
+        cmp     #'9'+1
         bcc     LCAA1
         cmp     #'A'
-        bcc     LCABE_PLA_PLA_JMP_MON_BAD_COMMAND
+        bcc     LCABE_BAD_DIGIT
         sbc     #$08
 LCAA1:  sbc     #$2F
         asl     a
@@ -10258,11 +10283,13 @@ LCAA9:  asl     a
         bne     LCAA9
         inc     $039E
         jsr     LCAFD
-        bne     LCA87
-LCAB9:  lda     $039E
+        bne     LCA87_NEXT_DIGIT
+LCAB9_LDA_039E_CLC_RTS:
+        lda     $039E
         clc
-LCABD:  rts
-LCABE_PLA_PLA_JMP_MON_BAD_COMMAND:
+LCABD_RTS:
+        rts
+LCABE_BAD_DIGIT:
         pla
         pla
         jmp     MON_BAD_COMMAND
@@ -10326,7 +10353,7 @@ LCAFD:  stx     $039D
         cpx     $CE
         bcs     LCB15
         lda     L0470,x
-        cmp     #$3A
+        cmp     #':'
         beq     LCB15
         inc     $CD
 LCB0F:  php
@@ -10387,7 +10414,7 @@ LCB66:  rts
 ; ----------------------------------------------------------------------------
 LCB67:  bcs     LCB7D
         jsr     LCB19
-        jsr     LCA75
+        jsr     MON_PARSE_HEX_WORD
         bcs     LCB7D
         jsr     LCB22
         lda     $C7
@@ -10399,13 +10426,13 @@ LCB7D:  rts
 ; ----------------------------------------------------------------------------
 LCB7E:  bcs     LCBE0
         jsr     LCB19
-        jsr     LCA75
+        jsr     MON_PARSE_HEX_WORD
         bcs     LCBE0
         lda     $C7
         sta     $D2
         lda     $C8
         sta     $D3
-        jsr     LCA75
+        jsr     MON_PARSE_HEX_WORD
         lda     $C8
         pha
         lda     $C7
@@ -10452,14 +10479,15 @@ LCBD9:  pla
         clc
 LCBE0:  rts
 ; ----------------------------------------------------------------------------
-LCBE1_PRINT_MON_STATUS_LINE:
+MON_PRINT_REGS_HEADER:
         jsr     PRIMM
         .byte   $0d,"   PC  SR AC XR YR SP MODE OPCODE   MNEMONIC",0
         rts
 ; ----------------------------------------------------------------------------
 ; Prints PC as hex word and registers
-LCC13_PRINT_REGISTERS:
-        jsr     LCBE1_PRINT_MON_STATUS_LINE
+MON_PRINT_REGS:
+        jsr     MON_PRINT_REGS_HEADER
+LCC16:
         jsr     PRIMM
         .byte   $0D,"; ",0
         lda     $03B5
@@ -10523,7 +10551,7 @@ LCC87:  .addr   GO_RAM_LOAD_GO_KERN
 MON_CMD_DISASSEMBLE:
         bcs     LCC99
         jsr     LCB19
-        jsr     LCA75
+        jsr     MON_PARSE_HEX_WORD
         bcc     LCC9F
 LCC99:  lda     #$14
         sta     $C7
@@ -10539,7 +10567,7 @@ LCCA2:  jsr     PrintNewLine
         lda     $CF
         jsr     LCB32
         bcs     LCCA2
-LCCBB:  jmp     LC767
+LCCBB:  jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
 LCCBE:  jsr     PRIMM
         .byte   ". ",0
@@ -10875,7 +10903,7 @@ LCF41:  jsr     LCAFD
         bne     LCF4D
         cpx     #$00
         bne     LCF4D
-        jmp     LC767
+        jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
 LCF4D:  cmp     #$20                            ; CF4D C9 20                    .
         beq     LCF3C                           ; CF4F F0 EB                    ..
@@ -11042,9 +11070,9 @@ LD073:  lda     $D0
         jsr     LD0A6
         lda     $CB
         jsr     LD0A6
-        lda     #$20
+        lda     #' '
         jsr     LB640
-        jmp     LC767
+        jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
 LD0A6:  jsr     Byte2HexChars
 LD0A9:  phx
@@ -11071,25 +11099,25 @@ LD0CA:  inx
         ldx     $039D
         rts
 ; ----------------------------------------------------------------------------
-MON_CMD_LOAD_SAVE_VERIFY:
+MON_CMD_WALK_CONTINUE:
         lda     #$01
         bcs     LD0D7
         lda     $C7
 LD0D7:  sta     $03A3
-        jsr     LCBE1_PRINT_MON_STATUS_LINE
+        jsr     MON_PRINT_REGS_HEADER
         bra     LD11C
-LD0DF:  .byte   $20
-        .byte   $16
-LD0E1:  cpy     LB91F+1
-        sbc     $12F0,x
+LD0DF:  jsr     LCC16
+        jsr     LFDB9
+        beq     LD0F9_JMP_MON_MAIN_INPUT
         dec     $03A3
         bne     LD11C
         jsr     LB4FB
-        lda     #$57
+        lda     #'W'
         jsr     LB640
-        lda     #$20
+        lda     #' '
         jsr     LB640
-        jmp     LC767
+LD0F9_JMP_MON_MAIN_INPUT:
+        jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
 LD0FC:  tsx                                     ; D0FC BA                       .
         .byte   $D1                             ; D0FD D1                       .
@@ -14650,7 +14678,7 @@ LF080:  lda     $02,y                           ; F080 B9 02 00                 
 LF08B:  jsr     LB8B4                           ; F08B 20 B4 B8                  ..
         ldx     #$00                            ; F08E A2 00                    ..
         stx     $7A                             ; F090 86 7A                    .z
-        jsr     LFFCF                           ; F092 20 CF FF                  ..
+        jsr     LFFCF_CHRIN                     ; F092 20 CF FF                  ..
         sta     $0200,x                         ; F095 9D 00 02                 ...
         inx                                     ; F098 E8                       .
         cpx     #$A1                            ; F099 E0 A1                    ..
@@ -15690,8 +15718,9 @@ IRQ:    pha
 LFA28:  jmp     (RAMVEC_BRK)
 ; ----------------------------------------------------------------------------
 DEFVEC_BRK:
+; Default BRK handler, drops into monitor
         sta     MMU_MODE_KERN
-        jmp     LC70C
+        jmp     MON_BRK
 ; ----------------------------------------------------------------------------
 DEFVEC_IRQ:
 ; Default IRQ handler, where IRQ RAM vector ($314) points to by default.
@@ -16145,8 +16174,9 @@ DEFVEC_CLRCHN:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-LFD3D:  sta     MMU_MODE_APPL
-        jsr     LFFCF
+LFD3D_CHRIN:
+        sta     MMU_MODE_APPL
+        jsr     LFFCF_CHRIN
         jmp     MMU_MODE_KERN_RTS
 ; ----------------------------------------------------------------------------
 DEFVEC_CHRIN:
@@ -16165,7 +16195,8 @@ DEFVEC_CHROUT:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-LFD63:  jsr     LOAD_
+LFD63_LOAD_THEN_GO_KERN:
+        jsr     LOAD_
         ;Fall through
 
 MMU_MODE_KERN_RTS:
@@ -16188,7 +16219,8 @@ MMU_APPL_WINDOW2:= * + 2
         sta     MMU_MODE_RAM                    ; FD7E 8D 00 FB                 ...
         rts
 ; ----------------------------------------------------------------------------
-LFD82:  jsr     SAVE_
+LFD82_SAVE_AND_GO_KERN:
+        jsr     SAVE_
         jmp     MMU_MODE_KERN_RTS
 ; ----------------------------------------------------------------------------
 SAVE_:  stx     EAL
@@ -16478,7 +16510,7 @@ LFFC9:  jmp     (RAMVEC_CHKOUT)                 ; FFC9 6C 20 03                 
 ; ----------------------------------------------------------------------------
 LFFCC:  jmp     (RAMVEC_CLRCHN)                 ; FFCC 6C 22 03                 l".
 ; ----------------------------------------------------------------------------
-LFFCF:  jmp     (RAMVEC_CHRIN)                  ; FFCF 6C 24 03                 l$.
+LFFCF_CHRIN:  jmp     (RAMVEC_CHRIN)                  ; FFCF 6C 24 03                 l$.
 ; ----------------------------------------------------------------------------
 LFFD2:  jmp     (RAMVEC_CHROUT)                 ; FFD2 6C 26 03                 l&.
 ; ----------------------------------------------------------------------------
