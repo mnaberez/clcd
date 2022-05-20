@@ -490,7 +490,7 @@ L826F:  phy
 ; ----------------------------------------------------------------------------
 ; Interesting, though I don't know the purpose of the given ZP locations. It
 ; seems, $FD00, $FD80, $FE00, $FE80 are used some kind of MMU purpose, based
-; on value CMP'd with constants which suggests memory is devided into parts
+; on value CMP'd with constants which suggests memory is divided into parts
 ; (high byte only): $00-$3F, $40-$7F, $80-$BF, $C0-$F7, $F8-$FF.
 L8277:  sei
         phx
@@ -6616,7 +6616,7 @@ LAFF3:  jsr     LB020
         ora     $F2
         sta     $036A,x
         .byte   $7E
-LB009:  ror     a
+        ror     a
         .byte   $03
 LB00B:  rol     $036A,x
         inx
@@ -6629,8 +6629,8 @@ LB013:  ldy     WIN_TOP_LEFT_Y
 LB01B:  ldy     WIN_BTM_RGHT_Y
         jmp     LB07B
 ; ----------------------------------------------------------------------------
-LB020:  .byte   $A4                             ; B020 A4                       .
-LB021:  ldx     #$98                            ; B021 A2 98                    ..
+LB020:  ldy     $a2
+        tya
         and     #$07                            ; B023 29 07                    ).
         tax                                     ; B025 AA                       .
         lda     LB049,x                         ; B026 BD 49 B0                 .I.
@@ -6685,7 +6685,6 @@ LB07D:  bcs     LB0C8                           ; B07D B0 49                    
         rts                                     ; B086 60                       `
 ; ----------------------------------------------------------------------------
 LB087:  stz     $036A                           ; B087 9C 6A 03                 .j.
-LB08B := *+1
         stz     $036B                           ; B08A 9C 6b 03
         rts                                     ; B08D 60                       `
 ; ----------------------------------------------------------------------------
@@ -6716,11 +6715,11 @@ LB0A2:  phx
         rts
 ; ----------------------------------------------------------------------------
 LB0B0:  .byte   $80,$00                         ; B0B0 80 00                    ..
-LB0B2:  .byte   $40,$20,$40,$C0,$80,$80         ; B0B2 40 20 40 C0 80 80        @ @...
+        .byte   $40,$20,$40,$C0,$80,$80         ; B0B2 40 20 40 C0 80 80        @ @...
 ; ----------------------------------------------------------------------------
 LB0B8:  sta     $F1
         and     #$3F
-LB0BC:  asl     $F1
+        asl     $F1
         bit     $F1
         bpl     LB0C4
         ora     #$80
@@ -6822,7 +6821,7 @@ LB10E:  bit     $036E
         bvc     LB126
         lda     $036E
         and     #$DF
-LB11A:  ldx     #$36
+        ldx     #$36
 LB11C:  cmp     LB0D5,x
         beq     LB127
         dex
@@ -6958,7 +6957,7 @@ LB1DA:  jsr     LB2E4
         ldx     #$28
         stx     $0368
         ldy     #$10
-LB1E8:  sty     $0369
+        sty     $0369
         lda     #$0F
         sta     CurMaxY
         lda     #$4F
@@ -13845,7 +13844,7 @@ LE5EF:  jmp     L880E                           ; E5EF 4C 0E 88                 
         sbc     ($2C),y                         ; E605 F1 2C                    .,
         sbc     ($2C,x)                         ; E607 E1 2C                    .,
         cpx     #$43                            ; E609 E0 43                    .C
-        cmp     ($3A)                           ; E60B D2 3A                    .:
+LE60B:  cmp     ($3A)                           ; E60B D2 3A                    .:
         sbc     ($3D)                           ; E60D F2 3D                    .=
         cmp     ($3A)                           ; E60F D2 3A                    .:
         sbc     ($2C)                           ; E611 F2 2C                    .,
@@ -14646,13 +14645,22 @@ LEAEA:  .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; EAEA FF FF FF FF FF FF FF FF  
         .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; EFF0 FF FF FF FF FF FF FF FF  ........
         .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; EFF8 FF FF FF FF FF FF FF FF  ........
 ; ----------------------------------------------------------------------------
-        jmp     LB021                           ; F000 4C 21 B0                 L!.
+
+;
+;Start of second machine language monitor
+;
+;$F000-F6FF contains what looks like an entire second monitor
+;that was assembled for $B000-B6FF.  It's not the same code
+;as the monitor above and the commands are different.
+;
+
+        jmp     LF021-$4000                     ; F000 4C 21 B0                 L!.
 ; ----------------------------------------------------------------------------
-        jmp     LB009                           ; F003 4C 09 B0                 L..
+        jmp     LF009-$4000                     ; F003 4C 09 B0                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LB0B2                           ; F006 4C B2 B0                 L..
+        jmp     LF0B2-$4000                     ; F006 4C B2 B0                 L..
 ; ----------------------------------------------------------------------------
-        jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
+LF009:  jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   $0d,"BREAK",$07,0
         pla                                     ; F014 68                       h
         sta     $02                             ; F015 85 02                    ..
@@ -14662,7 +14670,7 @@ LF019:  pla                                     ; F019 68                       
         dex                                     ; F01C CA                       .
         bpl     LF019                           ; F01D 10 FA                    ..
         bmi     LF046                           ; F01F 30 25                    0%
-        lda     #$00                            ; F021 A9 00                    ..
+LF021:  lda     #$00                            ; F021 A9 00                    ..
         sta     MMU_KERN_WINDOW                 ; F023 8D 00 FF                 ...
         sta     $06                             ; F026 85 06                    ..
         sta     $07                             ; F028 85 07                    ..
@@ -14682,10 +14690,12 @@ LF046:  cld                                     ; F046 D8                       
         lda     #$C0                            ; F04A A9 C0                    ..
         jsr     SetMsg                          ; F04C 20 90 FF                  ..
         cli                                     ; F04F 58                       X
+; ----------------------------------------------------------------------------
+;Registers command
+LF050:
         jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   $0D,"    PC  SR AC XR YR SP"
         .byte   $0d,"; ",$1b,"Q",0
-; ----------------------------------------------------------------------------
         lda     $02                             ; F070 A5 02                    ..
         jsr     LB8D2                           ; F072 20 D2 B8                  ..
         txa                                     ; F075 8A                       .
@@ -14707,9 +14717,7 @@ LF08B:  jsr     LB8B4                           ; F08B 20 B4 B8                 
         cpx     #$A1                            ; F099 E0 A1                    ..
         bcs     LF0BC                           ; F09B B0 1F                    ..
         cmp     #$0D                            ; F09D C9 0D                    ..
-LF0A0 := *+1
         bne     $f092
-LF0A2 := *+1
         lda     #0
         sta     $01FF,x                         ; F0A3 9D FF 01                 ...
 LF0A6:  jsr     LB8E9                           ; F0A6 20 E9 B8                  ..
@@ -14725,7 +14733,7 @@ LF0B4:  cmp     LB0E7-1,x                       ; F0B4 DD E6 B0                 
         bpl     LF0B4                           ; F0BA 10 F8                    ..
 LF0BC:  jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   $1D,"?",0
-        jmp     LB08B                           ; F0C2 4C 8B B0                 L..
+        jmp     LF08B-$4000                     ; F0C2 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
 LF0C5:  cpx     #$13                            ; F0C5 E0 13                    ..
         bcs     LF0DB                           ; F0C7 B0 12                    ..
@@ -14741,45 +14749,53 @@ LF0C5:  cpx     #$13                            ; F0C5 E0 13                    
         jmp     LB7A7                           ; F0D8 4C A7 B7                 L..
 ; ----------------------------------------------------------------------------
 LF0DB:  sta     $93                             ; F0DB 85 93                    ..
-        jmp     LB337                           ; F0DD 4C 37 B3                 L7.
+        jmp     LF337-$4000                     ; F0DD 4C 37 B3                 L7.
 ; ----------------------------------------------------------------------------
 LF0E0:  jmp     LB9B1                           ; F0E0 4C B1 B9                 L..
 ; ----------------------------------------------------------------------------
-        jmp     (L0A00)                         ; F0E3 6C 00 0A                 l..
+LF0E3:  jmp     (L0A00)                         ; F0E3 6C 00 0A                 l..
 ; ----------------------------------------------------------------------------
-        eor     ($43,x)                         ; F0E6 41 43                    AC
-        .byte   $44                             ; F0E8 44                       D
-        lsr     $47                             ; F0E9 46 47                    FG
-        pha                                     ; F0EB 48                       H
-        lsr     a                               ; F0EC 4A                       J
-        eor     $5452                           ; F0ED 4D 52 54                 MRT
-        cli                                     ; F0F0 58                       X
-        rti                                     ; F0F1 40                       @
+        .byte "A" ;Assemble                     ; F0E6  -> B0E6
+        .byte "C" ;Compare                      ; F0E7
+        .byte "D" ;Disassemble                  ; F0E8
+        .byte "F" ;Fill                         ; F0E9
+        .byte "G" ;Go                           ; F0EA
+        .byte "H" ;Hunt                         ; F0EB
+        .byte "J" ;Jump to Subroutine           ; F0EC
+        .byte "M" ;Memory                       ; F0ED
+        .byte "R" ;Registers                    ; F0EE
+        .byte "T" ;Transfer                     ; F0EF
+        .byte "X" ;Exit                         ; F0F0
+        .byte "@" ;DOS                          ; F0F1
+        .byte "." ;Alias for Assemble           ; F0F2
+        .byte ">" ;Modify Memory                ; F0F3
+        .byte ";" ;Modify Registers             ; F0F4
+        .byte "$" ;Hex value prefix             ; F0F5
+        .byte "+" ;Decimal value prefix         ; F0F6
+        .byte "&" ;Octal value prefix           ; F0F7
+        .byte "%" ;Binary value prefix          ; F0F8
+        .byte "L" ;Load                         ; F0F9
+        .byte "S" ;Save                         ; F0FA
+        .byte "V" ;Verify                       ; F0FB
 ; ----------------------------------------------------------------------------
-        rol     $3B3E                           ; F0F2 2E 3E 3B                 .>;
-        bit     $2B                             ; F0F5 24 2B                    $+
-        rol     $25                             ; F0F7 26 25                    &%
-        jmp     L5653                           ; F0F9 4C 53 56                 LSV
+        .word LF406-$4000-1 ;Assemble
+        .word LF231-$4000-1 ;Compare
+        .word LF599-$4000-1 ;Disassemble
+        .word LF3DB-$4000-1 ;Fill
+        .word LF1D6-$4000-1 ;Go
+        .word LF2CE-$4000-1 ;Hunt
+        .word LF1DF-$4000-1 ;Jump to Subroutine
+        .word LF152-$4000-1 ;Memory
+        .word LF050-$4000-1 ;Registers
+        .word LF234-$4000-1 ;Transfer
+        .word LF0E3-$4000-1 ;Exit
+        .word $ba90-1       ;DOS (would be $FA90)
+        .word LF406-$4000-1 ;Alias for Assemble
+        .word LF1AB-$4000-1 ;Modify Memory
+        .word LF194-$4000-1 ;Modify Registers
 ; ----------------------------------------------------------------------------
-        ora     $B4                             ; F0FC 05 B4                    ..
-        bmi     LF0B2                           ; F0FE 30 B2                    0.
-        tya                                     ; F100 98                       .
-        lda     $DA,x                           ; F101 B5 DA                    ..
-        .byte   $B3                             ; F103 B3                       .
-        cmp     $B1,x                           ; F104 D5 B1                    ..
-        cmp     LDEB2                           ; F106 CD B2 DE                 ...
-        lda     ($51),y                         ; F109 B1 51                    .Q
-        lda     ($4F),y                         ; F10B B1 4F                    .O
-        bcs     LF142                           ; F10D B0 33                    .3
-        lda     ($E2)                           ; F10F B2 E2                    ..
-        bcs     LF0A2                           ; F111 B0 8F                    ..
-        tsx                                     ; F113 BA                       .
-        ora     $B4                             ; F114 05 B4                    ..
-        tax                                     ; F116 AA                       .
-        lda     ($93),y                         ; F117 B1 93                    ..
-        lda     ($8E),y                         ; F119 B1 8E                    ..
-        lda     ($0A)                           ; F11B B2 0A                    ..
-        ldx     $68                             ; F11D A6 68                    .h
+LF11A:  stx     $0AB2
+        ldx     $68
         lda     #$66                            ; F11F A9 66                    .f
         sei                                     ; F121 78                       x
         jsr     LFF74                           ; F122 20 74 FF                  t.
@@ -14787,7 +14803,7 @@ LF0E0:  jmp     LB9B1                           ; F0E0 4C B1 B9                 
         ldx     $0AB2                           ; F126 AE B2 0A                 ...
         rts                                     ; F129 60                       `
 ; ----------------------------------------------------------------------------
-        stx     $0AB2                           ; F12A 8E B2 0A                 ...
+LF12A:  stx     $0AB2                           ; F12A 8E B2 0A                 ...
         ldx     #$66                            ; F12D A2 66                    .f
         stx     $02B9                           ; F12F 8E B9 02                 ...
         ldx     $68                             ; F132 A6 68                    .h
@@ -14809,7 +14825,8 @@ LF142:  stx     $02C8                           ; F142 8E C8 02                 
         plp                                     ; F150 28                       (
         rts                                     ; F151 60                       `
 ; ----------------------------------------------------------------------------
-        bcs     LF15C                           ; F152 B0 08                    ..
+;Memory command
+LF152:  bcs     LF15C                           ; F152 B0 08                    ..
         jsr     LB901                           ; F154 20 01 B9                  ..
         jsr     LB7A7                           ; F157 20 A7 B7                  ..
         bcc     LF162                           ; F15A 90 06                    ..
@@ -14829,7 +14846,7 @@ LF16E:  lsr     $62                             ; F16E 46 62                    
         bne     LF16E                           ; F175 D0 F7                    ..
 LF177:  jsr     LFFE1                           ; F177 20 E1 FF                  ..
         beq     LF18E                           ; F17A F0 12                    ..
-        jsr     LB1E8                           ; F17C 20 E8 B1                  ..
+        jsr     LF1E8-$4000                     ; F17C 20 E8 B1                  ..
         lda     #$08                            ; F17F A9 08                    ..
         bit     $D7                             ; F181 24 D7                    $.
         bpl     LF186                           ; F183 10 01                    ..
@@ -14837,11 +14854,12 @@ LF177:  jsr     LFFE1                           ; F177 20 E1 FF                 
 LF186:  jsr     LB952                           ; F186 20 52 B9                  R.
         jsr     LB922                           ; F189 20 22 B9                  ".
         bcs     LF177                           ; F18C B0 E9                    ..
-LF18E:  jmp     LB08B                           ; F18E 4C 8B B0                 L..
+LF18E:  jmp     LF08B-$4000                     ; F18E 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-LF191:  jmp     LB0BC                           ; F191 4C BC B0                 L..
+LF191:  jmp     LF0BC-$4000                     ; F191 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
-        jsr     LB974                           ; F194 20 74 B9                  t.
+;Modify registers command
+LF194:  jsr     LB974                           ; F194 20 74 B9                  t.
         ldy     #$00                            ; F197 A0 00                    ..
 LF199:  jsr     LB7A7                           ; F199 20 A7 B7                  ..
         bcs     LF1A8                           ; F19C B0 0A                    ..
@@ -14850,15 +14868,16 @@ LF199:  jsr     LB7A7                           ; F199 20 A7 B7                 
         iny                                     ; F1A3 C8                       .
         cpy     #$05                            ; F1A4 C0 05                    ..
         bcc     LF199                           ; F1A6 90 F1                    ..
-LF1A8:  jmp     LB08B                           ; F1A8 4C 8B B0                 L..
+LF1A8:  jmp     LF08B-$4000                     ; F1A8 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-        bcs     LF1C9                           ; F1AB B0 1C                    ..
+;Modify memory command
+LF1AB:  bcs     LF1C9                           ; F1AB B0 1C                    ..
         jsr     LB901                           ; F1AD 20 01 B9                  ..
         ldy     #$00                            ; F1B0 A0 00                    ..
 LF1B2:  jsr     LB7A7                           ; F1B2 20 A7 B7                  ..
         bcs     LF1C9                           ; F1B5 B0 12                    ..
         lda     $60                             ; F1B7 A5 60                    .`
-        jsr     ESC_A_AUTOINSERT_ON             ; F1B9 20 2A B1                  *.
+        jsr     LF12A-$4000                     ; F1B9 20 2A B1                  *.
         iny                                     ; F1BC C8                       .
         bit     $D7                             ; F1BD 24 D7                    $.
         bpl     LF1C5                           ; F1BF 10 04                    ..
@@ -14868,26 +14887,28 @@ LF1C5:  cpy     #$08                            ; F1C5 C0 08                    
         bcc     LF1B2                           ; F1C7 90 E9                    ..
 LF1C9:  jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   $1B,"O",$91,0
-        jsr     LB1E8                           ; F1D0 20 E8 B1                  ..
-        jmp     LB08B                           ; F1D3 4C 8B B0                 L..
+        jsr     LF1E8-$4000                     ; F1D0 20 E8 B1                  ..
+        jmp     LF08B-$4000                     ; F1D3 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-        jsr     LB974                           ; F1D6 20 74 B9                  t.
+;Go command
+LF1D6:  jsr     LB974                           ; F1D6 20 74 B9                  t.
         ldx     $09                             ; F1D9 A6 09                    ..
         txs                                     ; F1DB 9A                       .
         jmp     LFF71                           ; F1DC 4C 71 FF                 Lq.
 ; ----------------------------------------------------------------------------
-        jsr     LB974                           ; F1DF 20 74 B9                  t.
+;Jump to subroutine command
+LF1DF:  jsr     LB974                           ; F1DF 20 74 B9                  t.
         jsr     LFF6E                           ; F1E2 20 6E FF                  n.
-        jmp     LB08B                           ; F1E5 4C 8B B0                 L..
+        jmp     LF08B-$4000                     ; F1E5 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-        jsr     LB8B4                           ; F1E8 20 B4 B8                  ..
+LF1E8:  jsr     LB8B4                           ; F1E8 20 B4 B8                  ..
         lda     #$3E                            ; F1EB A9 3E                    .>
         jsr     LFFD2                           ; F1ED 20 D2 FF                  ..
         jsr     LB892                           ; F1F0 20 92 B8                  ..
         ldy     #$00                            ; F1F3 A0 00                    ..
         beq     LF1FA                           ; F1F5 F0 03                    ..
 LF1F7:  jsr     LB8A8                           ; F1F7 20 A8 B8                  ..
-LF1FA:  jsr     LB11A                           ; F1FA 20 1A B1                  ..
+LF1FA:  jsr     LF11A-$4000                     ; F1FA 20 1A B1                  ..
         jsr     LB8C2                           ; F1FD 20 C2 B8                  ..
         iny                                     ; F200 C8                       .
         cpy     #$08                            ; F201 C0 08                    ..
@@ -14898,7 +14919,7 @@ LF209:  bcc     LF1F7                           ; F209 90 EC                    
         jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   ":",$12,0
         ldy     #$00                            ; F211 A0 00                    ..
-LF213:  jsr     LB11A                           ; F213 20 1A B1                  ..
+LF213:  jsr     LF11A-$4000                     ; F213 20 1A B1                  ..
         pha                                     ; F216 48                       H
         and     #$7F                            ; F217 29 7F                    ).
         cmp     #$20                            ; F219 C9 20                    .
@@ -14915,8 +14936,13 @@ LF22C:  cpy     #$08                            ; F22C C0 08                    
         bcc     LF213                           ; F22E 90 E3                    ..
         rts                                     ; F230 60                       `
 ; ----------------------------------------------------------------------------
-        lda     #$00                            ; F231 A9 00                    ..
-        bit     L80A9                           ; F233 2C A9 80                 ,..
+;Compare command
+LF231:  lda     #$00                            ; F231 A9 00                    ..
+        .byte $2c
+        ;Fall through
+; ----------------------------------------------------------------------------
+;Transfer command
+LF234:  lda     #$80
         sta     $93                             ; F236 85 93                    ..
         lda     #$00                            ; F238 A9 00                    ..
         sta     $0AB3                           ; F23A 8D B3 0A                 ...
@@ -14924,7 +14950,7 @@ LF22C:  cpy     #$08                            ; F22C C0 08                    
         bcs     LF247                           ; F240 B0 05                    ..
         jsr     LB7A7                           ; F242 20 A7 B7                  ..
         bcc     LF24A                           ; F245 90 03                    ..
-LF247:  jmp     LB0BC                           ; F247 4C BC B0                 L..
+LF247:  jmp     LF0BC-$4000                     ; F247 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
 LF24A:  bit     $93                             ; F24A 24 93                    $.
         bpl     LF27A                           ; F24C 10 2C                    .,
@@ -14954,11 +14980,14 @@ LF27A:  jsr     LB8B4                           ; F27A 20 B4 B8                 
         ldy     #$00                            ; F27D A0 00                    ..
 LF27F:  jsr     LFFE1                           ; F27F 20 E1 FF                  ..
         beq     LF2CB                           ; F282 F0 47                    .G
-        jsr     LB11A                           ; F284 20 1A B1                  ..
+        jsr     LF11A-$4000                     ; F284 20 1A B1                  ..
         ldx     #$60                            ; F287 A2 60                    .`
         stx     $02B9                           ; F289 8E B9 02                 ...
         stx     $02C8                           ; F28C 8E C8 02                 ...
-        ldx     $62                             ; F28F A6 62                    .b
+        ;Fall through
+; ----------------------------------------------------------------------------
+;Unknown command
+LF28F:  ldx     $62                             ; F28F A6 62                    .b
         sei                                     ; F291 78                       x
         bit     $93                             ; F292 24 93                    $.
         bpl     LF299                           ; F294 10 03                    ..
@@ -14976,7 +15005,7 @@ LF2AA:  bit     $0AB3                           ; F2AA 2C B3 0A                 
         bne     LF2C3                           ; F2B1 D0 10                    ..
         inc     $61                             ; F2B3 E6 61                    .a
         bne     LF2C3                           ; F2B5 D0 0C                    ..
-        jmp     LB0BC                           ; F2B7 4C BC B0                 L..
+        jmp     LF0BC-$4000                     ; F2B7 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
 LF2BA:  jsr     LB922                           ; F2BA 20 22 B9                  ".
         jsr     LB960                           ; F2BD 20 60 B9                  `.
@@ -14985,9 +15014,10 @@ LF2BA:  jsr     LB922                           ; F2BA 20 22 B9                 
 LF2C3:  jsr     LB950                           ; F2C3 20 50 B9                  P.
         jsr     LB93C                           ; F2C6 20 3C B9                  <.
         bcs     LF27F                           ; F2C9 B0 B4                    ..
-LF2CB:  jmp     LB08B                           ; F2CB 4C 8B B0                 L..
+LF2CB:  jmp     LF08B-$4000                     ; F2CB 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-        jsr     LB983                           ; F2CE 20 83 B9                  ..
+;Hunt command
+LF2CE:  jsr     LB983                           ; F2CE 20 83 B9                  ..
         bcs     LF334                           ; F2D1 B0 61                    .a
         ldy     #$00                            ; F2D3 A0 00                    ..
         jsr     LB8E9                           ; F2D5 20 E9 B8                  ..
@@ -15015,7 +15045,7 @@ LF2F8:  lda     $60                             ; F2F8 A5 60                    
 LF307:  sty     $93                             ; F307 84 93                    ..
         jsr     LB8B4                           ; F309 20 B4 B8                  ..
 LF30C:  ldy     #$00                            ; F30C A0 00                    ..
-LF30E:  jsr     LB11A                           ; F30E 20 1A B1                  ..
+LF30E:  jsr     LF11A-$4000                     ; F30E 20 1A B1                  ..
         cmp     $0A80,y                         ; F311 D9 80 0A                 ...
         bne     LF324                           ; F314 D0 0E                    ..
         iny                                     ; F316 C8                       .
@@ -15029,12 +15059,12 @@ LF324:  jsr     LFFE1                           ; F324 20 E1 FF                 
         jsr     LB950                           ; F329 20 50 B9                  P.
         jsr     LB93C                           ; F32C 20 3C B9                  <.
         bcs     LF30C                           ; F32F B0 DB                    ..
-LF331:  jmp     LB08B                           ; F331 4C 8B B0                 L..
+LF331:  jmp     LF08B-$4000                     ; F331 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-LF334:  jmp     LB0BC                           ; F334 4C BC B0                 L..
+LF334:  jmp     LF0BC-$4000                     ; F334 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
-        ldy     #$01                            ; F337 A0 01                    ..
-        sty     SATUS                             ; F339 84 BA                    ..
+LF337:  ldy     #$01                            ; F337 A0 01                    ..
+        sty     SATUS                           ; F339 84 BA                    ..
         sty     SAH                             ; F33B 84 B9                    ..
         dey                                     ; F33D 88                       .
         sty     LA                              ; F33E 84 C6                    ..
@@ -15047,22 +15077,22 @@ LF334:  jmp     LB0BC                           ; F334 4C BC B0                 
         sta     $BB                             ; F34C 85 BB                    ..
 LF34E:  jsr     LB8E9                           ; F34E 20 E9 B8                  ..
         beq     LF3AB                           ; F351 F0 58                    .X
-        cmp     #$20                            ; F353 C9 20                    .
+        cmp     #' '                            ; F353 C9 20                    .
         beq     LF34E                           ; F355 F0 F7                    ..
-        cmp     #$22                            ; F357 C9 22                    ."
+        cmp     #'"'                            ; F357 C9 22                    ."
         bne     LF370                           ; F359 D0 15                    ..
         ldx     $7A                             ; F35B A6 7A                    .z
 LF35D:  lda     $0200,x                         ; F35D BD 00 02                 ...
         beq     LF3AB                           ; F360 F0 49                    .I
         inx                                     ; F362 E8                       .
-        cmp     #$22                            ; F363 C9 22                    ."
+        cmp     #'"'                            ; F363 C9 22                    ."
         beq     LF373                           ; F365 F0 0C                    ..
         sta     ($BB),y                         ; F367 91 BB                    ..
         inc     STAH                            ; F369 E6 B7                    ..
         iny                                     ; F36B C8                       .
         cpy     #$11                            ; F36C C0 11                    ..
         bcc     LF35D                           ; F36E 90 ED                    ..
-LF370:  jmp     LB0BC                           ; F370 4C BC B0                 L..
+LF370:  jmp     LF0BC-$4000                     ; F370 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
 LF373:  stx     $7A                             ; F373 86 7A                    .z
         jsr     LB8E9                           ; F375 20 E9 B8                  ..
@@ -15074,7 +15104,7 @@ LF373:  stx     $7A                             ; F373 86 7A                    
         jsr     LB7A7                           ; F383 20 A7 B7                  ..
         bcs     LF3AB                           ; F386 B0 23                    .#
         jsr     LB901                           ; F388 20 01 B9                  ..
-        sta     LA                       ; F38B 85 C6                    ..
+        sta     LA                              ; F38B 85 C6                    ..
         jsr     LB7A7                           ; F38D 20 A7 B7                  ..
         bcs     LF3D1                           ; F390 B0 3F                    .?
         jsr     LB8B4                           ; F392 20 B4 B8                  ..
@@ -15087,12 +15117,12 @@ LF373:  stx     $7A                             ; F373 86 7A                    
         sta     SAH                             ; F3A1 85 B9                    ..
         lda     #$66                            ; F3A3 A9 66                    .f
         jsr     SAVE                            ; F3A5 20 D8 FF                  ..
-LF3A8:  jmp     LB08B                           ; F3A8 4C 8B B0                 L..
+LF3A8:  jmp     LF08B-$4000                           ; F3A8 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
 LF3AB:  lda     $93                             ; F3AB A5 93                    ..
-        cmp     #$56                            ; F3AD C9 56                    .V
+        cmp     #'V'                            ; F3AD C9 56                    .V
         beq     LF3B7                           ; F3AF F0 06                    ..
-        cmp     #$4C                            ; F3B1 C9 4C                    .L
+        cmp     #'L'                            ; F3B1 C9 4C                    .L
         bne     LF370                           ; F3B3 D0 BB                    ..
         lda     #$00                            ; F3B5 A9 00                    ..
 LF3B7:  jsr     LOAD                            ; F3B7 20 D5 FF                  ..
@@ -15103,14 +15133,15 @@ LF3B7:  jsr     LOAD                            ; F3B7 20 D5 FF                 
         beq     LF370                           ; F3C2 F0 AC                    ..
         jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   " ERROR",0
-        jmp     LB08B                           ; F3CE 4C 8B B0                 L..
+        jmp     LF08B-$4000                           ; F3CE 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
 LF3D1:  ldx     $66                             ; F3D1 A6 66                    .f
         ldy     $67                             ; F3D3 A4 67                    .g
         lda     #$00                            ; F3D5 A9 00                    ..
         sta     SAH                             ; F3D7 85 B9                    ..
         beq     LF3AB                           ; F3D9 F0 D0                    ..
-        jsr     LB983                           ; F3DB 20 83 B9                  ..
+;Fill command
+LF3DB:  jsr     LB983                           ; F3DB 20 83 B9                  ..
         bcs     LF403                           ; F3DE B0 23                    .#
         lda     $68                             ; F3E0 A5 68                    .h
         cmp     $0AB9                           ; F3E2 CD B9 0A                 ...
@@ -15125,11 +15156,12 @@ LF3EE:  lda     $60                             ; F3EE A5 60                    
         jsr     LB950                           ; F3F8 20 50 B9                  P.
         jsr     LB93C                           ; F3FB 20 3C B9                  <.
         bcs     LF3EE                           ; F3FE B0 EE                    ..
-LF400:  jmp     LB08B                           ; F400 4C 8B B0                 L..
+LF400:  jmp     LF08B-$4000                     ; F400 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-LF403:  jmp     LB0BC                           ; F403 4C BC B0                 L..
+LF403:  jmp     LF0BC-$4000                     ; F403 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
-        bcs     LF442                           ; F406 B0 3A                    .:
+;Assemble command
+LF406:  bcs     LF442                           ; F406 B0 3A                    .:
         jsr     LB901                           ; F408 20 01 B9                  ..
 LF40B:  ldx     #$00                            ; F40B A2 00                    ..
         stx     $0AA1                           ; F40D 8E A1 0A                 ...
@@ -15138,7 +15170,7 @@ LF413:  jsr     LB8E9                           ; F413 20 E9 B8                 
         bne     LF41F                           ; F416 D0 07                    ..
         cpx     #$00                            ; F418 E0 00                    ..
         bne     LF41F                           ; F41A D0 03                    ..
-        jmp     LB08B                           ; F41C 4C 8B B0                 L..
+        jmp     LF08B-$4000                           ; F41C 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
 LF41F:  cmp     #$20                            ; F41F C9 20                    .
         beq     LF40B                           ; F421 F0 E8                    ..
@@ -15158,7 +15190,7 @@ LF436:  lsr     a                               ; F436 4A                       
         dey                                     ; F43D 88                       .
         bne     LF436                           ; F43E D0 F6                    ..
         beq     LF42B                           ; F440 F0 E9                    ..
-LF442:  jmp     LB0BC                           ; F442 4C BC B0                 L..
+LF442:  jmp     LF0BC-$4000                     ; F442 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
 LF445:  ldx     #$02                            ; F445 A2 02                    ..
 LF447:  lda     $0AB4                           ; F447 AD B4 0A                 ...
@@ -15199,19 +15231,17 @@ LF47C:  jsr     LB8E9                           ; F47C 20 E9 B8                 
 LF48F:  stx     $63                             ; F48F 86 63                    .c
         ldx     #$00                            ; F491 A2 00                    ..
         stx     $0AB1                           ; F493 8E B1 0A                 ...
-        ldx     #$00                            ; F496 A2 00                    ..
+LF496:  ldx     #$00                            ; F496 A2 00                    ..
         stx     $9F                             ; F498 86 9F                    ..
         lda     $0AB1                           ; F49A AD B1 0A                 ...
-        .byte   $20                             ; F49D 20
-LF49E:  eor     LAEB6,y                         ; F49E 59 B6 AE                 Y..
-        tax                                     ; F4A1 AA                       .
-        asl     a                               ; F4A2 0A                       .
+        jsr     LF659-$4000
+        ldx     $0aaa
         stx     $64                             ; F4A3 86 64                    .d
         tax                                     ; F4A5 AA                       .
         lda     LB761,x                         ; F4A6 BD 61 B7                 .a.
-        jsr     LB57F                           ; F4A9 20 7F B5                  ..
+        jsr     LF57F-$4000                     ; F4A9 20 7F B5                  ..
         lda     LB721,x                         ; F4AC BD 21 B7                 .!.
-        jsr     LB57F                           ; F4AF 20 7F B5                  ..
+        jsr     LF57F-$4000                     ; F4AF 20 7F B5                  ..
         ldx     #$06                            ; F4B2 A2 06                    ..
 LF4B4:  cpx     #$03                            ; F4B4 E0 03                    ..
         bne     LF4CC                           ; F4B6 D0 14                    ..
@@ -15221,25 +15251,25 @@ LF4BD:  lda     $0AAA                           ; F4BD AD AA 0A                 
         cmp     #$E8                            ; F4C0 C9 E8                    ..
         lda     #$30                            ; F4C2 A9 30                    .0
         bcs     LF4E4                           ; F4C4 B0 1E                    ..
-        jsr     LB57C                           ; F4C6 20 7C B5                  |.
+        jsr     LF57C-$4000                     ; F4C6 20 7C B5                  |.
         dey                                     ; F4C9 88                       .
         bne     LF4BD                           ; F4CA D0 F1                    ..
 LF4CC:  asl     $0AAA                           ; F4CC 0E AA 0A                 ...
         bcc     LF4DF                           ; F4CF 90 0E                    ..
         lda     LB714,x                         ; F4D1 BD 14 B7                 ...
-        jsr     LB57F                           ; F4D4 20 7F B5                  ..
+        jsr     LF57F-$4000                     ; F4D4 20 7F B5                  ..
         lda     LB71A,x                         ; F4D7 BD 1A B7                 ...
         beq     LF4DF                           ; F4DA F0 03                    ..
-        jsr     LB57F                           ; F4DC 20 7F B5                  ..
+        jsr     LF57F-$4000                     ; F4DC 20 7F B5                  ..
 LF4DF:  dex                                     ; F4DF CA                       .
         bne     LF4B4                           ; F4E0 D0 D2                    ..
         beq     LF4EA                           ; F4E2 F0 06                    ..
-LF4E4:  jsr     LB57C                           ; F4E4 20 7C B5                  |.
-        jsr     LB57C                           ; F4E7 20 7C B5                  |.
+LF4E4:  jsr     LF57C-$4000                     ; F4E4 20 7C B5                  |.
+        jsr     LF57C-$4000                     ; F4E7 20 7C B5                  |.
 LF4EA:  lda     $63                             ; F4EA A5 63                    .c
         cmp     $9F                             ; F4EC C5 9F                    ..
         beq     LF4F3                           ; F4EE F0 03                    ..
-        jmp     LB58B                           ; F4F0 4C 8B B5                 L..
+        jmp     LF58B-$4000                     ; F4F0 4C 8B B5                 L..
 ; ----------------------------------------------------------------------------
 LF4F3:  ldy     $0AAB                           ; F4F3 AC AB 0A                 ...
         beq     LF52A                           ; F4F6 F0 32                    .2
@@ -15267,15 +15297,15 @@ LF519:  dex                                     ; F519 CA                       
         ldy     $0AAB                           ; F51C AC AB 0A                 ...
         bne     LF524                           ; F51F D0 03                    ..
 LF521:  lda     $5F,y                           ; F521 B9 5F 00                 ._.
-LF524:  jsr     ESC_A_AUTOINSERT_ON             ; F524 20 2A B1                  *.
+LF524:  jsr     LF12A-$4000                     ; F524 20 2A B1                  *.
         dey                                     ; F527 88                       .
         bne     LF521                           ; F528 D0 F7                    ..
 LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 ...
-        jsr     ESC_A_AUTOINSERT_ON             ; F52D 20 2A B1                  *.
+        jsr     LF12A-$4000                     ; F52D 20 2A B1                  *.
         jsr     LB8AD                           ; F530 20 AD B8                  ..
         jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   "A ",$1b,"Q",0
-        jsr     LB5DC
+        jsr     LF5DC-$4000
         inc     $0AAB
         lda     $0AAB
         jsr     LB952
@@ -15297,26 +15327,27 @@ LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 
         stx     $0350
         lda     #$08
         sta     $D0
-        jmp     LB08B
+        jmp     LF08B-$4000
 ; ----------------------------------------------------------------------------
-LF579:  jmp     LB0BC
+LF579:  jmp     LF0BC-$4000
 ; ----------------------------------------------------------------------------
-        jsr     LB57F                           ; F57C 20 7F B5                  ..
-        stx     $0AAF                           ; F57F 8E AF 0A                 ...
+LF57C:  jsr     LF57F-$4000                     ; F57C 20 7F B5                  ..
+LF57F:  stx     $0AAF                           ; F57F 8E AF 0A                 ...
         ldx     $9F                             ; F582 A6 9F                    ..
         cmp     $0AA0,x                         ; F584 DD A0 0A                 ...
         beq     LF593                           ; F587 F0 0A                    ..
         pla                                     ; F589 68                       h
         pla                                     ; F58A 68                       h
-        inc     $0AB1                           ; F58B EE B1 0A                 ...
+LF58B:  inc     $0AB1                           ; F58B EE B1 0A                 ...
         beq     LF579                           ; F58E F0 E9                    ..
-        jmp     LB496                           ; F590 4C 96 B4                 L..
+        jmp     LF496-$4000                     ; F590 4C 96 B4                 L..
 ; ----------------------------------------------------------------------------
 LF593:  inc     $9F                             ; F593 E6 9F                    ..
         ldx     $0AAF                           ; F595 AE AF 0A                 ...
         rts                                     ; F598 60                       `
 ; ----------------------------------------------------------------------------
-        bcs     LF5A3                           ; F599 B0 08                    ..
+;Disassemble command
+LF599:  bcs     LF5A3                           ; F599 B0 08                    ..
         jsr     LB901                           ; F59B 20 01 B9                  ..
         jsr     LB7A7                           ; F59E 20 A7 B7                  ..
         bcc     LF5A9                           ; F5A1 90 06                    ..
@@ -15330,26 +15361,25 @@ LF5AE:  jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
 ; ----------------------------------------------------------------------------
         jsr     LFFE1                           ; F5B5 20 E1 FF                  ..
         beq     LF5CE                           ; F5B8 F0 14                    ..
-        jsr     LB5D4                           ; F5BA 20 D4 B5                  ..
+        jsr     LF5D4-$4000                     ; F5BA 20 D4 B5                  ..
         inc     $0AAB                           ; F5BD EE AB 0A                 ...
         lda     $0AAB                           ; F5C0 AD AB 0A                 ...
         jsr     LB952                           ; F5C3 20 52 B9                  R.
         lda     $0AAB                           ; F5C6 AD AB 0A                 ...
         jsr     LB924                           ; F5C9 20 24 B9                  $.
         bcs     LF5AE                           ; F5CC B0 E0                    ..
-LF5CE:  jmp     LB08B                           ; F5CE 4C 8B B0                 L..
+LF5CE:  jmp     LF08B-$4000                     ; F5CE 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-LF5D1:  jmp     LB0BC                           ; F5D1 4C BC B0                 L..
+LF5D1:  jmp     LF0BC-$4000                     ; F5D1 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
-        lda     #$2E                            ; F5D4 A9 2E                    ..
+LF5D4:  lda     #$2E                            ; F5D4 A9 2E                    ..
         jsr     LFFD2                           ; F5D6 20 D2 FF                  ..
         jsr     LB8A8                           ; F5D9 20 A8 B8                  ..
-        .byte   $20                             ; F5DC 20
-SAVE__: sta     (SAL)                           ; F5DD 92 B8                    ..
+LF5DC:  jsr     LB892
         jsr     LB8A8                           ; F5DF 20 A8 B8                  ..
         ldy     #$00                            ; F5E2 A0 00                    ..
-        jsr     LB11A                           ; F5E4 20 1A B1                  ..
-        jsr     LB659                           ; F5E7 20 59 B6                  Y.
+        jsr     LF11A-$4000                     ; F5E4 20 1A B1                  ..
+        jsr     LF659-$4000                     ; F5E7 20 59 B6                  Y.
         pha                                     ; F5EA 48                       H
         ldx     $0AAB                           ; F5EB AE AB 0A                 ...
         inx                                     ; F5EE E8                       .
@@ -15357,11 +15387,11 @@ LF5EF:  dex                                     ; F5EF CA                       
         bpl     LF5FC                           ; F5F0 10 0A                    ..
         jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   "   ",0
-        jmp     LB602                           ; F5F9 4C 02 B6                 L..
+        jmp     LF602-$4000                     ; F5F9 4C 02 B6                 L..
 ; ----------------------------------------------------------------------------
-LF5FC:  jsr     LB11A                           ; F5FC 20 1A B1                  ..
+LF5FC:  jsr     LF11A-$4000                     ; F5FC 20 1A B1                  ..
         jsr     LB8A5                           ; F5FF 20 A5 B8                  ..
-        iny                                     ; F602 C8                       .
+LF602:  iny                                     ; F602 C8                       .
         cpy     #$03                            ; F603 C0 03                    ..
         bcc     LF5EF                           ; F605 90 E8                    ..
         pla                                     ; F607 68                       h
@@ -15375,7 +15405,7 @@ LF60F:  cpx     #$03                            ; F60F E0 03                    
 LF618:  lda     $0AAA                           ; F618 AD AA 0A                 ...
         cmp     #$E8                            ; F61B C9 E8                    ..
         php                                     ; F61D 08                       .
-        jsr     LB11A                           ; F61E 20 1A B1                  ..
+        jsr     LF11A-$4000                     ; F61E 20 1A B1                  ..
         plp                                     ; F621 28                       (
         bcs     LF641                           ; F622 B0 1D                    ..
         jsr     LB8C2                           ; F624 20 C2 B8                  ..
@@ -15392,14 +15422,14 @@ LF63D:  dex                                     ; F63D CA                       
         bne     LF60F                           ; F63E D0 CF                    ..
         rts                                     ; F640 60                       `
 ; ----------------------------------------------------------------------------
-LF641:  jsr     LB64D                           ; F641 20 4D B6                  M.
+LF641:  jsr     LF64D-$4000                     ; F641 20 4D B6                  M.
         clc                                     ; F644 18                       .
         adc     #$01                            ; F645 69 01                    i.
         bne     LF64A                           ; F647 D0 01                    ..
         inx                                     ; F649 E8                       .
 LF64A:  jmp     LB89F                           ; F64A 4C 9F B8                 L..
 ; ----------------------------------------------------------------------------
-        ldx     $67                             ; F64D A6 67                    .g
+LF64D:  ldx     $67                             ; F64D A6 67                    .g
         tay                                     ; F64F A8                       .
         bpl     LF653                           ; F650 10 01                    ..
         dex                                     ; F652 CA                       .
@@ -15408,7 +15438,7 @@ LF653:  adc     $66                             ; F653 65 66                    
         inx                                     ; F657 E8                       .
 LF658:  rts                                     ; F658 60                       `
 ; ----------------------------------------------------------------------------
-        tay                                     ; F659 A8                       .
+LF659:  tay                                     ; F659 A8                       .
         lsr     a                               ; F65A 4A                       J
         bcc     LF668                           ; F65B 90 0B                    ..
         lsr     a                               ; F65D 4A                       J
@@ -15419,7 +15449,7 @@ LF658:  rts                                     ; F658 60                       
         ora     #$80                            ; F666 09 80                    ..
 LF668:  lsr     a                               ; F668 4A                       J
         tax                                     ; F669 AA                       .
-        lda     LB6C3,x                         ; F66A BD C3 B6                 ...
+        lda     LF6C3-$4000,x                   ; F66A BD C3 B6                 ...
         bcs     LF673                           ; F66D B0 04                    ..
         lsr     a                               ; F66F 4A                       J
         lsr     a                               ; F670 4A                       J
@@ -15472,55 +15502,19 @@ LF6B0:  asl     $64                             ; F6B0 06 64                    
         bne     LF6AC                           ; F6BE D0 EC                    ..
         jmp     LB8A8                           ; F6C0 4C A8 B8                 L..
 ; ----------------------------------------------------------------------------
-        rti                                     ; F6C3 40                       @
+LF6C3:  .byte $40, $02, $45, $03, $d0, $08, $40, $09
+        .byte $30, $22, $45, $33, $d0, $08, $40, $09
+        .byte $40, $02, $45, $33, $d0, $08, $40, $09
+        .byte $40, $02, $45, $b3, $d0, $08, $40, $09
+        .byte $00, $22, $44, $33, $d0, $8c, $44, $00
+        .byte $11, $22, $44, $33, $d0, $8c, $44, $9a
+        .byte $10, $22, $44, $33, $d0, $08, $40, $09
+        .byte $10, $22, $44, $33, $d0
 ; ----------------------------------------------------------------------------
-        .byte   $02                             ; F6C4 02                       .
-        eor     $03                             ; F6C5 45 03                    E.
-        bne     LF6D1                           ; F6C7 D0 08                    ..
-        rti                                     ; F6C9 40                       @
-; ----------------------------------------------------------------------------
-        ora     #$30                            ; F6CA 09 30                    .0
-        .byte   $22                             ; F6CC 22                       "
-        eor     $33                             ; F6CD 45 33                    E3
-        bne     LF6D9                           ; F6CF D0 08                    ..
-LF6D1:  rti                                     ; F6D1 40                       @
-; ----------------------------------------------------------------------------
-        ora     #$40                            ; F6D2 09 40                    .@
-        .byte   $02                             ; F6D4 02                       .
-        eor     $33                             ; F6D5 45 33                    E3
-        bne     LF6E1                           ; F6D7 D0 08                    ..
-LF6D9:  rti                                     ; F6D9 40                       @
-; ----------------------------------------------------------------------------
-        ora     #$40                            ; F6DA 09 40                    .@
-        .byte   $02                             ; F6DC 02                       .
-        eor     EAH                             ; F6DD 45 B3                    E.
-        bne     LF6E9                           ; F6DF D0 08                    ..
-LF6E1:  rti                                     ; F6E1 40                       @
-; ----------------------------------------------------------------------------
-        ora     #$00                            ; F6E2 09 00                    ..
-        .byte   $22                             ; F6E4 22                       "
-        .byte   $44                             ; F6E5 44                       D
-        .byte   $33                             ; F6E6 33                       3
-        bne     LF675                           ; F6E7 D0 8C                    ..
-LF6E9:  .byte   $44                             ; F6E9 44                       D
-        brk                                     ; F6EA 00                       .
-        ora     ($22),y                         ; F6EB 11 22                    ."
-        .byte   $44                             ; F6ED 44                       D
-        .byte   $33                             ; F6EE 33                       3
-        bne     LF67D                           ; F6EF D0 8C                    ..
-        .byte   $44                             ; F6F1 44                       D
-        txs                                     ; F6F2 9A                       .
-        bpl     LF717                           ; F6F3 10 22                    ."
-        .byte   $44                             ; F6F5 44                       D
-        .byte   $33                             ; F6F6 33                       3
-        bne     LF701                           ; F6F7 D0 08                    ..
-        rti                                     ; F6F9 40                       @
-; ----------------------------------------------------------------------------
-        ora     #$10                            ; F6FA 09 10                    ..
-        .byte   $22                             ; F6FC 22                       "
-        .byte   $44                             ; F6FD 44                       D
-        .byte   $33                             ; F6FE 33                       3
-        .byte   $D0                             ; F6FF D0                       .
+
+;
+;End of second machine language monitor
+;
 
 CharacterSet:
 ; This is the character set. It contains 6 bytes for each characters, and the
