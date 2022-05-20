@@ -116,6 +116,15 @@ The commands use the same syntax as the TED-series and C128 monitors.  The "A" (
 
 A new command, "W" (Walk), has been added.  It single steps from the current PC.  This command is not found in the TED-series or C128 monitors.
 
+The monitor commands have been extended to support the MMU.  The MMU mode is shown in the `MODE` column of the status display:
+
+```text
+   PC  SR AC XR YR SP MODE OPCODE   MNEMONIC
+; 0000 00 00 00 00 FF  02  00       BRK
+```
+
+The `MODE` may be one of three values: 0 (`MMU_MODE_RAM`), 1 (`MMU_MODE_APPL`), or 2 (`MMU_MODE_KERN`).  The mode can be changed by cursoring up and editing the `;` line.  Any value other than 0, 1, or 2 will leave the mode unchanged.  After changing the mode, any monitor command will operate in that mode.
+
 ## License
 
 No rights are claimed on the original Commodore LCD ROMs or the initial disassembly work done by Gábor Lénárt.  All other work in this repository is made available under the [3-Clause BSD License](./LICENSE.txt).

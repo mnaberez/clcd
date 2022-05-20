@@ -98,6 +98,7 @@ MemBotLoByte    := $0398
 MemBotHiByte    := $0399
 MemTopLoByte    := $039A
 MemTopHiByte    := $039B
+MON_MMU_MODE    := $03A1  ;0=MMU_MODE_RAM, 1=MMU_MODE_APPL, 2=MMU_MODE_KERN
 L03AB           := $03AB
 L03AC           := $03AC
 L03B7           := $03B7
@@ -2116,7 +2117,7 @@ L8ED7:  ldy     #$00                            ; 8ED7 A0 00                    
         bne     L8EEB                           ; 8EE5 D0 04                    ..
 L8EE7:  iny                                     ; 8EE7 C8                       .
         sta     $03A0                           ; 8EE8 8D A0 03                 ...
-L8EEB:  sty     $03A1                           ; 8EEB 8C A1 03                 ...
+L8EEB:  sty     MON_MMU_MODE                    ; 8EEB 8C A1 03                 ...
 L8EEE:  sty     $03A2                           ; 8EEE 8C A2 03                 ...
         cpy     $039F                           ; 8EF1 CC 9F 03                 ...
         bne     L8EF9                           ; 8EF4 D0 03                    ..
@@ -2190,18 +2191,18 @@ L8F7B:  .byte   $53                             ; 8F7B 53                       
         .byte   $4D                             ; 8F80 4D                       M
 L8F81:  lda     #$20                            ; 8F81 A9 20                    .
         tsb     $03A5                           ; 8F83 0C A5 03                 ...
-L8F86:  lda     $03A1                           ; 8F86 AD A1 03                 ...
+L8F86:  lda     MON_MMU_MODE                    ; 8F86 AD A1 03                 ...
         cmp     $03A2                           ; 8F89 CD A2 03                 ...
         bcc     L8F96                           ; 8F8C 90 08                    ..
         stz     $03A2                           ; 8F8E 9C A2 03                 ...
-        stz     $03A1                           ; 8F91 9C A1 03                 ...
+        stz     MON_MMU_MODE                    ; 8F91 9C A1 03                 ...
         bcs     L8F9B                           ; 8F94 B0 05                    ..
 L8F96:  lda     #$80                            ; 8F96 A9 80                    ..
         tsb     $03A5                           ; 8F98 0C A5 03                 ...
 L8F9B:  cld                                     ; 8F9B D8                       .
         clc                                     ; 8F9C 18                       .
         lda     #$10                            ; 8F9D A9 10                    ..
-        adc     $03A1                           ; 8F9F 6D A1 03                 m..
+        adc     MON_MMU_MODE                    ; 8F9F 6D A1 03                 m..
         cmp     $03A2                           ; 8FA2 CD A2 03                 ...
         lda     #$21                            ; 8FA5 A9 21                    .!
         bcc     L8FAC                           ; 8FA7 90 03                    ..
@@ -2226,7 +2227,7 @@ L8FBA:  dex                                     ; 8FBA CA                       
 L8FBF:  brk                                     ; 8FBF 00                       .
         ora     L8D22                           ; 8FC0 0D 22 8D                 .".
 L8FC3:  ldx     #$00                            ; 8FC3 A2 00                    ..
-        ldy     $03A1                           ; 8FC5 AC A1 03                 ...
+        ldy     MON_MMU_MODE                    ; 8FC5 AC A1 03                 ...
         lda     #$E2                            ; 8FC8 A9 E2                    ..
         sta     $034E                           ; 8FCA 8D 4E 03                 .N.
 L8FCD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FCD 20 4A 03                  J.
@@ -2256,7 +2257,7 @@ L8FF3:  stz     $02D8                           ; 8FF3 9C D8 02                 
         lda     #$E2                            ; 8FF6 A9 E2                    ..
         sta     $034E                           ; 8FF8 8D 4E 03                 .N.
         ldx     #$00                            ; 8FFB A2 00                    ..
-        ldy     $03A1                           ; 8FFD AC A1 03                 ...
+        ldy     MON_MMU_MODE                    ; 8FFD AC A1 03                 ...
 L9000:  jsr     GO_RAM_LOAD_GO_KERN             ; 9000 20 4A 03                  J.
         sta     $021D,x                         ; 9003 9D 1D 02                 ...
         inx                                     ; 9006 E8                       .
@@ -2301,7 +2302,7 @@ L9041:  jsr     L8C92                           ; 9041 20 92 8C                 
 L9055:  bit     #$80                            ; 9055 89 80                    ..
         beq     L907D                           ; 9057 F0 24                    .$
         ldx     #$00                            ; 9059 A2 00                    ..
-        ldy     $03A1                           ; 905B AC A1 03                 ...
+        ldy     MON_MMU_MODE                    ; 905B AC A1 03                 ...
 L905E:  lda     #$E2                            ; 905E A9 E2                    ..
         sta     $034E                           ; 9060 8D 4E 03                 .N.
         jsr     GO_RAM_LOAD_GO_KERN             ; 9063 20 4A 03                  J.
@@ -2780,7 +2781,7 @@ L93EC:  ldx     #$04                            ; 93EC A2 04                    
         lda     #$38                            ; 93F3 A9 38                    .8
         sta     $E2                             ; 93F5 85 E2                    ..
         lda     #$02                            ; 93F7 A9 02                    ..
-        stz     $03A1                           ; 93F9 9C A1 03                 ...
+        stz     MON_MMU_MODE                    ; 93F9 9C A1 03                 ...
 L93FC:  sta     $E3                             ; 93FC 85 E3                    ..
         ldx     #$00                            ; 93FE A2 00                    ..
 L9400:  lda     $0238,x                         ; 9400 BD 38 02                 .8.
@@ -5832,13 +5833,13 @@ LAAB4:  tax                                     ; AAB4 AA                       
         beq     LAAD7                           ; AAD3 F0 02                    ..
         ora     #$18                            ; AAD5 09 18                    ..
 LAAD7:  eor     #$08                            ; AAD7 49 08                    I.
-LAAD9:  and     $03A1                           ; AAD9 2D A1 03                 -..
+LAAD9:  and     MON_MMU_MODE                    ; AAD9 2D A1 03                 -..
         bit     #$F8                            ; AADC 89 F8                    ..
         beq     LAA8C                           ; AADE F0 AC                    ..
-        sta     $03A1                           ; AAE0 8D A1 03                 ...
+        sta     MON_MMU_MODE                    ; AAE0 8D A1 03                 ...
         sec                                     ; AAE3 38                       8
         jsr     LAB90                           ; AAE4 20 90 AB                  ..
-        lda     $03A1                           ; AAE7 AD A1 03                 ...
+        lda     MON_MMU_MODE                    ; AAE7 AD A1 03                 ...
         ldx     $03A3                           ; AAEA AE A3 03                 ...
         clc                                     ; AAED 18                       .
         rts                                     ; AAEE 60                       `
@@ -9810,7 +9811,7 @@ LC6CE:  ldy     RAMVEC_IRQ,x
 ; ----------------------------------------------------------------------------
 MON_START:
         stz     L03B7
-        stz     $03A1
+        stz     MON_MMU_MODE
         ldx     #$FF
         stx     $03BB
         txs
@@ -9852,7 +9853,7 @@ LC748:  lda     #$C0
         ;Fall through
 ; ----------------------------------------------------------------------------
 MON_CMD_REGISTERS:
-        jsr     MON_PRINT_REGS
+        jsr     MON_PRINT_REGS_WITH_HEADER
         bra     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
 MON_BAD_COMMAND:
@@ -9929,12 +9930,19 @@ LC7D0_LOOP:
         bcs     LC7D0_LOOP
 LC7E2:  jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
-MON_CMD_WALK_START:
-        bcs     LC81B_DONE
+;Command ";" allows the user to modify the registers by typing over:
+;  "   PC  SR AC XR YR SP MODE OPCODE   MNEMONIC"
+;  "; 0000 00 00 00 00 FF  02  00       BRK"
+MON_CMD_MODIFY_REGISTERS:
+        bcs     LC81B_DONE ;Branch if no args
+
+        ;Set new PC
         lda     $C7
         ldy     $C8
-        sta     $03B6
-        sty     $03B5
+        sta     $03B6 ;PC low
+        sty     $03B5 ;PC high
+
+        ;Set new SR, AC, XR, YR, SP
         ldy     #$00
 LC7F3_LOOP:
         jsr     MON_PARSE_HEX_WORD
@@ -9942,37 +9950,44 @@ LC7F3_LOOP:
         lda     $C7
         sta     L03B7,y
         iny
-        cpy     #$05
+        cpy     #$05 ;0=SR, 1=AC, 2=XR,3=YR,4=SP
         bcc     LC7F3_LOOP
+
+        ;Set new MODE
+        ;Valid values are 0, 1, 2.  Any other value leaves mode unchanged.
         jsr     MON_PARSE_HEX_WORD
         bcs     LC81B_DONE
         lda     $C7
-        bne     LC810
-        stz     $03A1
+        bne     LC810_MODE_NOT_0
+        stz     MON_MMU_MODE        ;Keep 0 for MMU_MODE_RAM
         bra     LC81B_DONE
-LC810:  cmp     #$01
-        beq     LC818_STA_03A1_DONE
+LC810_MODE_NOT_0:
+        cmp     #$01
+        beq     LC818_STA_MMU_MODE  ;Keep 1 for MMU_MODE_APPL
         cmp     #$02
         bne     LC81B_DONE
-LC818_STA_03A1_DONE:
-        sta     $03A1
+LC818_STA_MMU_MODE:
+        sta     MON_MMU_MODE        ;Keep 2 for MMU_MODE_KERN
+
 LC81B_DONE:
         jsr     PRIMM
         .byte   $91,$91,$00  ;Cursor Up twice
         jmp     MON_CMD_REGISTERS
 ; ----------------------------------------------------------------------------
-MON_CMD_MODIFY:
-        bcs     LC83A
+MON_CMD_MODIFY_MEMORY:
+        bcs     LC83A_MODFIY_DONE ;Branch if no arg
         jsr     LCB19
         ldy     #$00
-LC82B:  jsr     MON_PARSE_HEX_WORD
-        bcs     LC83A
+LC82B_LOOP:
+        jsr     MON_PARSE_HEX_WORD
+        bcs     LC83A_MODFIY_DONE ;Branch if no input
         lda     $C7
         jsr     LCC4B
         iny
         cpy     #$10
-        bcc     LC82B
-LC83A:  jsr     ESC_O_CANCEL_MODES
+        bcc     LC82B_LOOP
+LC83A_MODFIY_DONE:
+        jsr     ESC_O_CANCEL_MODES
         lda     #$91 ;CHR($145) Cursor Up
         jsr     KR_ShowChar_
         jsr     MON_PRINT_LINE_OF_MEMORY
@@ -9994,7 +10009,7 @@ LC854:  jsr     PrintNewLine
 LC864:  dey
         phx
         phy
-        ldx     $03A1
+        ldx     MON_MMU_MODE
         cpx     #$03
         bcc     LC870
         ldx     #$02
@@ -10043,9 +10058,9 @@ MON_CMD_ENTRIES:
         .word  MON_CMD_ASSEMBLE-1
         .word  MON_CMD_HUNT-1
         .word  MON_CMD_FILL-1
-        .word  MON_CMD_MODIFY-1
-        .word  MON_CMD_WALK_START-1
-        .word  MON_CMD_WALK_CONTINUE-1
+        .word  MON_CMD_MODIFY_MEMORY-1
+        .word  MON_CMD_MODIFY_REGISTERS-1
+        .word  MON_CMD_WALK-1
 ; ----------------------------------------------------------------------------
 MON_PRINT_LINE_OF_MEMORY:
         jsr     PRIMM
@@ -10502,33 +10517,38 @@ LCBD9:  pla
         clc
 LCBE0:  rts
 ; ----------------------------------------------------------------------------
-MON_PRINT_REGS_HEADER:
+MON_PRINT_HEADER_FOR_REGS:
         jsr     PRIMM
         .byte   $0d,"   PC  SR AC XR YR SP MODE OPCODE   MNEMONIC",0
         rts
-; ----------------------------------------------------------------------------
-; Prints PC as hex word and registers
-MON_PRINT_REGS:
-        jsr     MON_PRINT_REGS_HEADER
-LCC16:
+
+MON_PRINT_REGS_WITH_HEADER:
+        jsr     MON_PRINT_HEADER_FOR_REGS
+
+MON_PRINT_REGS_WITHOUT_HEADER:
         jsr     PRIMM
         .byte   $0D,"; ",0
-        lda     $03B5
+
+        lda     $03B5 ;PC high
         jsr     PrintHexByte
+
         ldy     #$00
-LCC25:  lda     $03B6,y
-        jsr     PrintHexByteAndSpace
+LCC25_LOOP:
+        lda     $03B5+1,y
+        jsr     PrintHexByteAndSpace ;0=PC low, 1=SR, 2=AC, 3=XR, 4=YR, 5=SP
         iny
         cpy     #$06
-        bcc     LCC25
+        bcc     LCC25_LOOP
+
         jsr     PrintSpace
-        lda     $03A1
+        lda     MON_MMU_MODE
         jsr     PrintHexByteAndSpace
-        lda     $03B6
+
+        lda     $03B6 ;PC low
         sta     $CB
-        lda     $03B5
+        lda     $03B5 ;PC high
         sta     $CC
-        jmp     LCCC7
+        jmp     MON_DISASM_OPCODE_MNEMONIC
 ; ----------------------------------------------------------------------------
 LCC46:  pha
         lda     #$C7
@@ -10537,16 +10557,16 @@ LCC4B:  pha
 LCC4C:  lda     #$CB
 LCC4E:  sta     $0360
         sta     $0360
-        lda     $03A1
+        lda     MON_MMU_MODE
         and     #$03
         asl     a
         tax
         pla
-        jmp     (LCC5F,x)
-LCC5F:  .addr   GO_RAM_STORE_GO_KERN
-        .addr   GO_APPL_STORE_GO_KERN
-        .addr   GO_NOWHERE_STORE_GO_KERN
-        .addr   GO_RAM_STORE_GO_KERN
+        jmp     (LCC5F,x)                 ;MON_MMU_MODE:
+LCC5F:  .addr   GO_RAM_STORE_GO_KERN      ;0 stores to MMU_MODE_RAM
+        .addr   GO_APPL_STORE_GO_KERN     ;1 stores to MMU_MODE_APPL
+        .addr   GO_NOWHERE_STORE_GO_KERN  ;2 stores to MMU_MODE_KERN (stays in MMU_MODE_KERN)
+        .addr   GO_RAM_STORE_GO_KERN      ;3 stores to MMU_MODE_RAM again
 ; ----------------------------------------------------------------------------
 LCC67:  lda     #$CB
         .byte   $2C
@@ -10561,15 +10581,15 @@ LCC6D:  lda     #$D0
 ; ----------------------------------------------------------------------------
 LCC77:  sta     $034E
         sta     $0357
-        lda     $03A1
+        lda     MON_MMU_MODE
         and     #$03
         asl     a
         tax
-        jmp     (LCC87,x)
-LCC87:  .addr   GO_RAM_LOAD_GO_KERN
-        .addr   GO_APPL_LOAD_GO_KERN
-        .addr   GO_NOWHERE_LOAD_GO_KERN
-        .addr   GO_RAM_LOAD_GO_KERN
+        jmp     (LCC87,x)                 ;MON_MMU_MODE:
+LCC87:  .addr   GO_RAM_LOAD_GO_KERN       ;0 loads from MMU_MODE_RAM
+        .addr   GO_APPL_LOAD_GO_KERN      ;1 loads from MMU_MODE_APPL
+        .addr   GO_NOWHERE_LOAD_GO_KERN   ;2 loads from MMU_MODE_KERN (stays in MMU_MODE_KERN)
+        .addr   GO_RAM_LOAD_GO_KERN       ;3 loads from MMU_MODE_RAM again
 ; ----------------------------------------------------------------------------
 MON_CMD_DISASSEMBLE:
         bcs     LCC99
@@ -10583,7 +10603,7 @@ LCC9F:  jsr     LCB22
 LCCA2:  jsr     PrintNewLine
         jsr     LFDB9
         beq     LCCBB
-        jsr     LCCBE
+        jsr     LCCBE_DISASM_DOT_ADDR_OPCODE_MNEUMONIC
         inc     $CF
         lda     $CF
         jsr     LCB5D
@@ -10592,11 +10612,18 @@ LCCA2:  jsr     PrintNewLine
         bcs     LCCA2
 LCCBB:  jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
-LCCBE:  jsr     PRIMM
+;". B000  25 F1    AND $F1"
+LCCBE_DISASM_DOT_ADDR_OPCODE_MNEUMONIC:
+        jsr     PRIMM
         .byte   ". ",0
-; ----------------------------------------------------------------------------
-LCCC4:  jsr     PrintHexWordAndSpaceFromMem
-LCCC7:  jsr     PrintSpace
+
+;"B000  25 F1    AND $F1"
+MON_DISASM_ADDR_OPCODE_MNEUMONIC:
+        jsr     PrintHexWordAndSpaceFromMem
+
+;" 25 F1    AND $F1"
+MON_DISASM_OPCODE_MNEMONIC:
+        jsr     PrintSpace
         ldy     #$00
         jsr     LCC67
         sta     $03A2
@@ -11081,7 +11108,7 @@ LD073:  lda     $D0
         jsr     LCC4B
         jsr     PRIMM
         .byte   $0D,$91,"A ",0
-        jsr     LCCC4
+        jsr     MON_DISASM_ADDR_OPCODE_MNEUMONIC
         inc     $CF
         lda     $CF
         jsr     LCB5D
@@ -11122,14 +11149,14 @@ LD0CA:  inx
         ldx     $039D
         rts
 ; ----------------------------------------------------------------------------
-MON_CMD_WALK_CONTINUE:
+MON_CMD_WALK:
         lda     #$01
         bcs     LD0D7
         lda     $C7
 LD0D7:  sta     $03A3
-        jsr     MON_PRINT_REGS_HEADER
+        jsr     MON_PRINT_HEADER_FOR_REGS
         bra     LD11C
-LD0DF:  jsr     LCC16
+LD0DF:  jsr     MON_PRINT_REGS_WITHOUT_HEADER
         jsr     LFDB9
         beq     LD0F9_JMP_MON_MAIN_INPUT
         dec     $03A3
