@@ -16,7 +16,7 @@
 ; that the normal reset vectors and KERNAL Jump table is available to handle
 ; Interupts and KERNAL calls, and the Zero Page and system RAM are always
 ; available to KERNAL and applications.
-. The KERNAL calls map in any resources that it needs and restores the
+; The KERNAL calls map in any resources that it needs and restores the
 ; state so that the applications can function. The MMU manages READ/WRITE to
 ; the address space allowing the LCD and MMU registers to hide under the
 ; fixed KERNAL space. The IO space is always mapped in. The CPU address space
