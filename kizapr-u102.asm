@@ -1,12 +1,79 @@
+;============================================================================
+;                  Commodore LCD Kernal ROM Disassembly
+;============================================================================
+; Taken from an EPROM labelled "kizapr-u102.bin" on Prototype CLCD
 ;
-;Based on this disassembly by Gábor Lénárt:
-;https://web.archive.org/web/20170419205827/http://commodore-lcd.lgb.hu/sk/
-;
+; Based on this disassembly by Gábor Lénárt:
+; https://web.archive.org/web/20170419205827/http://commodore-lcd.lgb.hu/sk/
 
-; da65 V2.13.3 - (C) Copyright 2000-2009,  Ullrich von Bassewitz
-; Created:    2014-01-21 00:08:01
-; Input file: kizapr-u102.bin
-; Page:       1
+;=============================================================================
+; Memory Map
+;=============================================================================
+; The machine has an 18-bit address space from $00000 to $3FFFF.
+; The CPU only sees $00000 to $0FFFF.
+; The MMU can map memory from the upper address space into the CPU space.
+; The MMU always maps in the TOP of the KERNAL ROM and the bottom of RAM so
+; that the normal reset vectors and KERNAL Jump table is available to handle
+; Interupts and KERNAL calls, and the Zero Page and system RAM are always
+; available to KERNAL and applications.
+. The KERNAL calls map in any resources that it needs and restores the
+; state so that the applications can function. The MMU manages READ/WRITE to
+; the address space allowing the LCD and MMU registers to hide under the
+; fixed KERNAL space. The IO space is always mapped in. The CPU address space
+; is divided into KERNAL, four Application Windows, and the System RAM.
+; The four Application Windows can contain ROM or RAM from any location in
+; the extended address space.
+
+; ADDRESS	SIZE	TYPE			CONTENTS
+; -------	----	----			--------
+; 30000-3FFFF	64K	ROM			KERNAL, Character Set, Monitor
+; 20000-2FFFF	64K	ROM			Applications
+; 10000-1FFFF	64K	Expansion RAM
+; 00000-0FFFF	64K	Built-in RAM
+
+; The CPU Address Space:
+;                               /------------------------- MODES ------------------------\
+; ADDRESS	SIZE	TYPE	RAM		APPL		KERN		TEST			NOTES
+; -------	----	----	---		----		----		----			-----
+; 0FA00-0FFFF	1.5K 	Fixed	3FA00-3FFFF	3FA00-3FFFF	3FA00-3FFFF	3FA00-3FFFF		Top of KERNAL. Read from ROM, Write to LCD or MMU
+; 0F800-0F9FF 	0.5K 	I/O	0F800-0F9FF	0F800-0F9FF	0F800-0F9FF	0F800-0F9FF		Fixed I/O (VIAs, ACIA, EXP)
+; 0C000-0F7FF 	14K 	Banked	0C000-0F7FF	Appl Window#4	3C000-3F7FF	Offset 4/5		Configured via MMU
+; 08000-0BFFF	16K	Banked 	08000-0BFFF	Appl Window#3	38000-3BFFF	Offset 3		Configured via MMU
+; 04000-07FFF	16K	Banked	04000-07FFF	Appl Window#2	Kernal Window 	Offset 2		Configured via MMU
+; 01000-03FFF	12K	Banked	01000-03FFF	Appl window#1	01000-03FFF 	Offset 1		Configured via MMU
+; 00000-00FFF	4K	Fixed	00000-00FFF	00000-00FFF	00000-00FFF	00000-00FFF		Always fixed
+
+; LCD, MMU, IO Address:
+
+; ADDRESS RANGE	TYPE	ADDRESS	DESCRIPTION				NOTES
+; -------------	----	-------	-----------				-----
+; 0FF80-0FFFF 	LCD	Custom Gate Array
+;			FF80	[0-6] X-Scroll
+;			FF81	[0-7] Y-Scroll
+;			FF82	[1] Graphics Enable, [0] Chararcter Select
+;			FF83    [5] Test Mode, [4] SS40, [3] CS80, [2] Chr Width
+
+; 0FA00-0FFFF	MMU	Custom Gate Array
+;			FF00	KERN window offset	(write only)	* Sets a pointer to any 1K boundary in the extended address range.
+;			FE80 	APPL window#4 offset	(write only)	  The top 8 bits (A10-A17) of the extended address are written to
+;			FE00 	APPL window#3 offset	(write only)	  any of the 5 offset registers (KERNAL or Applcation window).
+;			FD80	APPL window#2 offset	(write only)
+;			FD00 	APPL window#1 offset	(write only)
+
+;			FC80	Select TEST mode	(dummywrite	* Writing ANYTHING to these registers triggers the selected MODE
+;			FC00	Save current mode	(dummywrite)	  (see above) or does a SAVE or RECALL operation.
+;			FB80	Recall saved mode	(dummywrite)
+;			FB00	Select RAM mode		(dummywrite)
+;			FA80	Select APPL mode	(dummywrite)
+;			FA00	Select KERN mode	(dummywrite)
+
+; 0F800-0F9FF	I/O	IO Chips and Expansion via rear connector
+; 			F980	I/O#4	ACIA		RS-232, Modem		
+; 			F900	I/O#3	External Expansion
+;			F880	I/O#2	VIA#2 		Centronics, RTC, RS-232, Modem, Beeper, Barcode Reader
+;			F800	I/O#1	VIA#1 		Keyboard, Battery Level, Alarm, RTC Enable, Power, IEC
+
+; ----------------------------------------------------------------------------
 
         .setcpu "65C02"
 
@@ -7176,56 +7243,78 @@ LB387:  jsr     ESC_K_MOVE_TO_END_OF_LINE
 LB393:  stz     $03E9
         dec     $03E9
         rts
+
 ; ----------------------------------------------------------------------------
-; My guess: these tables help to decode the keyboard matrix read into actual
-; characters. More tables, because of shifted, etc state.
-KbdMat1:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; B39A 40 87 86 85 88 09 0D 14  @.......
-        .byte   $8A,$45,$53,$5A,$34,$41,$57,$33 ; B3A2 8A 45 53 5A 34 41 57 33  .ESZ4AW3
-        .byte   $58,$54,$46,$43,$36,$44,$52,$35 ; B3AA 58 54 46 43 36 44 52 35  XTFC6DR5
-        .byte   $56,$55,$48,$42,$38,$47,$59,$37 ; B3B2 56 55 48 42 38 47 59 37  VUHB8GY7
-        .byte   $4E,$4F,$4B,$4D,$30,$4A,$49,$39 ; B3BA 4E 4F 4B 4D 30 4A 49 39  NOKM0JI9
-        .byte   $2C,$2D,$3A,$2E,$91,$4C,$50,$11 ; B3C2 2C 2D 3A 2E 91 4C 50 11  ,-:..LP.
-        .byte   $2F,$2B,$3D,$1B,$1D,$3B,$2A,$9D ; B3CA 2F 2B 3D 1B 1D 3B 2A 9D  /+=..;*.
-        .byte   $8B,$51,$8C,$20,$32,$89,$13,$31 ; B3D2 8B 51 8C 20 32 89 13 31  .Q. 2..1
+; Keyboard Matrix Tables
+; There are 5 tables representing combinations of the MODIFIER keys:
+; 1. NO MODIFIER				NOTE:
+; 2. SHIFT					Keys shown assume TEXT mode
+; 3. CAPS-LOCK					IE: $41 is "a" (which is opposite to ASCII)
+; 4. COMMODORE
+; 5. CONTROL
+;
+; KEY: GR=Graphic Symbol			Character Changes:
+;      S- Shifted				126/$7E = PI
+;      C- Control				127/$7F = "|" (pipe)
+;      {} Unknown Code				166/$A6 = "{"
+;						168/$A8 = "}"
+;
+; NORMAL (un-shifted)                             C0    C1    C2    C3    C4    C5    C6    C7
+;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
+KbdMat1:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
+        .byte   $8A,$45,$53,$5A,$34,$41,$57,$33 ; F4    e     s     z     4     a     w     3
+        .byte   $58,$54,$46,$43,$36,$44,$52,$35 ; x     t     f     c     6     d     r     5
+        .byte   $56,$55,$48,$42,$38,$47,$59,$37 ; v     u     h     b     8     g     y     7
+        .byte   $4E,$4F,$4B,$4D,$30,$4A,$49,$39 ; n     o     k     m     0     j     i     9
+        .byte   $2C,$2D,$3A,$2E,$91,$4C,$50,$11 ; ,     -     :     .     UP    l     p     DOWN
+        .byte   $2F,$2B,$3D,$1B,$1D,$3B,$2A,$9D ; /     +     =     ESC   RIGHT ;     *     LEFT
+        .byte   $8B,$51,$8C,$20,$32,$89,$13,$31 ; F6    q     F8    SPACE 2     F2    HOME  1
 
-KbdMat2:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; B3DA BA 87 86 85 88 09 8D 94  ........
-        .byte   $8A,$65,$73,$7A,$24,$61,$77,$23 ; B3E2 8A 65 73 7A 24 61 77 23  .esz$aw#
-        .byte   $78,$74,$66,$63,$26,$64,$72,$25 ; B3EA 78 74 66 63 26 64 72 25  xtfc&dr%
-        .byte   $76,$75,$68,$62,$28,$67,$79,$27 ; B3F2 76 75 68 62 28 67 79 27  vuhb(gy'
-        .byte   $6E,$6F,$6B,$6D,$5E,$6A,$69,$29 ; B3FA 6E 6F 6B 6D 5E 6A 69 29  nokm^ji)
-        .byte   $3C,$60,$5B,$3E,$91,$6C,$70,$11 ; B402 3C 60 5B 3E 91 6C 70 11  <`[>.lp.
-        .byte   $3F,$7B,$7D,$1B,$1D,$5D,$A9,$9D ; B40A 3F 7B 7D 1B 1D 5D A9 9D  ?{}..]..
-        .byte   $8B,$71,$8C,$A0,$22,$89,$93,$21 ; B412 8B 71 8C A0 22 89 93 21  .q.."..!
+; SHIFTED                                         C0    C1    C2    C3    C4    C5    C6    C7
+;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
+KbdMat2:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    TAB   S-RTN INS
+        .byte   $8A,$65,$73,$7A,$24,$61,$77,$23 ; F4    E     S     Z     $     A     W     #
+        .byte   $78,$74,$66,$63,$26,$64,$72,$25 ; X     T     F     C     &     D     R     %
+        .byte   $76,$75,$68,$62,$28,$67,$79,$27 ; V     U     H     B     (     G     Y     '
+        .byte   $6E,$6F,$6B,$6D,$5E,$6A,$69,$29 ; N     O     K     M     ^     J     I     )
+        .byte   $3C,$60,$5B,$3E,$91,$6C,$70,$11 ; <     S-SPC [     >     UP    L     P     DOWN
+        .byte   $3F,$7B,$7D,$1B,$1D,$5D,$A9,$9D ; ?     {     }     ESC   RIGHT ]     GR    LEFT
+        .byte   $8B,$71,$8C,$A0,$22,$89,$93,$21 ; F6    Q     F8    S-SPC "     F2    CLS   !
 
-KbdMat3:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; B41A 40 87 86 85 88 09 0D 14  @.......
-        .byte   $8A,$65,$73,$7A,$34,$61,$77,$33 ; B422 8A 65 73 7A 34 61 77 33  .esz4aw3
-        .byte   $78,$74,$66,$63,$36,$64,$72,$35 ; B42A 78 74 66 63 36 64 72 35  xtfc6dr5
-        .byte   $76,$75,$68,$62,$38,$67,$79,$37 ; B432 76 75 68 62 38 67 79 37  vuhb8gy7
-        .byte   $6E,$6F,$6B,$6D,$30,$6A,$69,$39 ; B43A 6E 6F 6B 6D 30 6A 69 39  nokm0ji9
-        .byte   $2C,$2D,$3A,$2E,$91,$6C,$70,$11 ; B442 2C 2D 3A 2E 91 6C 70 11  ,-:..lp.
-        .byte   $2F,$2B,$3D,$1B,$1D,$3B,$2A,$9D ; B44A 2F 2B 3D 1B 1D 3B 2A 9D  /+=..;*.
-        .byte   $8B,$71,$8C,$20,$32,$89,$13,$31 ; B452 8B 71 8C 20 32 89 13 31  .q. 2..1
+; CAPS-LOCK                                       C0    C1    C2    C3    C4    C5    C6    C7
+;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
+KbdMat3:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
+        .byte   $8A,$65,$73,$7A,$34,$61,$77,$33 ; F4    E     S     Z     4     A     W     3
+        .byte   $78,$74,$66,$63,$36,$64,$72,$35 ; X     T     F     C     6     D     R     5
+        .byte   $76,$75,$68,$62,$38,$67,$79,$37 ; V     U     H     B     8     G     Y     7
+        .byte   $6E,$6F,$6B,$6D,$30,$6A,$69,$39 ; N     O     K     M     0     J     I     9
+        .byte   $2C,$2D,$3A,$2E,$91,$6C,$70,$11 ; ,     -     :     .     UP    l     P     DOWN
+        .byte   $2F,$2B,$3D,$1B,$1D,$3B,$2A,$9D ; /     +     =     ESC   RIGHT ;     *     LEFT
+        .byte   $8B,$71,$8C,$20,$32,$89,$13,$31 ; F6    Q     F8    SPACE 2     F2    HOME  1
 
-KbdMat4:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; B45A BA 87 86 85 88 09 8D 94  ........
-        .byte   $8A,$B1,$AE,$AD,$24,$B0,$B3,$23 ; B462 8A B1 AE AD 24 B0 B3 23  ....$..#
-        .byte   $BD,$A3,$BB,$BC,$26,$AC,$B2,$25 ; B46A BD A3 BB BC 26 AC B2 25  ....&..%
-        .byte   $BE,$B8,$B4,$BF,$28,$A5,$B7,$27 ; B472 BE B8 B4 BF 28 A5 B7 27  ....(..'
-        .byte   $AA,SAH,$A1,$A7,$5F,$B5,$A2,$29 ; B47A AA B9 A1 A7 5F B5 A2 29  ...._..)
-        .byte   $2C,$5C,$A6,$2E,$91,$B6,$AF,$11 ; B482 2C 5C A6 2E 91 B6 AF 11  ,\......
-        .byte   $A4,$7C,$FF,$1B,$1D,$A8,$7F,$9D ; B48A A4 7C FF 1B 1D A8 7F 9D  .|......
-        .byte   $8B,$AB,$8A,$A0,$32,$89,$93,$31 ; B492 8B AB 8A A0 32 89 93 31  ....2..1
+; COMMODORE KEY                                   C0    C1    C2    C3    C4    C5    C6    C7
+;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
+KbdMat4:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    TAB   S-RTN INS
+        .byte   $8A,$B1,$AE,$AD,$24,$B0,$B3,$23 ; F4    GR    GR    GR    $     GR    GR    #
+        .byte   $BD,$A3,$BB,$BC,$26,$AC,$B2,$25 ; GR    GR    GR    GR    &     GR    GR    %
+        .byte   $BE,$B8,$B4,$BF,$28,$A5,$B7,$27 ; GR    GR    GR    GR    (     GR    GR    '
+        .byte   $AA,$B9,$A1,$A7,$5F,$B5,$A2,$29 ; GR    GR    GR    GR    ~?    GR    GR    )		; ? "~" not in original set
+        .byte   $2C,$5C,$A6,$2E,$91,$B6,$AF,$11 ; ,     \     {     .     UP    GR    GR    DOWN
+        .byte   $A4,$7C,$FF,$1B,$1D,$A8,$7F,$9D ; GR    |     PI    ESC   RIGHT }     GR    LEFT	; $7C=Pipe
+        .byte   $8B,$AB,$8A,$A0,$32,$89,$93,$31 ; F6    GR    F4?   GR    2     F2    CLS   1		; ? Is F4 an error?
 
-LB496 := * -4
+; CONTROL                                         C0    C1    C2    C3    C4    C5    C6    C7
+;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
+KbdMat5:.byte   $80,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
+        .byte   $8A,$05,$13,$1A,$34,$01,$17,$33 ; F4    CT-E  HOME  CT-Z  4     CT-A  CT-W  3
+        .byte   $18,$14,$06,$03,$36,$04,$12,$35 ; CT-Z  DEL   CT-F  STOP  6     CT-D  RVS   5
+        .byte   $16,$15,$08,$02,$38,$07,$19,$37 ; CT-V  CT-U  LOCK  CT-B  8     CT-G  CT-Y  7
+        .byte   $0E,$0F,$0B,$0D,$1E,$0A,$09,$39 ; TEXT  CT-O  CT-K  RETRN UARRW CT-J  CT-I  9
+        .byte   $12,$1C,$1B,$92,$91,$0C,$10,$11 ; RVS   CT-\  ESC   R-OFF UP    CT-L  CT-P  DOWN
+        .byte   $1F,$2B,$3D,$1B,$1D,$1D,$2A,$9D ; {$1F} +     =     ESC   RIGHT RIGHT *     LEFT	; Why CTRL-] = RIGHT?
+        .byte   $8B,$11,$8C,$20,$32,$89,$13,$31 ; F6    CT-Q  F8    SPACE 2     F2    HOME  1
+; ------------------------------------------------------------------------------------------------
 
-KbdMat5:.byte   $80,$87,$86,$85,$88,$09,$0D,$14 ; B49A 80 87 86 85 88 09 0D 14  ........
-        .byte   $8A,$05,$13,$1A,$34,$01,$17,$33 ; B4A2 8A 05 13 1A 34 01 17 33  ....4..3
-        .byte   $18,$14,$06,$03,$36,$04,$12,$35 ; B4AA 18 14 06 03 36 04 12 35  ....6..5
-        .byte   $16,$15,$08,$02,$38,$07,$19,$37 ; B4B2 16 15 08 02 38 07 19 37  ....8..7
-        .byte   $0E,$0F,$0B,$0D,$1E,$0A,$09,$39 ; B4BA 0E 0F 0B 0D 1E 0A 09 39  .......9
-        .byte   $12,$1C,$1B,$92,$91,$0C,$10,$11 ; B4C2 12 1C 1B 92 91 0C 10 11  ........
-        .byte   $1F,$2B,$3D,$1B,$1D,$1D,$2A,$9D ; B4CA 1F 2B 3D 1B 1D 1D 2A 9D  .+=...*.
-        .byte   $8B,$11,$8C,$20,$32,$89,$13,$31 ; B4D2 8B 11 8C 20 32 89 13 31  ... 2..1
-; ----------------------------------------------------------------------------
 LB4DA:  lda     #$09
         sta     $03F6
         lda     #$1E
