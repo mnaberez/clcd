@@ -12,8 +12,5 @@ jobs:
     - name: Install cc65
       run: sudo apt-get install cc65
 
-    - name: Assemble the original binary
-      run: make
-
-    - name: Show the listing
-      run: cat kizapr-u102.lst
+    - name: Assemble kizapr-u102.bin
+      run: cd kizapr-u102 && make && cat kizapr-u102.lst
