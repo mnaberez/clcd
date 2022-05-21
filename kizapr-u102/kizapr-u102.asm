@@ -6206,6 +6206,7 @@ CODE_1A_CTRL_Z:
 ;Called only from KBD_READ_SR_THEN_UNKNOWN_STUFF
 LACEE:  bit     $036D
         bvs     CODE_19_CTRL_Y
+
         lda     #$01
         tsb     SETUP_LCD_A
         beq     JmpToSetUpLcdController
@@ -7251,20 +7252,20 @@ LB393:  stz     $03E9
 ; Keyboard Matrix Tables
 ; There are 5 tables representing combinations of the MODIFIER keys:
 ; 1. NO MODIFIER				NOTE:
-; 2. SHIFT					Keys shown assume TEXT mode
+; 2. SHIFT					    Keys shown assume TEXT mode
 ; 3. CAPS-LOCK					IE: $41 is "a" (which is opposite to ASCII)
 ; 4. COMMODORE
-; 5. CONTROL
+; 5. CTRL
 ;
 ; KEY: GR=Graphic Symbol			Character Changes:
-;      S- Shifted				126/$7E = PI
-;      C- Control				127/$7F = "|" (pipe)
+;      S- Shifted				      126/$7E = PI
+;      C- Control				      127/$7F = "|" (pipe)
 ;      {} Unknown Code				166/$A6 = "{"
-;						168/$A8 = "}"
+;						                  168/$A8 = "}"
 ;
-; NORMAL (un-shifted)                             C0    C1    C2    C3    C4    C5    C6    C7
-;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
-KbdMat1:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
+;NORMAL (no modifier key)                         C0     C1    C2    C3    C4    C5    C6    C7
+KBD_MATRIX_NORMAL:                              ; ----- ----- ----- ----- ----- ----- ----- -----
+        .byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
         .byte   $8A,$45,$53,$5A,$34,$41,$57,$33 ; F4    e     s     z     4     a     w     3
         .byte   $58,$54,$46,$43,$36,$44,$52,$35 ; x     t     f     c     6     d     r     5
         .byte   $56,$55,$48,$42,$38,$47,$59,$37 ; v     u     h     b     8     g     y     7
@@ -7273,9 +7274,9 @@ KbdMat1:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    
         .byte   $2F,$2B,$3D,$1B,$1D,$3B,$2A,$9D ; /     +     =     ESC   RIGHT ;     *     LEFT
         .byte   $8B,$51,$8C,$20,$32,$89,$13,$31 ; F6    q     F8    SPACE 2     F2    HOME  1
 
-; SHIFTED                                         C0    C1    C2    C3    C4    C5    C6    C7
-;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
-KbdMat2:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    TAB   S-RTN INS
+;SHIFT                                            C0     C1    C2    C3    C4    C5    C6    C7
+KBD_MATRIX_SHIFT:                               ; ----- ----- ----- ----- ----- ----- ----- -----
+        .byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    TAB   S-RTN INS
         .byte   $8A,$65,$73,$7A,$24,$61,$77,$23 ; F4    E     S     Z     $     A     W     #
         .byte   $78,$74,$66,$63,$26,$64,$72,$25 ; X     T     F     C     &     D     R     %
         .byte   $76,$75,$68,$62,$28,$67,$79,$27 ; V     U     H     B     (     G     Y     '
@@ -7284,9 +7285,9 @@ KbdMat2:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    
         .byte   $3F,$7B,$7D,$1B,$1D,$5D,$A9,$9D ; ?     {     }     ESC   RIGHT ]     GR    LEFT
         .byte   $8B,$71,$8C,$A0,$22,$89,$93,$21 ; F6    Q     F8    S-SPC "     F2    CLS   !
 
-; CAPS-LOCK                                       C0    C1    C2    C3    C4    C5    C6    C7
-;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
-KbdMat3:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
+;CAPS-LOCK key                                    C0    C1    C2    C3    C4    C5    C6    C7
+KBD_MATRIX_CAPS:                            ; ----- ----- ----- ----- ----- ----- ----- -----
+        .byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
         .byte   $8A,$65,$73,$7A,$34,$61,$77,$33 ; F4    E     S     Z     4     A     W     3
         .byte   $78,$74,$66,$63,$36,$64,$72,$35 ; X     T     F     C     6     D     R     5
         .byte   $76,$75,$68,$62,$38,$67,$79,$37 ; V     U     H     B     8     G     Y     7
@@ -7295,9 +7296,9 @@ KbdMat3:.byte   $40,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    
         .byte   $2F,$2B,$3D,$1B,$1D,$3B,$2A,$9D ; /     +     =     ESC   RIGHT ;     *     LEFT
         .byte   $8B,$71,$8C,$20,$32,$89,$13,$31 ; F6    Q     F8    SPACE 2     F2    HOME  1
 
-; COMMODORE KEY                                   C0    C1    C2    C3    C4    C5    C6    C7
-;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
-KbdMat4:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    TAB   S-RTN INS
+;Commodore key                                    C0    C1    C2    C3    C4    C5    C6    C7
+KBD_MATRIX_CBMKEY:                              ; ----- ----- ----- ----- ----- ----- ----- -----
+        .byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    TAB   S-RTN INS
         .byte   $8A,$B1,$AE,$AD,$24,$B0,$B3,$23 ; F4    GR    GR    GR    $     GR    GR    #
         .byte   $BD,$A3,$BB,$BC,$26,$AC,$B2,$25 ; GR    GR    GR    GR    &     GR    GR    %
         .byte   $BE,$B8,$B4,$BF,$28,$A5,$B7,$27 ; GR    GR    GR    GR    (     GR    GR    '
@@ -7306,9 +7307,9 @@ KbdMat4:.byte   $BA,$87,$86,$85,$88,$09,$8D,$94 ; GR    F5    F3    F1    F7    
         .byte   $A4,$7C,$FF,$1B,$1D,$A8,$7F,$9D ; GR    |     PI    ESC   RIGHT }     GR    LEFT	; $7C=Pipe
         .byte   $8B,$AB,$8A,$A0,$32,$89,$93,$31 ; F6    GR    F4?   GR    2     F2    CLS   1		; ? Is F4 an error?
 
-; CONTROL                                         C0    C1    C2    C3    C4    C5    C6    C7
-;==============================================   ----- ----- ----- ----- ----- ----- ----- -----
-KbdMat5:.byte   $80,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
+;CTRL key                                         C0    C1    C2    C3    C4    C5    C6    C7
+KBD_MATRIX_CTRL:                                ; ----- ----- ----- ----- ----- ----- ----- -----
+        .byte   $80,$87,$86,$85,$88,$09,$0D,$14 ; @     F5    F3    F1    F7    TAB   RETRN DEL
         .byte   $8A,$05,$13,$1A,$34,$01,$17,$33 ; F4    CT-E  HOME  CT-Z  4     CT-A  CT-W  3
         .byte   $18,$14,$06,$03,$36,$04,$12,$35 ; CT-Z  DEL   CT-F  STOP  6     CT-D  RVS   5
         .byte   $16,$15,$08,$02,$38,$07,$19,$37 ; CT-V  CT-U  LOCK  CT-B  8     CT-G  CT-Y  7
@@ -7364,11 +7365,11 @@ KL_SCNKEY:
 LB52E:  lda     $AB
         eor     #$07
         tax
-        lda     KbdMat1,x
-        cmp     #$85
+        lda     KBD_MATRIX_NORMAL,x
+        cmp     #$85   ;F1
         bcc     LB53E
-        cmp     #$8D
-        bcc     LB549
+        cmp     #$8C+1 ;F8 +1
+        bcc     LB549  ;Branch if key is F1-F8
 LB53E:  dec     $F5
         bpl     LB549
         lda     $0366
@@ -7402,53 +7403,63 @@ LB575:  inc     a
         dex
         bpl     LB575
         sta     $AB
-LB57C           := * + 1
         lda     $0365
-LB57F           := * + 1
         sta     $F4
         lda     $0367
         sta     $F5
 LB585:  lda     $AB
         eor     #$07
         tax
-LB58B           := * + 1
         jsr     KBD_READ_SR_THEN_UNKNOWN_STUFF
+
         and     #$08
         beq     LB5AC
+
         lda     #$02
         and     $AA
         beq     LB5AC
-        ldy     KbdMat1,x
-        cpy     #$51
+
+        ldy     KBD_MATRIX_NORMAL,x
+        cpy     #'Q'
         bne     LB5A3
+
         trb     $036D
         bra     LB5E1_JMP_LBFBE ;UNKNOWN_SECS/MINS
 
-LB5A3:  cpy     #$53
+LB5A3:
+        cpy     #'S'
         bne     LB5AC
         tsb     $036D
         bra     LB5E1_JMP_LBFBE ;UNKNOWN_SECS/MINS
 
 LB5AC:  lda     STKEY
         and     $038E
-        ldy     KbdMat5,x
-        bit     #$08
-        bne     LB5D0
-        ldy     KbdMat4,x
-        bit     #$10
-        bne     LB5D0
-        ldy     KbdMat2,x
-        bit     #$04
-        bne     LB5D0
-        ldy     KbdMat3,x
-        bit     #$02
-        bne     LB5D0
-        ldy     KbdMat1,x
-LB5D0:  tya
-        ldy     $03FA
-LB5D4:  bne     LB5E1_JMP_LBFBE ;UNKNOWN_SECS/MINS
 
-        ldy     KbdMat1,x
+        ldy     KBD_MATRIX_CTRL,x
+        bit     #%00001000
+        bne     LB5D0_GOT_KEYCODE     ;Branch to keep code from this matrix if CTRL mode
+
+        ldy     KBD_MATRIX_CBMKEY,x
+        bit     #%00010000            ;Branch to keep code from this matrix if CBM key mode
+        bne     LB5D0_GOT_KEYCODE
+
+        ldy     KBD_MATRIX_SHIFT,x
+        bit     #%00000100            ;Branch to keep code from this matrix if SHIFT key mode
+        bne     LB5D0_GOT_KEYCODE
+
+        ldy     KBD_MATRIX_CAPS,x
+        bit     #%00000010
+        bne     LB5D0_GOT_KEYCODE     ;Branch to keep code from this matrix if CAPS key mode
+
+        ldy     KBD_MATRIX_NORMAL,x   ;Otherwise, use code from normal matrix
+
+LB5D0_GOT_KEYCODE:
+        tya                           ;A=key from matrix
+
+        ldy     $03FA
+LB5D4:  bne     LB5E1_JMP_LBFBE       ;UNKNOWN_SECS/MINS
+
+        ldy     KBD_MATRIX_NORMAL,x
         jsr     LFA84
 LB5DC:  sta     $AC
         jsr     LB640
@@ -7507,6 +7518,7 @@ LB63D:  lda     STKEY
         rts
 
 ; ----------------------------------------------------------------------------
+;TODO probably put key into buffer
 LB640:  php                                     ; B640 08                       .
         sei                                     ; B641 78                       x
         phx                                     ; B642 DA                       .
@@ -7514,9 +7526,7 @@ LB640:  php                                     ; B640 08                       
         dex                                     ; B646 CA                       .
         bpl     LB64C                           ; B647 10 03                    ..
         ldx     $03F6                           ; B649 AE F6 03                 ...
-LB64C:
-LB64D           := * + 1
-        cpx     $03F8                           ; B64C EC F8 03                 ...
+LB64C:  cpx     $03F8                           ; B64C EC F8 03                 ...
         bne     LB655                           ; B64F D0 04                    ..
         plx                                     ; B651 FA                       .
         plp                                     ; B652 28                       (
@@ -7535,6 +7545,7 @@ LB668:  plx                                     ; B668 FA                       
         clc                                     ; B66A 18                       .
         rts                                     ; B66B 60                       `
 ; ----------------------------------------------------------------------------
+;todo probably get key from buffer
 LB66C:  ldx     $03F8                           ; B66C AE F8 03                 ...
         lda     #$00                            ; B66F A9 00                    ..
         cpx     $03F7                           ; B671 EC F7 03                 ...
