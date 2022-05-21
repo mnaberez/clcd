@@ -68,7 +68,7 @@
 ;			FA00	Select KERN mode	(dummywrite)
 
 ; 0F800-0F9FF	I/O	IO Chips and Expansion via rear connector
-; 			F980	I/O#4	ACIA		RS-232, Modem		
+; 			F980	I/O#4	ACIA		RS-232, Modem
 ; 			F900	I/O#3	External Expansion
 ;			F880	I/O#2	VIA#2 		Centronics, RTC, RS-232, Modem, Beeper, Barcode Reader
 ;			F800	I/O#1	VIA#1 		Keyboard, Battery Level, Alarm, RTC Enable, Power, IEC
@@ -1185,16 +1185,19 @@ InitIOhw:
         lda     #$00
         sta     VIA1_PORTB
         lda     #$48
-L8777           := * + 1
         sta     VIA1_ACR
         lda     #$A0
-L877D           := * + 2
         sta     VIA1_PCR
-        lda     #$1A
-L8781           := * + 1
+
+        ;TOD clock code in IRQ handler expects to be called at 60 Hz.
+        ;60 Hz has a period of 16666 microseconds.
+        ;Timer 1 fires every 16666 microseconds by counting phi2.
+        ;Phi2 must be 1 MHz, since 1 MHz has a period of 1 microsecond.
+        lda     #<16666
         sta     VIA1_T1LL
-        lda     #$41
+        lda     #>16666
         sta     VIA1_T1CH
+
         lda     #$C0
         sta     VIA1_IER
         stz     VIA2_PORTA
@@ -7152,8 +7155,8 @@ LB2E4:  lda     #$FF
         sta     (VidPtrLo)
 LB2EE:  rts
 ; ----------------------------------------------------------------------------
-;Called from IRQ Handler
 ;Blink the cursor
+;Called at 60 Hz by the default IRQ handler (see LFA44_VIA1_T1_IRQ).
 BLINK:  lda     $0384
         bne     BLINK_RTS
 
@@ -7336,7 +7339,7 @@ LB4FB:  php
         plp
         rts
 ; ----------------------------------------------------------------------------
-;Called from IRQ Handler
+;Called at 60 Hz by the default IRQ handler (see LFA44_VIA1_T1_IRQ).
 ;Scan the keyboard
 KL_SCNKEY:
         lda     $F4
@@ -8807,8 +8810,8 @@ LBF46:  dex
 LBF4D:  clc
         rts
 ; ----------------------------------------------------------------------------
-;Called from IRQ Handler
-;Updates time-of-day (TOD) clock. Should be called at 60Hz frequency.
+;Updates time-of-day (TOD) clock.
+;Called at 60 Hz by the default IRQ handler (see LFA44_VIA1_T1_IRQ).
 UDTIM__:dec     JIFFIES
         bpl     UDTIM_RTS
 
@@ -9740,7 +9743,7 @@ LC60E:  .addr   UDBELL                           ; C60E 18 C6                   
         .addr   LC63F                           ; C614 3F C6                    ?.
         .addr   BELL                            ; C616 5C C6                    \.
 ; ----------------------------------------------------------------------------
-;Called from IRQ Handler
+;Called at 60 Hz by the default IRQ handler (see LFA44_VIA1_T1_IRQ).
 ;Bell-related
 UDBELL: jsr     LC63F                           ; C618 20 3F C6                  ?.
         bcs     LC634                           ; C61B B0 17                    ..
@@ -11909,7 +11912,7 @@ LD5BA:  jsr     DFLTO                           ; D5BA 20 86 03                 
         pla                                     ; D5C7 68                       h
         tay                                     ; D5C8 A8                       .
         pla                                     ; D5C9 68                       h
-        jsr     L8781                           ; D5CA 20 81 87                  ..
+        jsr     $8781                           ; D5CA 20 81 87                  ..
         jsr     DFLTO                           ; D5CD 20 86 03                  ..
         cmp     #$3B                            ; D5D0 C9 3B                    .;
         beq     LD5D7                           ; D5D2 F0 03                    ..
@@ -12123,7 +12126,7 @@ LD78B:  jsr     L42D0                           ; D78B 20 D0 42                 
         inc     stack+49                        ; D78E EE 31 01                 .1.
         rts                                     ; D791 60                       `
 ; ----------------------------------------------------------------------------
-        jsr     L877D                           ; D792 20 7D 87                  }.
+        jsr     $877D                           ; D792 20 7D 87                  }.
         sta     $78                             ; D795 85 78                    .x
         ldx     #$0A                            ; D797 A2 0A                    ..
         lda     #$00                            ; D799 A9 00                    ..
@@ -12461,11 +12464,11 @@ LDA47:  lda     #$00                            ; DA47 A9 00                    
         pha                                     ; DA4C 48                       H
         lda     $03D8                           ; DA4D AD D8 03                 ...
         ldy     $03D9                           ; DA50 AC D9 03                 ...
-        jsr     L8781                           ; DA53 20 81 87                  ..
+        jsr     $8781                           ; DA53 20 81 87                  ..
         sta     LFF03                           ; DA56 8D 03 FF                 ...
         lda     $03D6                           ; DA59 AD D6 03                 ...
         ldy     $03D7                           ; DA5C AC D7 03                 ...
-        jsr     L8781                           ; DA5F 20 81 87                  ..
+        jsr     $8781                           ; DA5F 20 81 87                  ..
         pla                                     ; DA62 68                       h
         tay                                     ; DA63 A8                       .
         jmp     L84D0                           ; DA64 4C D0 84                 L..
@@ -13895,7 +13898,7 @@ LE575:  lda     #$01                            ; E575 A9 01                    
 LE58D:  jmp     L795A                           ; E58D 4C 5A 79                 LZy
 ; ----------------------------------------------------------------------------
         jsr     LA5F2                           ; E590 20 F2 A5                  ..
-        jsr     L8777                           ; E593 20 77 87                  w.
+        jsr     $8777                           ; E593 20 77 87                  w.
         tax                                     ; E596 AA                       .
         beq     LE556                           ; E597 F0 BD                    ..
         ldy     #$00                            ; E599 A0 00                    ..
@@ -16623,11 +16626,13 @@ DEFVEC_IRQ:
         bpl     LFA3C
         jsr     LBE7B
 LFA3C:  bit     VIA1_IFR
-        bpl     LFA43
-        bvs     LFA44
+        bpl     LFA43               ;Branch if IRQ was not caused by VIA1
+        bvs     LFA44_VIA1_T1_IRQ   ;Branch if VIA1 Timer 1 caused the interrupt
 LFA43:  rts
 ; ----------------------------------------------------------------------------
-LFA44:  lda     VIA1_T1CL
+;VIA1 Timer 1 Interrupt Occurred
+LFA44_VIA1_T1_IRQ:
+        lda     VIA1_T1CL
         lda     VIA1_T1LL
         jsr     KL_SCNKEY
         jsr     BLINK
