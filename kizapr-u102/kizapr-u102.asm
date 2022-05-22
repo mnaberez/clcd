@@ -176,6 +176,7 @@ LSTP            := $03E8
 LSXP            := $03E9
 SavedCursorX    := $03EA
 SavedCursorY    := $03EB
+SWITCH_COUNT    := $03FB  ;Counts down to debounce switching upper/lowercase on Shift-Commodore
 CAPS_FLAGS      := $03FC
 LDTND           := $0405
 VERCHK          := $0406
@@ -1012,7 +1013,7 @@ KL_RESET:
         beq     L8582_COULD_NOT_RESTORE_STATE
         jsr     InitIOhw
         jsr     KBD_TRIGGER_AND_READ_NORMAL_KEYS
-        jsr     KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
+        jsr     KBD_READ_MODIFIER_KEYS_DO_SWITCH_AND_CAPS
         lsr     a ;Bit 0 = MOD_STOP
         bcs     L8582_COULD_NOT_RESTORE_STATE ;Branch if STOP is pressed
         jsr     L83F0
@@ -6180,11 +6181,11 @@ CTRL_CODES:
         .byte   $18 ;CHR$(24) Set or Clear Tab
         .addr   CODE_18_CTRL_X
 
-        .byte   $19 ;CHR$(25) CTRL-Y
-        .addr   CODE_19_CTRL_Y
+        .byte   $19 ;CHR$(25) CTRL-Y Lock (Disables Shift+Commodore)
+        .addr   CODE_19_CTRL_Y_LOCK
 
-        .byte   $1A ;CHR$(26) CTRL-Z
-        .addr   CODE_1A_CTRL_Z
+        .byte   $1A ;CHR$(26) CTRL-Z Unlock (Allows Shift+Commodore)
+        .addr   CODE_1A_CTRL_Z_UNLOCK
 
         .byte   $1D ;CHR$(29) Cursor Right
         .addr   CTRL_1D_CRSR_RIGHT
@@ -6223,22 +6224,26 @@ LACD4:  cmp     CTRL_CODES,x
 JMP_TO_CTRL_CODE:
         jmp     (CTRL_CODES+1,x)
 ; ----------------------------------------------------------------------------
-;CHR$(25) CTRL-Y
-CODE_19_CTRL_Y:
+;CHR$(25) CTRL-Y Lock
+;Disables swapping uppercase/lowercase mode when Shift+Commodore is pressed
+CODE_19_CTRL_Y_LOCK:
         lda     #$40
         tsb     $036D
         rts
 ; ----------------------------------------------------------------------------
-;CHR$(26) CTRL-Z
-CODE_1A_CTRL_Z:
+;CHR$(26) CTRL-Z Unlock
+CODE_1A_CTRL_Z_UNLOCK:
+;Enables swapping uppercase/lowercase mode when Shift+Commodore is pressed
         lda     #$40
         trb     $036D
         rts
 ; ----------------------------------------------------------------------------
-;Called only from KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
-LACEE_UNKNOWN_CTRL_Y_AND_UPPERCASE_LOWERCASE_RELATED:
+;Switch between uppercase and lowercase character sets
+;Called from KBD_READ_MODIFIER_KEYS_DO_SWITCH_AND_CAPS
+;when Shift + Commodore is pressed
+SWITCH_CHARSET:
         bit     $036D
-        bvs     CODE_19_CTRL_Y
+        bvs     CODE_19_CTRL_Y_LOCK ;If locked, branch to re-lock (does nothing) and return
 
         lda     #$01
         tsb     SETUP_LCD_A  ;Uppercase mode
@@ -7425,7 +7430,7 @@ LB53E:  dec     $F5
         lda     $0366
         sta     $F5
         bne     LB585
-LB549:  jmp     KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
+LB549:  jmp     KBD_READ_MODIFIER_KEYS_DO_SWITCH_AND_CAPS
 ; ----------------------------------------------------------------------------
 LB54C:  lda     #$00
         sta     VIA1_PORTA
@@ -7461,7 +7466,7 @@ LB585:  lda     $AB
         eor     #$07
         tax
 
-        jsr     KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
+        jsr     KBD_READ_MODIFIER_KEYS_DO_SWITCH_AND_CAPS
         and     #MOD_CTRL ;CTRL-key pressed?
         beq     LB5AC_NO_CTRL ;Branch if no
 
@@ -7546,21 +7551,23 @@ KBD_READ_SR_WAIT:
         rts
 
 ; ----------------------------------------------------------------------------
-KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF:
+KBD_READ_MODIFIER_KEYS_DO_SWITCH_AND_CAPS:
 ;Read the modifier keys (SHIFT, CTRL, etc.)
+;Swap upper/lowercase
+;Toggle CAPS lock
 ;
         jsr     KBD_READ_SR
         sta     MODKEY
 LB602:  and     #MOD_CBM+MOD_SHIFT
         eor     #MOD_CBM+MOD_SHIFT
-        ora     $03FB
+        ora     SWITCH_COUNT
         bne     LB613
-        jsr     LACEE_UNKNOWN_CTRL_Y_AND_UPPERCASE_LOWERCASE_RELATED
-        lda     #$3C
-        sta     $03FB
-LB613:  dec     $03FB
+        jsr     SWITCH_CHARSET ;Switch uppercase/lowercase mode
+        lda     #$3C ;Initial count for debounce
+        sta     SWITCH_COUNT
+LB613:  dec     SWITCH_COUNT
         bpl     LB61B
-        stz     $03FB
+        stz     SWITCH_COUNT
 LB61B:  lda     #MOD_CAPS
         trb     MODKEY
         beq     LB62F_CAPS_PRESSED
