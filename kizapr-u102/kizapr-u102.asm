@@ -248,30 +248,50 @@ MOD_STOP   = 1
 ; At offset 4: this byte tells the number of Kbytes to be checked by the ROM
 ; checksum routine. I don't know the purpose of the other bytes though.
         .byte   $00,$00,$FF,$FF,$10,$DD,$DD,$DD
+
 ; ----------------------------------------------------------------------------
 Commodore_LCD:
 ; Every ROM images begins with this "identification" string. This one is also
 ; used to compare with the searched ones by the ROM scanning routine.
         .byte   "Commodore LCD"
 ; ----------------------------------------------------------------------------
-; Every ROM contains a "directory" with the "applications" to be found (I
-; guess). Besides the names, I know only maybe three bytes of the six
-; (prefixed every name): the size of that entry, zero for no more entries.
-; Two other bytes (last two bytes - a word - before the name itself) may
-; encode the entry point of the given software. I don't know the purpose of
-; other bytes.
-        .byte $11,$10,$20,$00
-        .word L8038_MONITOR_MON
-        .byte "MONITOR.MON"
+; Every ROM contains a "directory" with the "applications" to be found.
+;
+;  - Apps can be displayed on the menu or hidden from it.  An app that is
+;    hidden can still be run by typing its name.
+;
+;  - An app can optionally have a file extension associated with it.  If a
+;    period follows the name, the characters that follow are the extension.
+;    The menu will then use the app to open files with that extension.  All
+;    extensions are 3 characters in the LCD ROMs but this is not required.
+;    The extension is part of a regular 16-character CBM filename and can be
+;    longer or shorter than 3 characters.
+ROM_DIR_START := *
 
-        .byte $11,$01,$20,$00
-        .word L804C_COMMAND_CMD
-        .byte "COMMAND.CMD"
+ROM_DIR_ENTRY_MONITOR:
+        .byte ROM_DIR_ENTRY_MONITOR_SIZE
+        .byte $10               ;$01=show on menu, $10=hidden
+        .byte $20               ;unknown
+        .byte $00               ;unknown
+        .word ROM_ENTRY_MONITOR ;entry point
+        .byte "MONITOR"         ;menu name
+        .byte ".MON"            ;associated file extension
+        ROM_DIR_ENTRY_MONITOR_SIZE = * - ROM_DIR_ENTRY_MONITOR
 
+ROM_DIR_ENTRY_COMMAND:
+        .byte ROM_DIR_ENTRY_COMMAND_SIZE
+        .byte $01               ;$01=show on menu, $10=hidden
+        .byte $20               ;unknown
+        .byte $00               ;unknown
+        .word ROM_ENTRY_COMMAND ;entry point
+        .byte "COMMAND"         ;menu name
+        .byte ".CMD"            ;associated file extension
+        ROM_DIR_ENTRY_COMMAND_SIZE = * - ROM_DIR_ENTRY_COMMAND
+
+ROM_DIR_END:
         .byte 0
 ; ----------------------------------------------------------------------------
-; It seems to be the entry point of "MONITOR.MON".
-L8038_MONITOR_MON:
+ROM_ENTRY_MONITOR:
         cpx     #$0E
         bne     L8040
         clc
@@ -284,8 +304,7 @@ L8040:  cpx     #$06
 JMP_MON_START:
         jmp     MON_START
 ; ----------------------------------------------------------------------------
-; It seems to be the entry point of "COMMAND.CMD".
-L804C_COMMAND_CMD:
+ROM_ENTRY_COMMAND:
         cpx     #$08
         bne     L8066
         lda     #$7E
