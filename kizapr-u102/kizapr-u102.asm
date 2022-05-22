@@ -94,7 +94,7 @@ WIN_BTM_RGHT_Y  := $00A6
 QTSW            := $00A7  ;Quote mode flag (0=quote mode off, nonzero=on)
 INSRT           := $00A8  ;Number of chars to insert (1 for each time SHIFT-INS/DEL is pressed)
 INSFLG          := $00A9  ;Auto-insert mode flag (0=auto-insert off, nonzero=on)
-STKEY           := $00AD
+MODKEY          := $00AD  ;"Modifier" key byte read directly from keyboard shift register
 FNADR           := $00AE
 EAL             := $00B2
 EAH             := $00B3
@@ -176,6 +176,7 @@ LSTP            := $03E8
 LSXP            := $03E9
 SavedCursorX    := $03EA
 SavedCursorY    := $03EB
+CAPS_FLAGS      := $03FC
 LDTND           := $0405
 VERCHK          := $0406
 BSOUR           := $0408
@@ -229,6 +230,19 @@ L795A           := $795A
 L7A73           := $7A73
 L7D16           := $7D16
 L7E6A           := $7E6A
+
+;Equates
+
+;Used to test MODKEY
+MOD_BIT_7  = 128 ;Unknown
+MOD_BIT_6  = 64  ;Unknown
+MOD_BIT_5  = 32  ;Unknown
+MOD_CBM    = 16
+MOD_CTRL   = 8
+MOD_SHIFT  = 4
+MOD_CAPS   = 2
+MOD_STOP   = 1
+
 ; ----------------------------------------------------------------------------
 ; At offset 4: this byte tells the number of Kbytes to be checked by the ROM
 ; checksum routine. I don't know the purpose of the other bytes though.
@@ -997,10 +1011,10 @@ KL_RESET:
         jsr     L840F
         beq     L8582_COULD_NOT_RESTORE_STATE
         jsr     InitIOhw
-        jsr     KBD_TRIGGER_AND_READ_SR
-        jsr     KBD_READ_SR_THEN_UNKNOWN_STUFF
-        lsr     a
-        bcs     L8582_COULD_NOT_RESTORE_STATE
+        jsr     KBD_TRIGGER_AND_READ_NORMAL_KEYS
+        jsr     KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
+        lsr     a ;Bit 0 = MOD_STOP
+        bcs     L8582_COULD_NOT_RESTORE_STATE ;Branch if STOP is pressed
         jsr     L83F0
         jsr     L8644
         jsr     L887F
@@ -1020,9 +1034,9 @@ L8582_COULD_NOT_RESTORE_STATE:
         .byte   " COULD NOT RESTORE PREVIOUS STATE",$0d,$07,0
         ldx     #$02
         jsr     WaitXticks_
-        lda     STKEY
-        and     #$1F
-        eor     #$15
+        lda     MODKEY
+        and     #MOD_CBM + MOD_SHIFT + MOD_CTRL + MOD_CAPS + MOD_STOP
+        eor     #MOD_CBM + MOD_SHIFT + MOD_STOP
         bne     L85C0
         jmp     L87C5
 ; ----------------------------------------------------------------------------
@@ -1055,8 +1069,8 @@ L8644:  cli
         ldy     #$00
 L8647:  ldx     #$02
         jsr     WaitXticks_
-        lda     STKEY
-        bit     #$20
+        lda     MODKEY
+        bit     #MOD_BIT_5
         bne     L8653
         rts
 L8653:  iny
@@ -2444,16 +2458,16 @@ L90A7:  jsr     L8EAF                           ; 90A7 20 AF 8E                 
         beq     L90C2                           ; 90BC F0 04                    ..
         cmp     #$40                            ; 90BE C9 40                    .@
         bne     L90DA                           ; 90C0 D0 18                    ..
-L90C2:  .byte   $20                             ; 90C2 20
-L90C3:  bbs1    $8D,L9055+1                     ; 90C3 9F 8D 90                 ...
-        and     STKEY                     ; 90C6 25 AD                    %.
-        ldy     #$03                            ; 90C8 A0 03                    ..
-        .byte   $D0                             ; 90CA D0                       .
-L90CB:  tsb     $A9                             ; 90CB 04 A9                    ..
-        bbr3    $80,L90DF                       ; 90CD 3F 80 0F                 ?..
-L90D0:  .byte   $AD                             ; 90D0 AD                       .
-        clc                                     ; 90D1 18                       .
-L90D2:  .byte   $02                             ; 90D2 02                       .
+L90C3 := *+1
+L90C2:  jsr     L8D9F
+        bcc     L90EC
+        lda     $03A0
+L90CB := *+1
+        bne     L90D0
+        lda     #$3f
+        bra     L90DF
+L90D2 := *+2
+L90D0:  LDA $0218
         and     #$80                            ; 90D3 29 80                    ).
         beq     L90E1                           ; 90D5 F0 0A                    ..
         lda     #$1A                            ; 90D7 A9 1A                    ..
@@ -6221,13 +6235,15 @@ CODE_1A_CTRL_Z:
         trb     $036D
         rts
 ; ----------------------------------------------------------------------------
-;Called only from KBD_READ_SR_THEN_UNKNOWN_STUFF
-LACEE:  bit     $036D
+;Called only from KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
+LACEE_UNKNOWN_CTRL_Y_AND_UPPERCASE_LOWERCASE_RELATED:
+        bit     $036D
         bvs     CODE_19_CTRL_Y
 
         lda     #$01
-        tsb     SETUP_LCD_A
+        tsb     SETUP_LCD_A  ;Uppercase mode
         beq     JmpToSetUpLcdController
+        ;Fall through to set lowercase mode
 
 ;CHR$(14) Lowercase Mode
 CODE_14_LOWERCASE:
@@ -6303,15 +6319,20 @@ CODE_8D_SHIFT_RETURN:
         lda     $AA
         lsr     a
         bcc     LAD65
-        lda     #$08
-        bit     STKEY
+
+        lda     #MOD_CTRL
+        bit     MODKEY
         beq     LAD65
-        php
-        pla
-        bit     #$04
-        bne     LAD65
+
+        ;CTRL key being pressed
+        php           ;Push processor status to test it
+        pla           ;A = NV-BDIZC
+        bit     #$04  ;Test Interrupt flag
+        bne     LAD65 ;Branch if interrupt flag is not set
+
         ldx     #$2D
         jsr     WaitXticks_
+
 LAD65:  jsr     ESC_K_MOVE_TO_END_OF_LINE
         ldx     WIN_TOP_LEFT_X
         stx     CursorX
@@ -7195,10 +7216,11 @@ BLINK:  lda     $0384
 LB305:  lda     $F0
         cmp     (VidPtrLo)
         bne     BLINK_STORE_AS_IS
-        bit     $03FC
-        bpl     BLINK_RVS_AND_STORE
+        bit     CAPS_FLAGS
+        bpl     BLINK_RVS_AND_STORE ;Branch if caps lock is off
+        ;Caps lock is off
         and     #$80
-        ora     #$1E
+        ora     #$1E ;probably makes "^" cursor when in caps mode
 BLINK_RVS_AND_STORE:
         eor     #$80
 BLINK_STORE_AS_IS:
@@ -7385,7 +7407,7 @@ KL_SCNKEY:
         lsr     a
         lsr     a
         tay
-        jsr     KBD_TRIGGER_AND_READ_SR
+        jsr     KBD_TRIGGER_AND_READ_NORMAL_KEYS
         and     PowersOfTwo,y
         beq     LB52E
         lda     $0365
@@ -7403,17 +7425,17 @@ LB53E:  dec     $F5
         lda     $0366
         sta     $F5
         bne     LB585
-LB549:  jmp     KBD_READ_SR_THEN_UNKNOWN_STUFF
+LB549:  jmp     KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
 ; ----------------------------------------------------------------------------
 LB54C:  lda     #$00
         sta     VIA1_PORTA
-        jsr     KBD_TRIGGER_AND_READ_SR
+        jsr     KBD_TRIGGER_AND_READ_NORMAL_KEYS
         beq     LB549
         ldx     #$07
 LB558:  lda     PowersOfTwo,x
         eor     #$FF
         sta     VIA1_PORTA
-        jsr     KBD_TRIGGER_AND_READ_SR
+        jsr     KBD_TRIGGER_AND_READ_NORMAL_KEYS
         bne     LB56A
         dex
         bpl     LB558
@@ -7438,46 +7460,54 @@ LB575:  inc     a
 LB585:  lda     $AB
         eor     #$07
         tax
-        jsr     KBD_READ_SR_THEN_UNKNOWN_STUFF
 
-        and     #$08
-        beq     LB5AC
+        jsr     KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF
+        and     #MOD_CTRL ;CTRL-key pressed?
+        beq     LB5AC_NO_CTRL ;Branch if no
 
+        ;TODO what does $AA do?
         lda     #$02
         and     $AA
-        beq     LB5AC
+        beq     LB5AC_NO_CTRL
 
+        ;Check for CTRL-Q
         ldy     KBD_MATRIX_NORMAL,x
         cpy     #'Q'
-        bne     LB5A3
+        bne     LB5A3_CHECK_CTRL_S
 
+        ;CTRL-Q pressed
         trb     $036D
         bra     LB5E1_JMP_LBFBE ;UNKNOWN_SECS/MINS
 
-LB5A3:
+LB5A3_CHECK_CTRL_S:
+        ;Check for CTRL-S
         cpy     #'S'
-        bne     LB5AC
+        bne     LB5AC_NO_CTRL
+
+        ;CTRL-S pressed
         tsb     $036D
         bra     LB5E1_JMP_LBFBE ;UNKNOWN_SECS/MINS
 
-LB5AC:  lda     STKEY
+;No CTRL-key combination pressed
+LB5AC_NO_CTRL:
+        lda     MODKEY
         and     $038E
 
         ldy     KBD_MATRIX_CTRL,x
-        bit     #%00001000
-        bne     LB5D0_GOT_KEYCODE     ;Branch to keep code from this matrix if CTRL mode
+        bit     #MOD_CTRL
+        bne     LB5D0_GOT_KEYCODE     ;Branch to keep code from this matrix if CTRL pressed
 
         ldy     KBD_MATRIX_CBMKEY,x
-        bit     #%00010000            ;Branch to keep code from this matrix if CBM key mode
+        bit     #MOD_CBM              ;Branch to keep code from this matrix if CBM pressed
         bne     LB5D0_GOT_KEYCODE
 
         ldy     KBD_MATRIX_SHIFT,x
-        bit     #%00000100            ;Branch to keep code from this matrix if SHIFT key mode
+        bit     #MOD_SHIFT            ;Branch to keep code from this matrix if SHIFT pressed
         bne     LB5D0_GOT_KEYCODE
 
         ldy     KBD_MATRIX_CAPS,x
-        bit     #%00000010
-        bne     LB5D0_GOT_KEYCODE     ;Branch to keep code from this matrix if CAPS key mode
+        bit     #MOD_CAPS
+        bne     LB5D0_GOT_KEYCODE     ;Branch to keep code from this matrix if CAPS pressed
 
         ldy     KBD_MATRIX_NORMAL,x   ;Otherwise, use code from normal matrix
 
@@ -7496,7 +7526,9 @@ LB5E1_JMP_LBFBE:
         jmp     LBFBE ;UNKNOWN_SECS/MINS
 
 ; ----------------------------------------------------------------------------
-KBD_TRIGGER_AND_READ_SR:
+KBD_TRIGGER_AND_READ_NORMAL_KEYS:
+;Read "normal" (non-modifier) keys
+;
 ;CLCD's keyboard is read through VIA1's SR.  PB0 seems to trigger (0->1)
 ;the keyboard "controller" to provide bits through serial transfer.
         lda     VIA1_PORTB
@@ -7514,35 +7546,38 @@ KBD_READ_SR_WAIT:
         rts
 
 ; ----------------------------------------------------------------------------
-KBD_READ_SR_THEN_UNKNOWN_STUFF:
+KBD_READ_MODIFIER_KEYS_THEN_DO_UNKNOWN_STUFF:
+;Read the modifier keys (SHIFT, CTRL, etc.)
+;
         jsr     KBD_READ_SR
-        sta     STKEY
-LB602:  and     #$14
-        eor     #$14
+        sta     MODKEY
+LB602:  and     #MOD_CBM+MOD_SHIFT
+        eor     #MOD_CBM+MOD_SHIFT
         ora     $03FB
         bne     LB613
-        jsr     LACEE
+        jsr     LACEE_UNKNOWN_CTRL_Y_AND_UPPERCASE_LOWERCASE_RELATED
         lda     #$3C
         sta     $03FB
 LB613:  dec     $03FB
         bpl     LB61B
         stz     $03FB
-LB61B:  lda     #$02
-        trb     STKEY
-        beq     LB62F
-        lda     $03FC
+LB61B:  lda     #MOD_CAPS
+        trb     MODKEY
+        beq     LB62F_CAPS_PRESSED
+        lda     CAPS_FLAGS
         bit     #$40
         bne     LB634
         eor     #$C0
-        sta     $03FC
+        sta     CAPS_FLAGS
         bra     LB634
-LB62F:  lda     #$40
-        trb     $03FC
-LB634:  bit     $03FC
+LB62F_CAPS_PRESSED:
+        lda     #$40
+        trb     CAPS_FLAGS
+LB634:  bit     CAPS_FLAGS
         bpl     LB63D
-        lda     #$02
-        tsb     STKEY
-LB63D:  lda     STKEY
+        lda     #MOD_CAPS
+        tsb     MODKEY
+LB63D:  lda     MODKEY
         rts
 
 ; ----------------------------------------------------------------------------
@@ -7605,9 +7640,9 @@ LB688_GET_KEY_NONBLOCKING:
 LB6A1:  jsr     L8C40                           ; B6A1 20 40 8C                  @.
         bcc     LB6C0                           ; B6A4 90 1A                    ..
         rol     $03FA                           ; B6A6 2E FA 03                 ...
-        lda     STKEY                           ; B6A9 A5 AD                    ..
-        lsr     a                               ; B6AB 4A                       J
-        bcs     LB6BD                           ; B6AC B0 0F                    ..
+        lda     MODKEY                          ; B6A9 A5 AD                    ..
+        lsr     a ;Bit 0 = MOD_STOP             ; B6AB 4A                       J
+        bcs     LB6BD ;Branch if STOP pressed   ; B6AC B0 0F                    ..
         jsr     L8B46                           ; B6AE 20 46 8B                  F.
         bcc     LB6BD                           ; B6B1 90 0A                    ..
         bit     SXREG                           ; B6B3 2C 9D 03                 ,..
@@ -7640,9 +7675,10 @@ LB6DF_GET_KEY_BLOCKING:
         beq     LB6DF_GET_KEY_BLOCKING          ; B6E5 F0 F8                    ..
         rts                                     ; B6E7 60                       `
 ; ----------------------------------------------------------------------------
-LB6E8:  lda     STKEY                           ; B6E8 A5 AD                    ..
-        eor     #$01                            ; B6EA 49 01                    I.
-        and     #$01                            ; B6EC 29 01                    ).
+LB6E8_STOP:
+        lda     MODKEY                          ; B6E8 A5 AD                    ..
+        eor     #MOD_STOP                       ; B6EA 49 01                    I.
+        and     #MOD_STOP                       ; B6EC 29 01                    ).
         bne     LB6F8                           ; B6EE D0 08                    ..
         php                                     ; B6F0 08                       .
         jsr     CLRCH                           ; B6F1 20 2A FD                  *.
@@ -7761,8 +7797,8 @@ LB7AE_LOOP_UNTIL_KEY:
         jsr     LBFF2                           ; B7AE 20 F2 BF                  ..
         jsr     LB688_GET_KEY_NONBLOCKING       ; B7B1 20 88 B6                  ..
         bne     LB7BE_GOT_KEY                   ; B7B4 D0 08                    ..
-        lda     STKEY                           ; B7B6 A5 AD                    ..
-        and     #$01                            ; B7B8 29 01                    ).
+        lda     MODKEY                          ; B7B6 A5 AD                    ..
+        and     #MOD_STOP                       ; B7B8 29 01                    ).
         beq     LB7AE_LOOP_UNTIL_KEY            ; B7BA F0 F2                    ..
         lda     #$03                            ; B7BC A9 03                    ..
 LB7BE_GOT_KEY:
@@ -8825,8 +8861,8 @@ LBF04:  dex
 LBF0B:  rts
 ; ----------------------------------------------------------------------------
 LBF0C:  tax
-LBF0D:  lda     STKEY
-        lsr     a
+LBF0D:  lda     MODKEY
+        lsr     a ;Bit 0 = MOD_STOP
         bit     $C3
         bpl     LBF16
         bcc     LBF0D
@@ -8975,7 +9011,7 @@ LBFE8:  cmp     JIFFIES
 LBFF2:  pha
         phx
         phy
-        jsr     LC009_CHECK_STKEY_AND_UNKNOWN_SECS_MINS
+        jsr     LC009_CHECK_MODKEY_AND_UNKNOWN_SECS_MINS
         bcc     LBFFD
         jsr     L84C5
 LBFFD:  lda     $0335
@@ -8986,9 +9022,9 @@ LC005:  ply
         pla
         rts
 ; ----------------------------------------------------------------------------
-LC009_CHECK_STKEY_AND_UNKNOWN_SECS_MINS:
-        lda     STKEY
-        and     #$A0
+LC009_CHECK_MODKEY_AND_UNKNOWN_SECS_MINS:
+        lda     MODKEY
+        and     #MOD_BIT_7 + MOD_BIT_5
         tax
         php
         sei
@@ -9102,9 +9138,9 @@ LC0FC:  tay                                     ; C0FC A8                       
         pla                                     ; C106 68                       h
         inc     a                               ; C107 1A                       .
         bcs     LC10F                           ; C108 B0 05                    ..
-        lda     STKEY                           ; C10A A5 AD                    ..
-        lsr     a                               ; C10C 4A                       J
-        bcc     LC0F1                           ; C10D 90 E2                    ..
+        lda     MODKEY                       ; C10A A5 AD                    ..
+        lsr     a ;Bit 0 = MOD_STOP        ; C10C 4A                       J
+        bcc     LC0F1 ;Return early if pressed  ; C10D 90 E2                    ..
 LC10F:  rts                                     ; C10F 60                       `
 ; ----------------------------------------------------------------------------
 LC110:  bit     #$40                            ; C110 89 40                    .@
@@ -9209,9 +9245,9 @@ LC1CD:  lda     ACIA_ST                         ; C1CD AD 81 F9                 
         beq     LC18C                           ; C1D2 F0 B8                    ..
         bit     #$40                            ; C1D4 89 40                    .@
         bne     LC1DD                           ; C1D6 D0 05                    ..
-        lda     STKEY                     ; C1D8 A5 AD                    ..
-        lsr     a                               ; C1DA 4A                       J
-        bcc     LC1CD                           ; C1DB 90 F0                    ..
+        lda     MODKEY                       ; C1D8 A5 AD                    ..
+        lsr     a ;Bit 0 = MOD_STOP        ; C1DA 4A                       J
+        bcc     LC1CD ;Return early if pressed  ; C1DB 90 F0                    ..
 LC1DD:  sec                                     ; C1DD 38                       8
         rts                                     ; C1DE 60                       `
 ; ----------------------------------------------------------------------------
@@ -9454,10 +9490,10 @@ LC393:  lda     VIA2_PORTB                      ; C393 AD 80 F8                 
         and     #$40 ;PB6 = /BUSY               ; C396 29 40                    )@
         bne     LC3B0 ;Branch if /BUSY=high     ; C398 D0 16                    ..
 
-        lda     STKEY                           ; C39A A5 AD                    ..
-        lsr     a                               ; C39C 4A                       J
+        lda     MODKEY                       ; C39A A5 AD                    ..
+        lsr     a ;Bit 0 = MOD_STOP        ; C39C 4A                       J
         lda     #$00                            ; C39D A9 00                    ..
-        bcs     LC3AB ;Branch is STOP pressed   ; C39F B0 0A                    ..
+        bcs     LC3AB ;Return early if pressed  ; C39F B0 0A                    ..
 
         ldx     #$01                            ; C3A1 A2 01                    ..
         jsr     WaitXticks_                     ; C3A3 20 E4 BF                  ..
@@ -10991,8 +11027,8 @@ LCE25:  ora     ($48),y                         ; CE25 11 48                    
         tay                                     ; CE95 A8                       .
         lda     ($A8)                           ; CE96 B2 A8                    ..
         ldy     $AC,x                           ; CE98 B4 AC                    ..
-        dec     STKEY                     ; CE9A C6 AD                    ..
-        asl     STKEY                     ; CE9C 06 AD                    ..
+        dec     MODKEY                     ; CE9A C6 AD                    ..
+        asl     MODKEY                     ; CE9C 06 AD                    ..
         and     (FNADR)                      ; CE9E 32 AE                    2.
         .byte   $44                             ; CEA0 44                       D
         ldx     LAE68                           ; CEA1 AE 68 AE                 .h.
@@ -12878,7 +12914,7 @@ LDD0E:  rts                                     ; DD0E 60                       
         bra     LDD51                           ; DD0F 80 40                    .@
         jsr     L0810                           ; DD11 20 10 08                  ..
         tsb     $02                             ; DD14 04 02                    ..
-        ora     (STKEY,x)                 ; DD16 01 AD                    ..
+        ora     (MODKEY,x)                 ; DD16 01 AD                    ..
         and     ($11)                           ; DD18 32 11                    2.
         lsr     a                               ; DD1A 4A                       J
         bne     LDD3B                           ; DD1B D0 1E                    ..
@@ -16767,7 +16803,7 @@ LFAB5:  sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
 LFABF:  sta     MMU_MODE_KERN
-        jsr     LC009_CHECK_STKEY_AND_UNKNOWN_SECS_MINS
+        jsr     LC009_CHECK_MODKEY_AND_UNKNOWN_SECS_MINS
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
@@ -17218,7 +17254,7 @@ LFDB9_STOP:
 ; ----------------------------------------------------------------------------
 DEFVEC_STOP:
         sta     MMU_MODE_KERN
-        jsr     LB6E8
+        jsr     LB6E8_STOP
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
