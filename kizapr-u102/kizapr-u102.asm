@@ -6344,16 +6344,20 @@ CODE_8D_SHIFT_RETURN:
         lsr     a
         bcc     LAD65
 
+        ;Check if the CTRL key is being pressed.  If so, and no interrupt
+        ;is pending, pause before doing the linefeed.  This allows the user
+        ;to slow down screen scrolling during LIST or DIRECTORY in BASIC.
         lda     #MOD_CTRL
         bit     MODKEY
-        beq     LAD65
+        beq     LAD65 ;Branch to skip pause if CTRL is not down
 
         ;CTRL key being pressed
         php           ;Push processor status to test it
         pla           ;A = NV-BDIZC
         bit     #$04  ;Test Interrupt flag
-        bne     LAD65 ;Branch if interrupt flag is not set
+        bne     LAD65 ;Branch to skip pause if interrupt flag is set
 
+        ;Pause before doing the linefeed
         ldx     #$2D
         jsr     WaitXticks_
 
