@@ -30,6 +30,8 @@ The IEC signals are connected to VIA1 ($F800):
 |VIA1 PB4 |CLK_OUT |same as C64| CLKHI $BE1A, CLKLO $BE23 |
 |VIA1 PB3 |ATN_OUT |same as C64| SCATN $BD4C, LIST5 $BCB8 |
 
+VIA1 Timer 2 is used in one-shot mode for IEC bus timing.  It is not used for interrupts but is polled by the IEC bus routines (EOIACP at $BDB3, ISRCLK at $BD11, ISR04 at $BD2C, and ACP00 at BDBB).
+
 ### Centronics Port
 
 The KERNAL supports a Centronics printer on device number 30 (see `NOPEN` at $BB1C).  This device is output only (see `CHROUT/BSOUT` at $B994).  Attempting to read from it will give `?NOT INPUT FILE ERROR` (see `GETIN` at $B958).
@@ -50,6 +52,10 @@ STROBE is pulsed.  Above, there are two candidates for STROBE.  Both of these li
 ### Beeper / CB2 Sound
 
 The KERNAL screen device (`3`) will sound the beeper when control code 7 is written (see routine at $C65C and the calls to it).  The beeper is driven by CB2 of VIA2 (see $C64B).
+
+### Jiffy Clock / TOD Clock
+
+VIA1 ($F800) Timer 1 is used in free-running mode to provide a 60 Hz interrupt ($877E).  The KERNAL maintains the clock, blinks the cursor, and scans the keyboard in the interrupt handler ($877E) like other CBM machines.
 
 ## Firmware
 

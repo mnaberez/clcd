@@ -307,13 +307,15 @@ JMP_MON_START:
 ROM_ENTRY_COMMAND:
         cpx     #$08
         bne     L8066
-        lda     #$7E
-L8052:  ldx     #$01
-        ldy     #$0E
+
+        lda     #$7E        ;A = Logical file number (126)
+L8052:  ldx     #$01        ;X = Device 1 (Virtual 1541)
+        ldy     #$0E        ;Y = Channel 14
         jsr     SETLFS_
-        lda     $0423
-        ldx     #$24
-        ldy     #$04
+
+        lda     $0423       ;A = Filename length
+        ldx     #<$0424     ;XY = Filename
+        ldy     #>$0424
         jsr     SETNAM_
         jsr     Open_
 L8066:  rts
@@ -1233,26 +1235,51 @@ InitIOhw:
         sei
         lda     #$FF
         sta     VIA1_DDRA
-        lda     #$3F
+
+        lda     #%00111111  ;PB7 = Input    IEC DAT In
+                            ;PB6 = Input    IEC CLK In
+                            ;PB5 = Output   IEC DAT Out
+                            ;PB4 = Output   IEC CLK Out
+                            ;PB3 = Output   IEC ATN Out
+                            ;PB2 = Output   ?
+                            ;PB1 = Output   ?
+                            ;PB0 = Output   ?
         sta     VIA1_DDRB
+
         lda     #$00
         sta     VIA1_PORTB
-        lda     #$48
+
+        lda     #%01001000  ;ACR7=0 Timer 1 PB7 Output = Disabled
+                            ;ACR6=1 Timer 1 = Continuous (Jiffy clock)
+                            ;ACR5=0 Timer 2 = One-shot (IEC)
+                            ;ACR4=0 \
+                            ;ACR3=1  Shift in under control of Phi2
+                            ;ACR2=0 /
+                            ;ACR1=0 Port B Latch = Disabled
+                            ;ACR0=0 Port A Latch = Disabled
         sta     VIA1_ACR
-        lda     #$A0
+
+        lda     #%10100000  ;PCR7=1 \
+                            ;PCR6=0  CB2 Control = Pulse Output (Beeper)
+                            ;PCR5=1 /
+                            ;PCR4=0 CB1 Interrupt Control = Negative Active Edge
+                            ;PCR3=0 \
+                            ;PCR2=0  CA2 Control = Input-negative active edge
+                            ;PCR1=0 /
+                            ;PCR0=0 CA1 Interrupt Control = Negative Active Edge
         sta     VIA1_PCR
 
-        ;TOD clock code in IRQ handler expects to be called at 60 Hz.
-        ;60 Hz has a period of 16666 microseconds.
-        ;Timer 1 fires every 16666 microseconds by counting phi2.
-        ;Phi2 must be 1 MHz, since 1 MHz has a period of 1 microsecond.
-        lda     #<16666
-        sta     VIA1_T1LL
-        lda     #>16666
-        sta     VIA1_T1CH
+                            ;Timer 1 Count (Jiffy clock)
+        lda     #<16666     ;TOD clock code in IRQ handler expects to be called at 60 Hz.
+        sta     VIA1_T1LL   ;60 Hz has a period of 16666 microseconds.
+        lda     #>16666     ;Timer 1 fires every 16666 microseconds by counting phi2.
+        sta     VIA1_T1CH   ;Phi2 must be 1 MHz, since 1 MHz has a period of 1 microsecond.
 
-        lda     #$C0
+        lda     #%11000000  ;IER7=1 Set/Clear=Set interrupts
+                            ;IER6=1 Timer 1 interrupt enabled (Jiffy clock)
+                            ;All other interrupts disabled
         sta     VIA1_IER
+
         stz     VIA2_PORTA
         lda     #$FF
         sta     VIA2_DDRA
