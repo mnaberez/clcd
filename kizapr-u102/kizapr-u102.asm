@@ -8559,225 +8559,265 @@ EREXIT: pla
 
 ;Send TALK to IEC
 TALK__:
-        ora     #$40
-        .byte   $2C
+        ora     #$40          ;A = 0x40 (TALK)
+        .byte   $2C           ;Skip next 2 bytes
 
 ;Send LISTEN to IEC
 LISTN:
-        ora     #$20
+        ora     #$20          ;A = 0x20 (LISTEN)
 
+;Send a command byte to IEC
 ;Start of LIST1 from C64 KERNAL
 LIST1:  pha
-        bit     C3P0
-        bpl     LIST2
-        sec
-        ror     R2D2
-        jsr     ISOUR
-        lsr     C3P0
-        lsr     R2D2
+        bit     C3P0          ;Character left in buf?
+        bpl     LIST2         ;No...
 
-LIST2:  pla
-        sta     BSOUR
+        ;Send buffered character
+        sec                   ;Set EOI flag
+        ror     R2D2
+        jsr     ISOUR         ;Send last character
+        lsr     C3P0          ;Buffer clear flag
+        lsr     R2D2          ;Clear EOI flag
+
+LIST2:  pla                   ;TALK/LISTEN address
+        sta     BSOUR         ;Byte buffer for output (FF means no character)
         sei
-        jsr     DATAHI
-        cmp     #$3F
+        jsr     DATAHI        ;Set data line high
+        cmp     #$3F          ;CLKHI only on UNLISTEN
         bne     LIST5
-        jsr     CLKHI
+        jsr     CLKHI         ;Set clock line high
 
 LIST5:  lda     VIA1_PORTB
         ora     #$08
-        sta     VIA1_PORTB
+        sta     VIA1_PORTB    ;Assert ATN (turns VIA PA3 on)
 
 ISOURA: sei
-        jsr     CLKLO
+        jsr     CLKLO         ;Set clock line low
         jsr     DATAHI
         jsr     W1MS
 
+;Send last byte to IEC
 ISOUR:  sei
-        jsr     DATAHI
-        jsr     DEBPIA
-        bcs     NODEV
-        jsr     CLKHI
-        bit     VIA1_PORTB
-        bvs     NODEV
-        bit     R2D2
+        jsr     DATAHI        ;Make sure data is released / Set data line high
+        jsr     DEBPIA        ;Data should be low / Debounce VIA PA then ASL A
+        bcs     NODEV         ;Branch to device not present error
+        jsr     CLKHI         ;Set clock line high
+
+        bit     VIA1_PORTB    ;XXX different from c64
+        bvs     NODEV         ;XXX
+
+        bit     R2D2          ;EOI flag test
         bpl     NOEOI
 
-ISR02:  jsr     DEBPIA
+;Do the EOI
+ISR02:  jsr     DEBPIA        ;Wait for DATA to go high / Debounce VIA PA then ASL A
         bcc     ISR02
 
-ISR03:  jsr     DEBPIA
+ISR03:  jsr     DEBPIA        ;Wait for DATA to go low / Debounce VIA PA then ASL A
         bcs     ISR03
 
-NOEOI:  jsr     DEBPIA
+NOEOI:  jsr     DEBPIA        ;Wait for DATA high / Debounce VIA PA then ASL A
         bcc     NOEOI
-        jsr     CLKLO
+        jsr     CLKLO         ;Set clock line low
 
-        lda     #$08
+        ;Set to send data
+        lda     #$08          ;Count 8 bits
         sta     IECCNT
 
-ISR01:  lda     VIA1_PORTB
+ISR01:  lda     VIA1_PORTB    ;Debounce the bus
         cmp     VIA1_PORTB
         bne     ISR01
-        eor     #$C0
-        asl     a
-        bcc     FRMERR
-        ror     BSOUR
+        eor     #$C0          ;XXX different from c64 (same change in debpia)
+        asl     a             ;Set the flags
+        bcc     FRMERR        ;Data must be high
+        ror     BSOUR         ;Next bit into carry
         bcs     ISRHI
-        jsr     DATALO
+        jsr     DATALO        ;Set data line low
         bne     ISRCLK
 
-ISRHI:  jsr     DATAHI
+ISRHI:  jsr     DATAHI        ;Set data line high
 
-ISRCLK:  jsr     CLKHI
+ISRCLK: jsr     CLKHI         ;Set clock line high
         nop
         nop
         nop
         nop
         lda     VIA1_PORTB
-        and     #$DF
-        ora     #$10
+        and     #$DF          ;Data high
+        ora     #$10          ;Clock low
         sta     VIA1_PORTB
         dec     IECCNT
         bne     ISR01
-        lda     #$04
+        ;XXX VC-1541-DOS first stores in 0 VIA1_T2CL here
+        lda     #$04          ;XXX different from C64 (VIA vs CIA)
         sta     VIA1_T2CH
+        ;XXX VC-1541-DOS does "lda via_ifr" here before the next line
 
-ISR04:  lda     VIA1_IFR
-        and     #$20
-        bne     FRMERR
-        jsr     DEBPIA
+ISR04:  lda     VIA1_IFR      ;XXX different from C64 (VIA vs CIA)
+        and     #$20          ;XXX but same as VC-1541-DOS
+        bne     FRMERR        ;XXX
+        jsr     DEBPIA        ;Debounce VIA PA then ASL A
         bcs     ISR04
         cli
         rts
 ; ----------------------------------------------------------------------------
-NODEV:  lda     #$80
-        .byte   $2C
+NODEV:  lda     #$80          ;A = SATUS bit for device not present error
+        .byte   $2C           ;Skip next 2 bytes
 
-FRMERR: lda     #$03
+FRMERR: lda     #$03          ;A = SATUS bits timeout during write
+                              ;(C64 KERNAL calls this "framing")
 
-CSBERR: jsr     UDST
-        cli
-        clc
-        bcc     DLABYE
+;Commodore Serial Bus Error Entry
+CSBERR: jsr     UDST          ;KERNAL SATUS = SATUS | A
+        cli                   ;IRQ's were off...turn on
+        clc                   ;Make sure no KERNAL error returned
+        bcc     DLABYE        ;Branch always to turn ATN off, release all lines
 
+;Send secondary address for LISTEN to IEC
 SECND:
-        sta     BSOUR
-        jsr     ISOURA
+        sta     BSOUR         ;Buffer character
+        jsr     ISOURA        ;Send it
 
 ;Release ATN after LISTEN
 SCATN:
         lda     VIA1_PORTB
         and     #$F7
-        sta     VIA1_PORTB
+        sta     VIA1_PORTB    ;Release ATN
         rts
 
 ; ----------------------------------------------------------------------------
+
+;Send secondary address for TALK to IEC
 TKSA:
-        sta     BSOUR
-        jsr     ISOURA
-LBD5B:  sei
-        jsr     DATALO
-        jsr     SCATN
-        jsr     CLKHI
+        sta     BSOUR         ;Buffer character
+        jsr     ISOURA        ;Send secondary address
+LBD5B:  sei                   ;No IRQ's here
+        jsr     DATALO        ;Set data line low
+        jsr     SCATN         ;Release ATN
+        jsr     CLKHI         ;Set clock line high
 
-TKATN1: jsr     DEBPIA
+TKATN1: jsr     DEBPIA        ;Wait for clock to go low / Debounce VIA PA then ASL A
         bmi     TKATN1
-        cli
+        cli                   ;IRQ's okay now
         rts
 
 ; ----------------------------------------------------------------------------
+
+;Send a byte to IEC
+;Buffered output to IEC
 CIOUT:
-        bit     C3P0
-        bmi     CI2
-        sec
-        ror     C3P0
-        bne     CI4
-CI2:    pha
-        jsr     ISOUR
-        pla
-CI4:    sta     BSOUR
-        clc
+        bit     C3P0          ;Buffered char?
+        bmi     CI2           ;Yes...send last
+
+        sec                   ;No...
+        ror     C3P0          ;Set buffered char flag
+        bne     CI4           ;Branch always
+
+CI2:    pha                   ;Save current char
+        jsr     ISOUR         ;Send last char
+        pla                   ;Restore current char
+
+CI4:    sta     BSOUR         ;Buffer current char
+        clc                   ;Carry-Good exit
         rts
 
 ; ----------------------------------------------------------------------------
+
+;Send UNTALK to IEC
 UNTLK:  sei
-        jsr     CLKLO
+        jsr     CLKLO         ;Set clock line low
         lda     VIA1_PORTB
         ora     #$08
-        sta     VIA1_PORTB
-        lda     #$5F
-        .byte   $2C
+        sta     VIA1_PORTB    ;Assert ATN (turns VIA PB3 on)
+        lda     #$5F          ;A = 0x5F (UNTALK)
+        .byte   $2C           ;Skip next 2 bytes
 
-UNLSN:  lda     #$3F
-        jsr     LIST1
+;Send UNLISTEN to IEC
+UNLSN:  lda     #$3F          ;A = 0x3F (UNLISTEN)
+        jsr     LIST1         ;Send it
 
-DLABYE: jsr     SCATN
+;Release all lines
+DLABYE: jsr     SCATN         ;Always release ATN
 
+;Delay approx 60 us then release clock and data
 DLADLH: txa
-        ldx     #$0A
+        ldx     #10
 
 DLAD00: dex
         bne     DLAD00
         tax
-        jsr     CLKHI
-        jmp     DATAHI
-; ----------------------------------------------------------------------------
-ACPTR:  sei
-        lda     #$00
-        sta     IECCNT
-        jsr     CLKHI
+        jsr     CLKHI         ;Set clock line high
+                              ;XXX this matches the C64 but VC-1541-DOS stores also 0 in C3P0 here
+        jmp     DATAHI        ;Set data line high
 
-ACP00A: jsr     DEBPIA
+; ----------------------------------------------------------------------------
+
+;Read a byte from IEC
+;Input a byte from serial bus
+ACPTR:  sei                   ;No IRQ allowed
+        lda     #$00          ;Set EOI/ERROR Flag
+        sta     IECCNT
+        jsr     CLKHI         ;Make sure clock line is released / Set clock line high
+
+ACP00A: jsr     DEBPIA        ;Wait for clock high / Debounce VIA PA then ASL A
         bpl     ACP00A
 
-EOIACP: lda     #$01
-        sta     VIA1_T2CH
-        jsr     DATAHI
+EOIACP: lda     #$01          ;XXX different from C64 (VIA vs CIA)
+        sta     VIA1_T2CH     ;VC-1541-DOS also stores 0 in VIA1_T2CL first
 
-ACP00:  lda     VIA1_IFR
-        and     #$20
-        bne     ACP00B
-        jsr     DEBPIA
-        bmi     ACP00
-        bpl     ACP01
-ACP00B: lda     IECCNT
+        jsr     DATAHI        ;Data line high (Makes timing more like VIC-20) / Set data line high
+                              ;XXX VC-1541-DOS does "lda via_ifr" here before the next line
+
+ACP00:  lda     VIA1_IFR      ;XXX Check the timer
+        and     #$20          ;XXX different from C64 (VIA vs CIA) but same as VC-1541-DOS
+        bne     ACP00B        ;Ran out...
+        jsr     DEBPIA        ;Check the clock line / Debounce VIA PA then ASL A
+        bmi     ACP00         ;No, not yet
+        bpl     ACP01         ;Yes...
+
+ACP00B: lda     IECCNT        ;Check for error (twice thru timeouts)
         beq     ACP00C
-        lda     #$02
-        jmp     CSBERR
-; ----------------------------------------------------------------------------
-ACP00C: jsr     DATALO
-        jsr     CLKHI
-        lda     #$40
-        jsr     UDST
-        inc     IECCNT
+        lda     #$02          ;A = SATUS bit for timeout error
+        jmp     CSBERR        ;ST = 2 read timeout
+
+;Timer ran out, do an EOI thing
+ACP00C: jsr     DATALO        ;Set data line low
+        jsr     CLKHI         ;Delay and then set DATAHI (fix for 40us C64) / Set clock line high
+        lda     #$40          ;A = SATUS bit for End of File (EOF)
+        jsr     UDST          ;KERNAL SATUS = SATUS | A
+        inc     IECCNT        ;Go around again for error check on EOI
         bne     EOIACP
 
-ACP01:  lda     #$08
+;Do the byte transfer
+ACP01:  lda     #$08          ;Set up counter
         sta     IECCNT
 
-ACP03:  lda     VIA1_PORTB
-        cmp     VIA1_PORTB
+ACP03:  lda     VIA1_PORTB    ;Wait for clock high
+        cmp     VIA1_PORTB    ;Debounce
         bne     ACP03
-        eor     #$C0
-        asl     a
-        bpl     ACP03
-        ror     BSOUR1
-ACP03A: lda     VIA1_PORTB
-        cmp     VIA1_PORTB
+        eor     #$C0          ;XXX different from C64 (lines inverted)
+        asl     a             ;Shift data into carry
+        bpl     ACP03         ;Clock still low...
+        ror     BSOUR1        ;Rotate data in
+
+ACP03A: lda     VIA1_PORTB    ;Wait for clock low
+        cmp     VIA1_PORTB    ;Debounce
         bne     ACP03A
-        eor     #$C0
+        eor     #$C0          ;XXX different from C64 (lines inverted)
         asl     a
         bmi     ACP03A
         dec     IECCNT
-        bne     ACP03
-        jsr     DATALO
-        bit     SATUS
-        bvc     ACP04
-        jsr     DLADLH
+        bne     ACP03         ;More bits...
+        ;...exit...
+        jsr     DATALO        ;Set data line low
+        bit     SATUS         ;Check for EOI
+        bvc     ACP04         ;None...
+
+        jsr     DLADLH        ;Delay approx 60 then set data high
+
 ACP04:  lda     BSOUR1
-        cli
-        clc
+        cli                   ;IRQ is OK
+        clc                   ;Good exit
         rts
 ; ----------------------------------------------------------------------------
 CLKHI:
@@ -8816,16 +8856,16 @@ DEBPIA:
         lda     VIA1_PORTB
         cmp     VIA1_PORTB
         bne     DEBPIA
-        eor     #$C0
+        eor     #$C0          ;XXX different from C64 (lines inverted)
         asl     a
         rts
 ; ----------------------------------------------------------------------------
 ;Delay 1 ms using loop
-W1MS:   txa
-        ldx     #$B8
-W1MS1:  dex
+W1MS:   txa                   ;Save .X
+        ldx     #$B8          ;XXX same as C64 but VC-1541-DOS has $C0 here
+W1MS1:  dex                   ;5us loop
         bne     W1MS1
-        tax
+        tax                   ;Restore X
         rts
 ; ----------------------------------------------------------------------------
 ;RS-232 related
@@ -17368,6 +17408,7 @@ IOBASE_:ldx     #<$F800                         ; FE0C A2 00                    
         ldy     #>$F800                         ; FE0E A0 F8                    ..
         rts                                     ; FE10 60                       `
 ; ----------------------------------------------------------------------------
+
 ; Seems to be an unused area.
         .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE11 FF FF FF FF FF FF FF FF  ........
         .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE19 FF FF FF FF FF FF FF FF  ........
