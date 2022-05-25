@@ -2485,7 +2485,7 @@ L907D:  sec                                     ; 907D 38                       
 ; ----------------------------------------------------------------------------
 L9085_V1541_SAVE:
         jsr     L908B_V1541_INTERNAL_SAVE       ; 9085 20 8B 90                  ..
-        jmp     V1541_KERNAL_CALL_DONE    ; 9088 4C 3F 99                 L?.
+        jmp     V1541_KERNAL_CALL_DONE          ; 9088 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
 L908B_V1541_INTERNAL_SAVE:
         ldx     STAH                            ; 908B A6 B7                    ..
@@ -2725,7 +2725,7 @@ L9240:  jmp     L8C86                           ; 9240 4C 86 8C                 
 L9244 := *+1
 L9243_OPEN_V1541:
         jsr     L9249_V1541_INTERNAL_OPEN
-        jmp     V1541_KERNAL_CALL_DONE    ; 9246 4C 3F 99                 L?.
+        jmp     V1541_KERNAL_CALL_DONE          ; 9246 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
 L924A := *+1
 L9249_V1541_INTERNAL_OPEN:
@@ -3228,7 +3228,7 @@ L9668:  jmp     L971F                           ; 9668 4C 1F 97                 
 ; ----------------------------------------------------------------------------
 V1541_OPEN:
         jsr     L9671_V1541_INTERNAL_OPEN       ; 966B 20 71 96                  q.
-        jmp     V1541_KERNAL_CALL_DONE    ; 966E 4C 3F 99                 L?.
+        jmp     V1541_KERNAL_CALL_DONE          ; 966E 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
 L9671_V1541_INTERNAL_OPEN:
         jsr     L8EAF                           ; 9671 20 AF 8E                  ..
@@ -3339,7 +3339,7 @@ L9732:  rol     a                               ; 9732 2A                       
 L9737:  jsr     L8C36                           ; 9737 20 36 8C                  6.
         lda     #$10                            ; 973A A9 10                    ..
         tsb     $E7                             ; 973C 04 E7                    ..
-        ldy     FNLEN                        ; 973E AC 87 03                 ...
+        ldy     FNLEN                           ; 973E AC 87 03                 ...
         sty     $02D5                           ; 9741 8C D5 02                 ...
         jsr     L972E                           ; 9744 20 2E 97                  ..
         bcs     L974A                           ; 9747 B0 01                    ..
@@ -3612,8 +3612,8 @@ V1541_KERNAL_CALL_DONE:
 L9953:  ldx     #$0D                            ; 9953 A2 0D                    ..
 L9955:  bit     SXREG                           ; 9955 2C 9D 03                 ,..
         bpl     L995C                           ; 9958 10 02                    ..
-        ora     #$40                            ; 995A 09 40                    .@
-L995C:  sta     SATUS                             ; 995C 85 BA                    ..
+        ora     #$40 ;EOF                       ; 995A 09 40                    .@
+L995C:  sta     SATUS                           ; 995C 85 BA                    ..
         stz     SXREG                           ; 995E 9C 9D 03                 ...
         txa                                     ; 9961 8A                       .
 L9962:  clc                                     ; 9962 18                       .
@@ -3622,9 +3622,7 @@ L9962:  clc                                     ; 9962 18                       
 L9964:  stx     $0210                           ; 9964 8E 10 02                 ...
         sta     $0211                           ; 9967 8D 11 02                 ...
         sty     $0212                           ; 996A 8C 12 02                 ...
-        .byte   $9C                             ; 996D 9C                       .
-        .byte   $17                             ; 996E 17                       .
-L996F:  .byte   $02                             ; 996F 02                       .
+        stz     $0217
         rts                                     ; 9970 60                       `
 ; ----------------------------------------------------------------------------
 L9971:  .byte   "CHANNEL"                       ; 9971 43 48 41 4E 4E 45 4C     CHANNEL
@@ -3770,7 +3768,7 @@ L9B01:  .byte   $10                             ; 9B01 10                       
 L9B02:  dec     $E0                             ; 9B02 C6 E0                    ..
         beq     L9B19                           ; 9B04 F0 13                    ..
         iny                                     ; 9B06 C8                       .
-        lda     L996F,y                         ; 9B07 B9 6F 99                 .o.
+        lda     L9971-2,y                         ; 9B07 B9 6F 99                 .o.
         bne     L9B02                           ; 9B0A D0 F6                    ..
         inx                                     ; 9B0C E8                       .
         txa                                     ; 9B0D 8A                       .
@@ -8161,8 +8159,10 @@ LB985:  jmp     KR_ShowChar_ ;X=0
 LB988:  cpx     #$03
         beq     LB985 ;X=3 (Screen)
         bcs     LB994
+
+        ;Device = 2 (ACIA)
         jsr     LB9B0
-        jmp     LBF0C
+        jmp     ACIA_CHROUT
 ; ----------------------------------------------------------------------------
 LB994:  cpx     #$1E  ;30
         bne     LB9A7
@@ -8180,7 +8180,7 @@ LB9A7:  bcc     LB9AC
         jmp     RTC_CHROUT
 ; ----------------------------------------------------------------------------
 LB9AC:  sec
-        jmp     CIOUT
+        jmp     CIOUT ;IEC
 ; ----------------------------------------------------------------------------
 LB9B0:  pha
 LB9B1:  lda     SA
@@ -8197,12 +8197,12 @@ LB9C2:  jsr     JZ100
         beq     JX320
         cmp     #$1E
         bcs     JX320
-        cmp     #$01
+        cmp     #$01    ;Virtual 1541
         beq     LB9FE
-        cmp     #$03
+        cmp     #$03    ;Screen
         beq     JX320
         bcs     LB9E1
-        jsr     LBF4D
+        jsr     LBF4D   ;ACIA RS232
         bcs     LB9E0
         lda     FA
 JX320:  sta     DFLTN
@@ -9008,7 +9008,9 @@ LBF04:  dex
         stx     $040F
 RXFULL:  rts
 ; ----------------------------------------------------------------------------
-LBF0C:  tax
+;CHROUT to RS-232
+ACIA_CHROUT:
+        tax
 LBF0D:  lda     MODKEY
         lsr     a ;Bit 0 = MOD_STOP
         bit     $C3
@@ -9353,80 +9355,80 @@ LC18E:  jsr     WaitXticks_                     ; C18E 20 E4 BF                 
         clc                                     ; C191 18                       .
         rts                                     ; C192 60                       `
 ; ----------------------------------------------------------------------------
-LC193:  lda     #$02                            ; C193 A9 02                    ..
-        trb     VIA2_PORTB                      ; C195 1C 80 F8                 ...
-        bra     LC18C                           ; C198 80 F2                    ..
-LC19A:  lda     #$02                            ; C19A A9 02                    ..
-        tsb     VIA2_PORTB                      ; C19C 0C 80 F8                 ...
-        clc                                     ; C19F 18                       .
-        rts                                     ; C1A0 60                       `
+LC193:  lda     #$02
+        trb     VIA2_PORTB
+        bra     LC18C
+LC19A:  lda     #$02
+        tsb     VIA2_PORTB
+        clc
+        rts
+; --------------------------------------
+LC1A1:  lda     #$01
+        tsb     ACIA_CMD
+        rts
 ; ----------------------------------------------------------------------------
-LC1A1:  lda     #$01                            ; C1A1 A9 01                    ..
-        tsb     ACIA_CMD                        ; C1A3 0C 82 F9                 ...
-        rts                                     ; C1A6 60                       `
+LC1A7:  lda     #$01
+        trb     ACIA_CMD
+        rts
 ; ----------------------------------------------------------------------------
-LC1A7:  lda     #$01                            ; C1A7 A9 01                    ..
-        trb     ACIA_CMD                        ; C1A9 1C 82 F9                 ...
-        rts                                     ; C1AC 60                       `
+LC1AD:  lda     #$08
+        tsb     VIA2_PORTB
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-LC1AD:  lda     #$08                            ; C1AD A9 08                    ..
-        tsb     VIA2_PORTB                      ; C1AF 0C 80 F8                 ...
-        clc                                     ; C1B2 18                       .
-        rts                                     ; C1B3 60                       `
+LC1B4:  lda     #$08
+        trb     VIA2_PORTB
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-LC1B4:  lda     #$08                            ; C1B4 A9 08                    ..
-        trb     VIA2_PORTB                      ; C1B6 1C 80 F8                 ...
-        clc                                     ; C1B9 18                       .
-        rts                                     ; C1BA 60                       `
+LC1BB:  lda     #$04
+        tsb     ACIA_CMD
+        ldx     #$02
+        bra     LC18E
+LC1C4:  lda     #$04
+        trb     ACIA_CMD
+        ldx     #$04
+        bra     LC18E
 ; ----------------------------------------------------------------------------
-LC1BB:  lda     #$04                            ; C1BB A9 04                    ..
-        tsb     ACIA_CMD                        ; C1BD 0C 82 F9                 ...
-        ldx     #$02                            ; C1C0 A2 02                    ..
-        bra     LC18E                           ; C1C2 80 CA                    ..
-LC1C4:  lda     #$04                            ; C1C4 A9 04                    ..
-        trb     ACIA_CMD                        ; C1C6 1C 82 F9                 ...
-        ldx     #$04                            ; C1C9 A2 04                    ..
-        bra     LC18E                           ; C1CB 80 C1                    ..
+LC1CD:  lda     ACIA_ST
+        bit     #$20
+        beq     LC18C
+        bit     #$40
+        bne     LC1DD
+        lda     MODKEY
+        lsr     a ;Bit 0 = MOD_STOP
+        bcc     LC1CD ;Return early if pressed
+LC1DD:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC1CD:  lda     ACIA_ST                         ; C1CD AD 81 F9                 ...
-        bit     #$20                            ; C1D0 89 20                    .
-        beq     LC18C                           ; C1D2 F0 B8                    ..
-        bit     #$40                            ; C1D4 89 40                    .@
-        bne     LC1DD                           ; C1D6 D0 05                    ..
-        lda     MODKEY                       ; C1D8 A5 AD                    ..
-        lsr     a ;Bit 0 = MOD_STOP        ; C1DA 4A                       J
-        bcc     LC1CD ;Return early if pressed  ; C1DB 90 F0                    ..
-LC1DD:  sec                                     ; C1DD 38                       8
-        rts                                     ; C1DE 60                       `
+LC1DF:  ldy     #$78
+LC1E1:  ldx     #$01
+        jsr     WaitXticks_
+        jsr     LC1CD
+        bcc     LC1EF
+        dey
+        bne     LC1E1
+        sec
+LC1EF:  rts
 ; ----------------------------------------------------------------------------
-LC1DF:  ldy     #$78                            ; C1DF A0 78                    .x
-LC1E1:  ldx     #$01                            ; C1E1 A2 01                    ..
-        jsr     WaitXticks_                     ; C1E3 20 E4 BF                  ..
-        jsr     LC1CD                           ; C1E6 20 CD C1                  ..
-        bcc     LC1EF                           ; C1E9 90 04                    ..
-        dey                                     ; C1EB 88                       .
-        bne     LC1E1                           ; C1EC D0 F3                    ..
-        sec                                     ; C1EE 38                       8
-LC1EF:  rts                                     ; C1EF 60                       `
+LC1F0:  lda     #$04
+        trb     ACIA_CMD
+        lda     #$C8
+LC1F7:  dec     a
+        bne     LC1F7
+        lda     #$04
+        tsb     ACIA_CMD
+        rts
 ; ----------------------------------------------------------------------------
-LC1F0:  lda     #$04                            ; C1F0 A9 04                    ..
-        trb     ACIA_CMD                        ; C1F2 1C 82 F9                 ...
-        lda     #$C8                            ; C1F5 A9 C8                    ..
-LC1F7:  dec     a                               ; C1F7 3A                       :
-        bne     LC1F7                           ; C1F8 D0 FD                    ..
-        lda     #$04                            ; C1FA A9 04                    ..
-        tsb     ACIA_CMD                        ; C1FC 0C 82 F9                 ...
-        rts                                     ; C1FF 60                       `
-; ----------------------------------------------------------------------------
-LC200:  jsr     LC1B4                           ; C200 20 B4 C1                  ..
-        jsr     LC1C4                           ; C203 20 C4 C1                  ..
-        jsr     LC1A7                           ; C206 20 A7 C1                  ..
-        jsr     LC19A                           ; C209 20 9A C1                  ..
-        lda     #$80                            ; C20C A9 80                    ..
-        jmp     UDST                           ; C20E 4C CA FC                 L..
+LC200:  jsr     LC1B4
+        jsr     LC1C4
+        jsr     LC1A7
+        jsr     LC19A
+        lda     #$80
+        jmp     UDST
 ; ----------------------------------------------------------------------------
 LC211_RTC_OFFSETS:
-      .byte   $04,$02,$00,$04,$06,$07,$09,$0B ; C211 04 02 00 04 06 07 09 0B  ........
+      .byte   $04,$02,$00,$04,$06,$07,$09,$0B
 ; ----------------------------------------------------------------------------
 ;OPEN to RTC device 31
 RTC_OPEN:
@@ -9439,212 +9441,212 @@ RTC_OPEN:
         jsr     UDST                            ; C227 20 CA FC                  ..
 LC22A:  clc                                     ; C22A 18                       .
         rts                                     ; C22B 60                       `
-; ----------------------------------------------------------------------------
-LC22C:  lda     #$AE                            ; C22C A9 AE                    ..
-        sta     $034E                           ; C22E 8D 4E 03                 .N.
 
-        ldy     #$07                            ; C231 A0 07                    ..
+LC22C:  lda     #$AE
+        sta     $034E
+
+        ldy     #$07
 LC233_LOOP:
-        jsr     GO_RAM_LOAD_GO_KERN             ; C233 20 4A 03                  J.
-        sta     $0412,y                         ; C236 99 12 04                 ...
-        dey                                     ; C239 88                       .
-        bpl     LC233_LOOP                      ; C23A 10 F7                    ..
+        jsr     GO_RAM_LOAD_GO_KERN
+        sta     $0412,y
+        dey
+        bpl     LC233_LOOP
 
-        lda     $0415                           ; C23C AD 15 04                 ...
-        ror     a                               ; C23F 6A                       j
-        ror     a                               ; C240 6A                       j
-        ror     a                               ; C241 6A                       j
-        and     #$C0                            ; C242 29 C0                    ).
-        ora     $0412                           ; C244 0D 12 04                 ...
-        sta     $0415                           ; C247 8D 15 04                 ...
-        jsr     RTC_ACCESS_ON                   ; C24A 20 66 C3                  f.
-        lda     #$80                            ; C24D A9 80                    ..
-        tsb     VIA2_PORTA                      ; C24F 0C 81 F8                 ...
-        php                                     ; C252 08                       .
-        sei                                     ; C253 78                       x
-        ldy     #$0E                            ; C254 A0 0E                    ..
-        lda     #$40                            ; C256 A9 40                    .@
-        jsr     RTC_UNKNOWN_VIA_STUFF           ; C258 20 40 C3                  @.
-        ldx     #$01                            ; C25B A2 01                    ..
-LC25D:  lda     $0412,x                         ; C25D BD 12 04                 ...
-        jsr     LC325                           ; C260 20 25 C3                  %.
-        inx                                     ; C263 E8                       .
-        cpx     #$08                            ; C264 E0 08                    ..
-        bne     LC25D                           ; C266 D0 F5                    ..
-        jsr     RTC_ACCESS_OFF                  ; C268 20 6F C3                  o.
-        plp                                     ; C26B 28                       (
-        stz     RTC_IDX                         ; C26C 9C 11 04                 ...
-        clc                                     ; C26F 18                       .
-        rts                                     ; C270 60                       `
+        lda     $0415
+        ror     a
+        ror     a
+        ror     a
+        and     #$C0
+        ora     $0412
+        sta     $0415
+        jsr     RTC_ACCESS_ON
+        lda     #$80
+        tsb     VIA2_PORTA
+        php
+        sei
+        ldy     #$0E
+        lda     #$40
+        jsr     RTC_UNKNOWN_VIA_STUFF
+        ldx     #$01
+LC25D:  lda     $0412,x
+        jsr     LC325
+        inx
+        cpx     #$08
+        bne     LC25D
+        jsr     RTC_ACCESS_OFF
+        plp
+        stz     RTC_IDX
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 ;CHROUT to RTC device
 RTC_CHROUT:
-        jsr     LC2CE_READ_RTC_HARDWARE         ; C271 20 CE C2                  ..
-        php                                     ; C274 08                       .
-        sei                                     ; C275 78                       x
-        sed                                     ; C276 F8                       .
-        lda     $0412                           ; C277 AD 12 04                 ...
-        ldx     $0415                           ; C27A AE 15 04                 ...
-        bne     LC287                           ; C27D D0 08                    ..
-        cmp     #$12                            ; C27F C9 12                    ..
-        bne     LC290                           ; C281 D0 0D                    ..
-        lda     #$00                            ; C283 A9 00                    ..
-        bra     LC290                           ; C285 80 09                    ..
-LC287:  dex                                     ; C287 CA                       .
-        bne     LC290                           ; C288 D0 06                    ..
-        cmp     #$12                            ; C28A C9 12                    ..
-        beq     LC290                           ; C28C F0 02                    ..
-        adc     #$12                            ; C28E 69 12                    i.
-LC290:  jsr     RTC_SHIFT_LOOKUP_SUBTRACT       ; C290 20 75 C3                  u.
-        sta     TOD_HOURS                       ; C293 8D 92 03                 ...
-        lda     $0413                           ; C296 AD 13 04                 ...
-        jsr     RTC_SHIFT_LOOKUP_SUBTRACT       ; C299 20 75 C3                  u.
-        sta     TOD_MINS                        ; C29C 8D 91 03                 ...
-        lda     $0414                           ; C29F AD 14 04                 ...
-        jsr     RTC_SHIFT_LOOKUP_SUBTRACT       ; C2A2 20 75 C3                  u.
-        sta     TOD_SECS                        ; C2A5 8D 90 03                 ...
-        stz     RTC_IDX                         ; C2A8 9C 11 04                 ...
-        plp                                     ; C2AB 28                       (
-        rts                                     ; C2AC 60                       `
+        jsr     LC2CE_READ_RTC_HARDWARE
+        php
+        sei
+        sed
+        lda     $0412
+        ldx     $0415
+        bne     LC287
+        cmp     #$12
+        bne     LC290
+        lda     #$00
+        bra     LC290
+LC287:  dex
+        bne     LC290
+        cmp     #$12
+        beq     LC290
+        adc     #$12
+LC290:  jsr     RTC_SHIFT_LOOKUP_SUBTRACT
+        sta     TOD_HOURS
+        lda     $0413
+        jsr     RTC_SHIFT_LOOKUP_SUBTRACT
+        sta     TOD_MINS
+        lda     $0414
+        jsr     RTC_SHIFT_LOOKUP_SUBTRACT
+        sta     TOD_SECS
+        stz     RTC_IDX
+        plp
+        rts
 ; ----------------------------------------------------------------------------
 ;CHRIN from RTC device 31
 RTC_CHRIN:
-        ldx     RTC_IDX                         ; C2AD AE 11 04                 ...
-        beq     RTC_READ_HW_THEN_FIRST_RAM_VALUE; C2B0 F0 0B                    ..
-        cpx     #$08                            ; C2B2 E0 08                    ..
-        bcc     RTC_READ_NEXT_VALUE_FROM_RAM    ; C2B4 90 0D                    ..
-        lda     #$0D ;Carriage return           ; C2B6 A9 0D                    ..
-        stz     RTC_IDX                         ; C2B8 9C 11 04                 ...
-        clc                                     ; C2BB 18                       .
-        rts                                     ; C2BC 60                       `
+        ldx     RTC_IDX
+        beq     RTC_READ_HW_THEN_FIRST_RAM_VALUE
+        cpx     #$08
+        bcc     RTC_READ_NEXT_VALUE_FROM_RAM
+        lda     #$0D ;Carriage return
+        stz     RTC_IDX
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 RTC_READ_HW_THEN_FIRST_RAM_VALUE:
-        jsr     LC2CE_READ_RTC_HARDWARE         ; C2BD 20 CE C2                  ..
-        stz     RTC_IDX                         ; C2C0 9C 11 04                 ...
+        jsr     LC2CE_READ_RTC_HARDWARE
+        stz     RTC_IDX
         ;Fall through
 ; ----------------------------------------------------------------------------
 RTC_READ_NEXT_VALUE_FROM_RAM:
-        ldx     RTC_IDX                         ; C2C3 AE 11 04                 ...
-        lda     $0412,x                         ; C2C6 BD 12 04                 ...
-        inc     RTC_IDX                         ; C2C9 EE 11 04                 ...
-        clc                                     ; C2CC 18                       .
-        rts                                     ; C2CD 60                       `
+        ldx     RTC_IDX
+        lda     $0412,x
+        inc     RTC_IDX
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 LC2CE_READ_RTC_HARDWARE:
-        jsr     RTC_ACCESS_ON                   ; C2CE 20 66 C3                  f.
-        ldx     #$07                            ; C2D1 A2 07                    ..
-LC2D3:  jsr     LC30E                           ; C2D3 20 0E C3                  ..
-        sta     $0412,x                         ; C2D6 9D 12 04                 ...
-        dex                                     ; C2D9 CA                       .
-        bpl     LC2D3                           ; C2DA 10 F7                    ..
-        jsr     RTC_ACCESS_OFF                  ; C2DC 20 6F C3                  o.
-        jsr     RTC_ACCESS_ON                   ; C2DF 20 66 C3                  f.
-        ldx     #$07                            ; C2E2 A2 07                    ..
-LC2E4:  jsr     LC30E                           ; C2E4 20 0E C3                  ..
-        cmp     $0412,x                         ; C2E7 DD 12 04                 ...
-        bne     LC2CE_READ_RTC_HARDWARE         ; C2EA D0 E2                    ..
-        dex                                     ; C2EC CA                       .
-        bne     LC2E4                           ; C2ED D0 F5                    ..
-        jsr     RTC_ACCESS_OFF                  ; C2EF 20 6F C3                  o.
-        lda     $0412                           ; C2F2 AD 12 04                 ...
-        and     #$3F                            ; C2F5 29 3F                    )?
-        sta     $0412                           ; C2F7 8D 12 04                 ...
-        lda     $0416                           ; C2FA AD 16 04                 ...
-        and     #$0F                            ; C2FD 29 0F                    ).
-        sta     $0416                           ; C2FF 8D 16 04                 ...
-        lda     $0415                           ; C302 AD 15 04                 ...
-        rol     a                               ; C305 2A                       *
-        rol     a                               ; C306 2A                       *
-        rol     a                               ; C307 2A                       *
-        and     #$03                            ; C308 29 03                    ).
-        sta     $0415                           ; C30A 8D 15 04                 ...
-        rts                                     ; C30D 60                       `
+        jsr     RTC_ACCESS_ON
+        ldx     #$07
+LC2D3:  jsr     LC30E
+        sta     $0412,x
+        dex
+        bpl     LC2D3
+        jsr     RTC_ACCESS_OFF
+        jsr     RTC_ACCESS_ON
+        ldx     #$07
+LC2E4:  jsr     LC30E
+        cmp     $0412,x
+        bne     LC2CE_READ_RTC_HARDWARE
+        dex
+        bne     LC2E4
+        jsr     RTC_ACCESS_OFF
+        lda     $0412
+        and     #$3F
+        sta     $0412
+        lda     $0416
+        and     #$0F
+        sta     $0416
+        lda     $0415
+        rol     a
+        rol     a
+        rol     a
+        and     #$03
+        sta     $0415
+        rts
 ; ----------------------------------------------------------------------------
-LC30E:  ldy     LC211_RTC_OFFSETS,x             ; C30E BC 11 C2                 ...
-        phy                                     ; C311 5A                       Z
-        jsr     RTC_READ_NIB                    ; C312 20 52 C3                  R.
-        sta     RTC_IDX                         ; C315 8D 11 04                 ...
-        ply                                     ; C318 7A                       z
-        iny                                     ; C319 C8                       .
-        jsr     RTC_READ_NIB                    ; C31A 20 52 C3                  R.
-        asl     a                               ; C31D 0A                       .
-        asl     a                               ; C31E 0A                       .
-        asl     a                               ; C31F 0A                       .
-        asl     a                               ; C320 0A                       .
-        ora     RTC_IDX                         ; C321 0D 11 04                 ...
-        rts                                     ; C324 60                       `
+LC30E:  ldy     LC211_RTC_OFFSETS,x
+        phy
+        jsr     RTC_READ_NIB
+        sta     RTC_IDX
+        ply
+        iny
+        jsr     RTC_READ_NIB
+        asl     a
+        asl     a
+        asl     a
+        asl     a
+        ora     RTC_IDX
+        rts
 ; ----------------------------------------------------------------------------
-LC325:  pha                                     ; C325 48                       H
-        and     #$0F                            ; C326 29 0F                    ).
-        ldy     LC211_RTC_OFFSETS,x             ; C328 BC 11 C2                 ...
-        jsr     LC337                           ; C32B 20 37 C3                  7.
-        pla                                     ; C32E 68                       h
-        lsr     a                               ; C32F 4A                       J
-        lsr     a                               ; C330 4A                       J
-        lsr     a                               ; C331 4A                       J
-        lsr     a                               ; C332 4A                       J
-        ldy     LC211_RTC_OFFSETS,x             ; C333 BC 11 C2                 ...
-        iny                                     ; C336 C8                       .
+LC325:  pha
+        and     #$0F
+        ldy     LC211_RTC_OFFSETS,x
+        jsr     LC337
+        pla
+        lsr     a
+        lsr     a
+        lsr     a
+        lsr     a
+        ldy     LC211_RTC_OFFSETS,x
+        iny
         ;Fall through
 
-LC337:  pha                                     ; C337 48                       H
-        lda     #$40                            ; C338 A9 40                    .@
-        jsr     RTC_UNKNOWN_VIA_STUFF           ; C33A 20 40 C3                  @.
-        ply                                     ; C33D 7A                       z
-        lda     #$20                            ; C33E A9 20                    .
+LC337:  pha
+        lda     #$40
+        jsr     RTC_UNKNOWN_VIA_STUFF
+        ply
+        lda     #$20
         ;Fall through
 
 ; ----------------------------------------------------------------------------
 RTC_UNKNOWN_VIA_STUFF:
-        pha                                     ; C340 48                       H
-        lda     #$7F                            ; C341 A9 7F                    ..
-        trb     VIA2_PORTA                      ; C343 1C 81 F8                 ...
-        tya                                     ; C346 98                       .
-        tsb     VIA2_PORTA                      ; C347 0C 81 F8                 ...
-        pla                                     ; C34A 68                       h
-        tsb     VIA2_PORTA                      ; C34B 0C 81 F8                 ...
-        trb     VIA2_PORTA                      ; C34E 1C 81 F8                 ...
-        rts                                     ; C351 60                       `
+        pha
+        lda     #$7F
+        trb     VIA2_PORTA
+        tya
+        tsb     VIA2_PORTA
+        pla
+        tsb     VIA2_PORTA
+        trb     VIA2_PORTA
+        rts
 ; ----------------------------------------------------------------------------
 ; Read a nibble from the RTC chip.
 ; $40 is for AW (address write) signal for the RTC.
 ; Input: Y = RTC register number
 ; Output: A = read value
 RTC_READ_NIB:
-        lda     #$40                            ; C352 A9 40                    .@
-        jsr     RTC_UNKNOWN_VIA_STUFF           ; C354 20 40 C3                  @.
-        lda     #$1F                            ; C357 A9 1F                    ..
-        tsb     VIA2_PORTA                      ; C359 0C 81 F8                 ...
-        ldy     VIA2_PORTA                      ; C35C AC 81 F8                 ...
-        trb     VIA2_PORTA                      ; C35F 1C 81 F8                 ...
-        tya                                     ; C362 98                       .
-        and     #$0F                            ; C363 29 0F                    ).
-        rts                                     ; C365 60                       `
+        lda     #$40
+        jsr     RTC_UNKNOWN_VIA_STUFF
+        lda     #$1F
+        tsb     VIA2_PORTA
+        ldy     VIA2_PORTA
+        trb     VIA2_PORTA
+        tya
+        and     #$0F
+        rts
 ; ----------------------------------------------------------------------------
 RTC_ACCESS_ON:
-        stz     VIA2_PORTA                      ; C366 9C 81 F8                 ...
-        lda     #$02                            ; C369 A9 02                    ..
-        tsb     VIA1_PORTB                      ; C36B 0C 00 F8                 ...
-        rts                                     ; C36E 60                       `
+        stz     VIA2_PORTA
+        lda     #$02
+        tsb     VIA1_PORTB
+        rts
 ; ----------------------------------------------------------------------------
 RTC_ACCESS_OFF:
-        lda     #$02                            ; C36F A9 02                    ..
-        trb     VIA1_PORTB                      ; C371 1C 00 F8                 ...
-        rts                                     ; C374 60                       `
+        lda     #$02
+        trb     VIA1_PORTB
+        rts
 ; ----------------------------------------------------------------------------
 ;Used for converting RTC values to TOD values
 RTC_SHIFT_LOOKUP_SUBTRACT:
-        pha                                     ; C375 48                       H
-        lsr     a                               ; C376 4A                       J
-        lsr     a                               ; C377 4A                       J
-        lsr     a                               ; C378 4A                       J
-        lsr     a                               ; C379 4A                       J
-        tay                                     ; C37A A8                       .
-        pla                                     ; C37B 68                       h
-        cld                                     ; C37C D8                       .
-        sec                                     ; C37D 38                       8
-        sbc     LC382,y                         ; C37E F9 82 C3                 ...
-        rts                                     ; C381 60                       `
+        pha
+        lsr     a
+        lsr     a
+        lsr     a
+        lsr     a
+        tay
+        pla
+        cld
+        sec
+        sbc     LC382,y
+        rts
 LC382:  .byte 0, 6, 12, 18, 24, 30, 36, 42, 48, 54
 
 ; ----------------------------------------------------------------------------
@@ -9652,51 +9654,51 @@ LC382:  .byte 0, 6, 12, 18, 24, 30, 36, 42, 48, 54
 ;Wait for /BUSY to go high, or STOP key pressed, or timeout
 ;Returns carry=1 if error (STOP or timeout)
 CENTRONICS_CHROUT:
-        ldx     SATUS                           ; C38C A6 BA                    ..
-        bne     LC3AC                           ; C38E D0 1C                    ..
+        ldx     SATUS
+        bne     LC3AC
 
-        pha ;Save byte to send                  ; C390 48                       H
-        ldy     #$F0 ;loops before timeout      ; C391 A0 F0                    ..
-LC393:  lda     VIA2_PORTB                      ; C393 AD 80 F8                 ...
-        and     #$40 ;PB6 = /BUSY               ; C396 29 40                    )@
-        bne     LC3B0 ;Branch if /BUSY=high     ; C398 D0 16                    ..
+        pha ;Save byte to send
+        ldy     #$F0 ;loops before timeout
+LC393:  lda     VIA2_PORTB
+        and     #$40 ;PB6 = /BUSY
+        bne     LC3B0 ;Branch if /BUSY=high
 
-        lda     MODKEY                       ; C39A A5 AD                    ..
-        lsr     a ;Bit 0 = MOD_STOP        ; C39C 4A                       J
-        lda     #$00                            ; C39D A9 00                    ..
-        bcs     LC3AB ;Return early if pressed  ; C39F B0 0A                    ..
+        lda     MODKEY
+        lsr     a ;Bit 0 = MOD_STOP
+        lda     #$00
+        bcs     LC3AB ;Return early if pressed
 
-        ldx     #$01                            ; C3A1 A2 01                    ..
-        jsr     WaitXticks_                     ; C3A3 20 E4 BF                  ..
+        ldx     #$01
+        jsr     WaitXticks_
 
-        dey                                     ; C3A6 88                       .
-        bne     LC393 ;Loop until timeout       ; C3A7 D0 EA                    ..
+        dey
+        bne     LC393 ;Loop until timeout
 
-        lda     #$01                            ; C3A9 A9 01                    ..
-LC3AB:  plx                                     ; C3AB FA                       .
-LC3AC:  sec                                     ; C3AC 38                       8
-        jmp     UDST                            ; C3AD 4C CA FC                 L..
+        lda     #$01
+LC3AB:  plx
+LC3AC:  sec
+        jmp     UDST
 
 ;/BUSY has gone high, so send the byte now
 ;Always returns carry=0 (OK)
-LC3B0:  ldx     #$03                            ; C3B0 A2 03                    ..
-LC3B2:  dex                                     ; C3B2 CA                       .
-        bpl     LC3B2 ;delay a bit after /BUSY=1; C3B3 10 FD                    ..
+LC3B0:  ldx     #$03
+LC3B2:  dex
+        bpl     LC3B2 ;delay a bit after /BUSY=1
 
         ;PORTA = Centronics data lines
-        pla     ;A=byte to send                 ; C3B5 68                       h
-        sta     VIA2_PORTA ;PA = Centronics data; C3B6 8D 81 F8                 ...
+        pla     ;A=byte to send
+        sta     VIA2_PORTA ;PA = Centronics data
 
-        lda     #$20 ;PB5 = ?                   ; C3B9 A9 20                    .
-        trb     VIA2_PORTB                      ; C3BB 1C 80 F8                 ...
-        tsb     VIA2_PORTB                      ; C3BE 0C 80 F8                 ...
+        lda     #$20 ;PB5 = ?
+        trb     VIA2_PORTB
+        tsb     VIA2_PORTB
 
-        lda     #$02 ;CA2 = ?                   ; C3C1 A9 02                    ..
-        tsb     VIA2_PCR                        ; C3C3 0C 8C F8                 ...
-        trb     VIA2_PCR                        ; C3C6 1C 8C F8                 ...
+        lda     #$02 ;CA2 = ?
+        tsb     VIA2_PCR
+        trb     VIA2_PCR
 
-        clc                                     ; C3C9 18                       .
-        rts                                     ; C3CA 60                       `
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 LC3CB:  pha                                     ; C3CB 48                       H
         lda     LC44A,x                         ; C3CC BD 4A C4                 .J.
