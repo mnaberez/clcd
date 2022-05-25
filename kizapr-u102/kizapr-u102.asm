@@ -1760,14 +1760,15 @@ L8B31:  sta     $0207                           ; 8B31 8D 07 02                 
         lda     #$48                            ; 8B37 A9 48                    .H
         rts                                     ; 8B39 60                       `
 ; ----------------------------------------------------------------------------
-L8B3A:  .byte   $20                             ; 8B3A 20
-        rti                                     ; 8B3B 40                       @
-; ----------------------------------------------------------------------------
-L8B3C:  .byte   $8B                             ; 8B3C 8B                       .
-        .byte   $4C                             ; 8B3D 4C                       L
-        .byte   $3F                             ; 8B3E 3F                       ?
-L8B3F:  .byte   $99                             ; 8B3F 99                       .
-L8B40:  jsr     L8C36                           ; 8B40 20 36 8C                  6.
+;CHRIN to Virtual 1541
+L8B3C := *+2
+V1541_CHRIN:
+        jsr     L8B40_V1541_INTERNAL_CHRIN
+L8B3F := *+2
+        jmp     V1541_KERNAL_CALL_DONE
+
+L8B40_V1541_INTERNAL_CHRIN:
+        jsr     L8C36                           ; 8B40 20 36 8C                  6.
         bcs     L8B46                           ; 8B43 B0 01                    ..
         rts                                     ; 8B45 60                       `
 ; ----------------------------------------------------------------------------
@@ -1828,10 +1829,12 @@ L8BA0:  lda     #$0D                            ; 8BA0 A9 0D                    
         rts                                     ; 8BA9 60                       `
 ; ----------------------------------------------------------------------------
 ;CHROUT to Virtual 1541
-L8BAA:  jsr     L8BB0                           ; 8BAA 20 B0 8B                  ..
-        jmp     L993F                           ; 8BAD 4C 3F 99                 L?.
+V1541_CHROUT:
+        jsr     L8BB0_V1541_INTERNAL_CHROUT     ; 8BAA 20 B0 8B                  ..
+        jmp     V1541_KERNAL_CALL_DONE    ; 8BAD 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
-L8BB0:  sta     $039E                           ; 8BB0 8D 9E 03                 ...
+L8BB0_V1541_INTERNAL_CHROUT:
+        sta     $039E                           ; 8BB0 8D 9E 03                 ...
         jsr     L8C36                           ; 8BB3 20 36 8C                  6.
         bcs     L8BB9                           ; 8BB6 B0 01                    ..
         rts                                     ; 8BB8 60                       `
@@ -2480,11 +2483,11 @@ L907D:  sec                                     ; 907D 38                       
         sec                                     ; 9083 38                       8
         rts                                     ; 9084 60                       `
 ; ----------------------------------------------------------------------------
-L9085_SAVE_V1541_JMP_L993F:
-        jsr     L908B_SAVE_V1541                 ; 9085 20 8B 90                  ..
-        jmp     L993F                           ; 9088 4C 3F 99                 L?.
+L9085_V1541_SAVE:
+        jsr     L908B_V1541_INTERNAL_SAVE       ; 9085 20 8B 90                  ..
+        jmp     V1541_KERNAL_CALL_DONE    ; 9088 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
-L908B_SAVE_V1541:
+L908B_V1541_INTERNAL_SAVE:
         ldx     STAH                            ; 908B A6 B7                    ..
         lda     STAL                            ; 908D A5 B6                    ..
         sta     SAL                             ; 908F 85 B8                    ..
@@ -2691,10 +2694,12 @@ L9206:  lda     $E0                             ; 9206 A5 E0                    
         stz     STAL                            ; 9211 64 B6                    d.
         rts                                     ; 9213 60                       `
 ; ----------------------------------------------------------------------------
-L9214:  jsr     L921A                           ; 9214 20 1A 92                  ..
-        jmp     L993F                           ; 9217 4C 3F 99                 L?.
+V1541_CLOSE:
+        jsr     L921A_V1541_INTERNAL_CLOSE      ; 9214 20 1A 92                  ..
+        jmp     V1541_KERNAL_CALL_DONE          ; 9217 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
-L921A:  jsr     L8C36                           ; 921A 20 36 8C                  6.
+L921A_V1541_INTERNAL_CLOSE:
+        jsr     L8C36                           ; 921A 20 36 8C                  6.
         bcs     L9221                           ; 921D B0 02                    ..
 L921F:
         sec                                     ; 921F 38                       8
@@ -2719,11 +2724,12 @@ L9240:  jmp     L8C86                           ; 9240 4C 86 8C                 
 ; ----------------------------------------------------------------------------
 L9244 := *+1
 L9243_OPEN_V1541:
-        jsr     L9249
-        jmp     L993F                           ; 9246 4C 3F 99                 L?.
+        jsr     L9249_V1541_INTERNAL_OPEN
+        jmp     V1541_KERNAL_CALL_DONE    ; 9246 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
 L924A := *+1
-L9249:  jsr     L8C36
+L9249_V1541_INTERNAL_OPEN:
+        jsr     L8C36
         lda     $E6                             ; 924C A5 E6                    ..
         cmp     #$0F                            ; 924E C9 0F                    ..
 L9250:  bne     L9255                           ; 9250 D0 03                    ..
@@ -2880,7 +2886,7 @@ L9378:  sec                                     ; 9378 38                       
 L937A:  cpy     #$41                            ; 937A C0 41                    .A
         bne     L938D                           ; 937C D0 0F                    ..
         jsr     L8D17                           ; 937E 20 17 8D                  ..
-L9381:  jsr     L8B40                           ; 9381 20 40 8B                  @.
+L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN                           ; 9381 20 40 8B                  @.
         lda     #$47                            ; 9384 A9 47                    .G
         bcc     L9358                           ; 9386 90 D0                    ..
         bit     SXREG                           ; 9388 2C 9D 03                 ,..
@@ -3109,7 +3115,7 @@ L9558:  jsr     LUKING  ;Print "SEARCHING FOR " then OUTFN
         jsr     TKSA
         bra     L9592
 L957A:  phx
-        jsr     L966B
+        jsr     V1541_OPEN
         plx
         lda     SATUS
         bit     #$0C
@@ -3220,10 +3226,12 @@ L9661:  lda     SA
 ; ----------------------------------------------------------------------------
 L9668:  jmp     L971F                           ; 9668 4C 1F 97                 L..
 ; ----------------------------------------------------------------------------
-L966B:  jsr     L9671                           ; 966B 20 71 96                  q.
-        jmp     L993F                           ; 966E 4C 3F 99                 L?.
+V1541_OPEN:
+        jsr     L9671_V1541_INTERNAL_OPEN       ; 966B 20 71 96                  q.
+        jmp     V1541_KERNAL_CALL_DONE    ; 966E 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
-L9671:  jsr     L8EAF                           ; 9671 20 AF 8E                  ..
+L9671_V1541_INTERNAL_OPEN:
+        jsr     L8EAF                           ; 9671 20 AF 8E                  ..
         .byte   $90                             ; 9674 90                       .
 L9675:  bit     $89                             ; 9675 24 89                    $.
         jsr     $20D0                           ; 9677 20 D0 20                  .
@@ -3590,7 +3598,8 @@ L9932:  pha                                     ; 9932 48                       
         lda     PowersOfTwo,x                   ; 993B BD 41 B0                 .A.
 L993E:  rts                                     ; 993E 60                       `
 ; ----------------------------------------------------------------------------
-L993F:  tax                                     ; 993F AA                       .
+V1541_KERNAL_CALL_DONE:
+        tax                                     ; 993F AA                       .
         lda     #$00                            ; 9940 A9 00                    ..
         bcs     L9955                           ; 9942 B0 11                    ..
         lda     $E8                             ; 9944 A5 E8                    ..
@@ -8089,7 +8098,7 @@ LB93C = * + 1
 
 LB948_NOT_RS232:
         bcs     LB94D
-        jmp     L8B3A
+        jmp     V1541_CHRIN ;Device 1 Virtual 1541
 
 LB94D:  cmp     #$03 ;Screen
 LB950 := * + 1
@@ -8108,7 +8117,7 @@ LB954_NOT_SCREEN:
 LB95B_NOT_CENTRONICS:
         bcc     LB960
         ;Device 31 (RTC)
-        jmp     LC2AD_CHRIN_DEV_31_RTC
+        jmp     RTC_CHRIN
 
 ; ----------------------------------------------------------------------------
 LB960:  lda     SATUS
@@ -8141,10 +8150,10 @@ LB974:  pha ;Push byte to write
 
         pla ;Pull byte to write
 
-LB97D           := * + 1
+LB97D := * + 1
         cpx     #$01  ;1 = Virtual 1541
         bne     LB983
-        jmp     L8BAA ;CHROUT to Virtual 1541
+        jmp     V1541_CHROUT ;CHROUT to Virtual 1541
 ; ----------------------------------------------------------------------------
 LB983:  bcs     LB988
 LB985:  jmp     KR_ShowChar_ ;X=0
@@ -8165,14 +8174,13 @@ LB994:  cpx     #$1E  ;30
         tax
         pla
         jsr     LB9B0
-        jmp     LC38C ;CHROUT to Centronics
+        jmp     CENTRONICS_CHROUT
 ; ----------------------------------------------------------------------------
-;CHROUT to IEC
 LB9A7:  bcc     LB9AC
-        jmp     LC271_CHROUT_DEV_31_RTC ;RTC?
+        jmp     RTC_CHROUT
 ; ----------------------------------------------------------------------------
 LB9AC:  sec
-        jmp     CIOUT ;CHROUT to IEC
+        jmp     CIOUT
 ; ----------------------------------------------------------------------------
 LB9B0:  pha
 LB9B1:  lda     SA
@@ -8283,7 +8291,7 @@ JX050:  jsr     JZ100
         bne     LBA79
         jsr     LC0E8
         bra     JX150
-LBA79:  jsr     L9214
+LBA79:  jsr     V1541_CLOSE
         bra     JX150
 LBA7E:  bit     $0407
         bpl     JX120
@@ -8385,7 +8393,7 @@ OP110:  inc     LDTND
         bcc     LBB25_OPEN_LT_30
 
         ;Device 31 (RTV)
-        jmp     LC219_OPEN_DEV_31_RTC
+        jmp     RTC_OPEN
 
 ;Device < 30
 LBB25_OPEN_LT_30:
@@ -8490,7 +8498,7 @@ LBBD7:  cmp     #$01   ;Virtual 1541?
         bne     LBBE1_SAVE_IEC
         ;Virtual 1541
         jsr     SAVEING ;Print SAVEING then OUTFN
-        jmp     L9085_SAVE_V1541_JMP_L993F
+        jmp     L9085_V1541_SAVE
 ; ----------------------------------------------------------------------------
 ;SAVE to IEC
 LBBE1_SAVE_IEC:
@@ -9421,7 +9429,7 @@ LC211_RTC_OFFSETS:
       .byte   $04,$02,$00,$04,$06,$07,$09,$0B ; C211 04 02 00 04 06 07 09 0B  ........
 ; ----------------------------------------------------------------------------
 ;OPEN to RTC device 31
-LC219_OPEN_DEV_31_RTC:
+RTC_OPEN:
         stz     RTC_IDX                         ; C219 9C 11 04                 ...
         lda     FNLEN                           ; C21C AD 87 03                 ...
         beq     LC22A                           ; C21F F0 09                    ..
@@ -9470,7 +9478,7 @@ LC25D:  lda     $0412,x                         ; C25D BD 12 04                 
         rts                                     ; C270 60                       `
 ; ----------------------------------------------------------------------------
 ;CHROUT to RTC device
-LC271_CHROUT_DEV_31_RTC:
+RTC_CHROUT:
         jsr     LC2CE_READ_RTC_HARDWARE         ; C271 20 CE C2                  ..
         php                                     ; C274 08                       .
         sei                                     ; C275 78                       x
@@ -9500,7 +9508,7 @@ LC290:  jsr     RTC_SHIFT_LOOKUP_SUBTRACT       ; C290 20 75 C3                 
         rts                                     ; C2AC 60                       `
 ; ----------------------------------------------------------------------------
 ;CHRIN from RTC device 31
-LC2AD_CHRIN_DEV_31_RTC:
+RTC_CHRIN:
         ldx     RTC_IDX                         ; C2AD AE 11 04                 ...
         beq     RTC_READ_HW_THEN_FIRST_RAM_VALUE; C2B0 F0 0B                    ..
         cpx     #$08                            ; C2B2 E0 08                    ..
@@ -9643,7 +9651,8 @@ LC382:  .byte 0, 6, 12, 18, 24, 30, 36, 42, 48, 54
 ;CHROUT to Centronics
 ;Wait for /BUSY to go high, or STOP key pressed, or timeout
 ;Returns carry=1 if error (STOP or timeout)
-LC38C:  ldx     SATUS                           ; C38C A6 BA                    ..
+CENTRONICS_CHROUT:
+        ldx     SATUS                           ; C38C A6 BA                    ..
         bne     LC3AC                           ; C38E D0 1C                    ..
 
         pha ;Save byte to send                  ; C390 48                       H
@@ -9667,8 +9676,7 @@ LC393:  lda     VIA2_PORTB                      ; C393 AD 80 F8                 
 LC3AB:  plx                                     ; C3AB FA                       .
 LC3AC:  sec                                     ; C3AC 38                       8
         jmp     UDST                            ; C3AD 4C CA FC                 L..
-; ----------------------------------------------------------------------------
-;CHROUT to Centronics
+
 ;/BUSY has gone high, so send the byte now
 ;Always returns carry=0 (OK)
 LC3B0:  ldx     #$03                            ; C3B0 A2 03                    ..
