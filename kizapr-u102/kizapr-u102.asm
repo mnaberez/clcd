@@ -1908,7 +1908,7 @@ L8C2B:  .byte   $3B                             ; 8C2B 3B                       
 L8C30:  jsr     L8C3E                           ; 8C30 20 3E 8C                  >.
         jmp     L8C89                           ; 8C33 4C 89 8C                 L..
 ; ----------------------------------------------------------------------------
-L8C36:  lda     SA                      ; 8C36 A5 C4                    ..
+L8C36:  lda     SA                              ; 8C36 A5 C4                    ..
         and     #$0F                            ; 8C38 29 0F                    ).
 L8C3A:  .byte   $2C                             ; 8C3A 2C                       ,
 L8C3B:  lda     #$11                            ; 8C3B A9 11                    ..
@@ -2268,9 +2268,9 @@ L8ED7:  ldy     #$00                            ; 8ED7 A0 00                    
         jsr     L8FAD                           ; 8ED9 20 AD 8F                  ..
         dey                                     ; 8EDC 88                       .
         bcc     L8ED3                           ; 8EDD 90 F4                    ..
-        cmp     #$24                            ; 8EDF C9 24                    .$
+        cmp     #'$'                            ; 8EDF C9 24                    .$
         beq     L8EE7                           ; 8EE1 F0 04                    ..
-        cmp     #$40                            ; 8EE3 C9 40                    .@
+        cmp     #'@'                            ; 8EE3 C9 40                    .@
         bne     L8EEB                           ; 8EE5 D0 04                    ..
 L8EE7:  iny                                     ; 8EE7 C8                       .
         sta     $03A0                           ; 8EE8 8D A0 03                 ...
@@ -2280,14 +2280,15 @@ L8EEE:  sty     $03A2                           ; 8EEE 8C A2 03                 
         bne     L8EF9                           ; 8EF4 D0 03                    ..
         jmp     L8F86                           ; 8EF6 4C 86 8F                 L..
 ; ----------------------------------------------------------------------------
+;Looks like filename parsing for directory listing LOAD"$0:*=P"
 L8EF9:  jsr     L8FAD                           ; 8EF9 20 AD 8F                  ..
         bcc     L8ED3                           ; 8EFC 90 D5                    ..
         tax                                     ; 8EFE AA                       .
-        cpx     #$20                            ; 8EFF E0 20                    .
+        cpx     #' '                            ; 8EFF E0 20                    .
         beq     L8EEE                           ; 8F01 F0 EB                    ..
-        cpx     #$30                            ; 8F03 E0 30                    .0
+        cpx     #'0'                            ; 8F03 E0 30                    .0
         beq     L8EEE                           ; 8F05 F0 E7                    ..
-        cpx     #$3A                            ; 8F07 E0 3A                    .:
+        cpx     #'9'+1                          ; 8F07 E0 3A                    .:
         bne     L8F14                           ; 8F09 D0 09                    ..
         lda     #$03                            ; 8F0B A9 03                    ..
         tsb     $03A5                           ; 8F0D 0C A5 03                 ...
@@ -2295,32 +2296,32 @@ L8EF9:  jsr     L8FAD                           ; 8EF9 20 AD 8F                 
         bra     L8EEB                           ; 8F12 80 D7                    ..
 L8F14:  lda     #$02                            ; 8F14 A9 02                    ..
         tsb     $03A5                           ; 8F16 0C A5 03                 ...
-        cpx     #$3D                            ; 8F19 E0 3D                    .=
+        cpx     #'='                            ; 8F19 E0 3D                    .=
         beq     L8F81                           ; 8F1B F0 64                    .d
-        cpx     #$3F                            ; 8F1D E0 3F                    .?
+        cpx     #'?'                            ; 8F1D E0 3F                    .?
         beq     L8F25                           ; 8F1F F0 04                    ..
-        cpx     #$2A                            ; 8F21 E0 2A                    .*
+        cpx     #'*'                            ; 8F21 E0 2A                    .*
         bne     L8F2A                           ; 8F23 D0 05                    ..
 L8F25:  lda     #$40                            ; 8F25 A9 40                    .@
         tsb     $03A5                           ; 8F27 0C A5 03                 ...
-L8F2A:  cpx     #$2C                            ; 8F2A E0 2C                    .,
+L8F2A:  cpx     #','                            ; 8F2A E0 2C                    .,
         bne     L8EEE                           ; 8F2C D0 C0                    ..
         dey                                     ; 8F2E 88                       .
 L8F2F:  cpy     $039F                           ; 8F2F CC 9F 03                 ...
         beq     L8F86                           ; 8F32 F0 52                    .R
         jsr     L8FAD                           ; 8F34 20 AD 8F                  ..
         bcc     L8F5F                           ; 8F37 90 26                    .&
-        cmp     #$3D                            ; 8F39 C9 3D                    .=
+        cmp     #'='                            ; 8F39 C9 3D                    .=
         beq     L8F81                           ; 8F3B F0 44                    .D
-        cmp     #$20                            ; 8F3D C9 20                    .
+        cmp     #' '                            ; 8F3D C9 20                    .
         beq     L8F2F                           ; 8F3F F0 EE                    ..
-        cmp     #$2C                            ; 8F41 C9 2C                    .,
+        cmp     #','                            ; 8F41 C9 2C                    .,
         bne     L8F5F                           ; 8F43 D0 1A                    ..
 L8F45:  cpy     $039F                           ; 8F45 CC 9F 03                 ...
         bcs     L8F5F                           ; 8F48 B0 15                    ..
         jsr     L8FAD                           ; 8F4A 20 AD 8F                  ..
         bcc     L8F5F                           ; 8F4D 90 10                    ..
-        cmp     #$20                            ; 8F4F C9 20                    .
+        cmp     #' '                            ; 8F4F C9 20                    .
         beq     L8F45                           ; 8F51 F0 F2                    ..
         and     #$DF                            ; 8F53 29 DF                    ).
         ldx     #$05                            ; 8F55 A2 05                    ..
@@ -2388,9 +2389,9 @@ L8FC3:  ldx     #$00                            ; 8FC3 A2 00                    
         lda     #$E2                            ; 8FC8 A9 E2                    ..
         sta     $034E                           ; 8FCA 8D 4E 03                 .N.
 L8FCD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FCD 20 4A 03                  J.
-L8FD0:  cmp     #$2A                            ; 8FD0 C9 2A                    .*
+L8FD0:  cmp     #'*'                            ; 8FD0 C9 2A                    .*
         beq     L8FE9                           ; 8FD2 F0 15                    ..
-        cmp     #$3F                            ; 8FD4 C9 3F                    .?
+        cmp     #'?'                            ; 8FD4 C9 3F                    .?
         beq     L8FDD                           ; 8FD6 F0 05                    ..
         cmp     $021D,x                         ; 8FD8 DD 1D 02                 ...
         bne     L8FF1                           ; 8FDB D0 14                    ..
@@ -2843,21 +2844,21 @@ L9322:  lda     #$3E                            ; 9322 A9 3E                    
         clc                                     ; 9324 18                       .
         rts                                     ; 9325 60                       `
 ; ----------------------------------------------------------------------------
-L9326:  lda     #$57                            ; 9326 A9 57                    .W
+L9326:  lda     #'W'                            ; 9326 A9 57                    .W
         sta     $03A3                           ; 9328 8D A3 03                 ...
         lda     $03A4                           ; 932B AD A4 03                 ...
         bne     L9335                           ; 932E D0 05                    ..
-        lda     #$53                            ; 9330 A9 53                    .S
+        lda     #'S'                            ; 9330 A9 53                    .S
         sta     $03A4                           ; 9332 8D A4 03                 ...
 L9335:  ldy     $03A3                           ; 9335 AC A3 03                 ...
-        cpy     #$57                            ; 9338 C0 57                    .W
+        cpy     #'W'                            ; 9338 C0 57                    .W
         bne     L935A                           ; 933A D0 1E                    ..
         jsr     L8B13                           ; 933C 20 13 8B                  ..
         bcc     L9358                           ; 933F 90 17                    ..
         jsr     L8FF3                           ; 9341 20 F3 8F                  ..
         stz     $0218                           ; 9344 9C 18 02                 ...
         lda     $03A4                           ; 9347 AD A4 03                 ...
-        cmp     #$50                            ; 934A C9 50                    .P
+        cmp     #'P'                            ; 934A C9 50                    .P
         bne     L9353                           ; 934C D0 05                    ..
         lda     #$40                            ; 934E A9 40                    .@
         sta     $0218                           ; 9350 8D 18 02                 ...
@@ -3232,11 +3233,12 @@ V1541_OPEN:
 ; ----------------------------------------------------------------------------
 L9671_V1541_INTERNAL_OPEN:
         jsr     L8EAF                           ; 9671 20 AF 8E                  ..
-        .byte   $90                             ; 9674 90                       .
-L9675:  bit     $89                             ; 9675 24 89                    $.
-        jsr     $20D0                           ; 9677 20 D0 20                  .
+L9675 := *+1
+        BCC     L969A
+        BIT     #$20
+        BNE     L969A
         ldx     $03A0                           ; 967A AE A0 03                 ...
-        cpx     #$24                            ; 967D E0 24                    .$
+        cpx     #'$'                            ; 967D E0 24                    .$
         bne     L969C                           ; 967F D0 1B                    ..
         ldx     $03A3                           ; 9681 AE A3 03                 ...
         bne     L9698                           ; 9684 D0 12                    ..
