@@ -8064,10 +8064,10 @@ LB93C = * + 1
         jsr     AGETCH ;Get byte from RS-232
         pha
         lda     SA
-        and     #$0F
+        and     #$0F            ;SA & 0x0F sets translation mode
         tax
         pla
-        jmp     LC3CB
+        jmp     TRANSL_ACIA_RX  ;Translate char before returning it
 
 LB948_NOT_RS232:
         bcs     LB94D
@@ -8136,7 +8136,7 @@ LB988:  cpx     #$03
         bcs     LB994
 
         ;Device = 2 (ACIA)
-        jsr     LB9B0
+        jsr     USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS
         jmp     ACIA_CHROUT
 ; ----------------------------------------------------------------------------
 LB994:  cpx     #$1E  ;30
@@ -8145,10 +8145,10 @@ LB994:  cpx     #$1E  ;30
         ldx     SA
         pha
         lda     SA
-        and     #$0F
+        and     #$0F            ;SA & 0x0F sets translation mode
         tax
         pla
-        jsr     LB9B0
+        jsr     USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS  ;Translate char before sending it
         jmp     CENTRONICS_CHROUT
 ; ----------------------------------------------------------------------------
 LB9A7:  bcc     LB9AC
@@ -8157,12 +8157,16 @@ LB9A7:  bcc     LB9AC
 LB9AC:  sec
         jmp     CIOUT ;IEC
 ; ----------------------------------------------------------------------------
-LB9B0:  pha
+;Translate character before sending it to ACIA TX or Centronics out
+;Translation mode is set by secondary address
+;Set X=SA & $0F, A=char to translate
+USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS:
+        pha
 LB9B1:  lda     SA
         and     #$0F
         tax
         pla
-        jmp     LC3D1
+        jmp     TRANSL_ACIA_TX_OR_CENTRONICS
 ; ----------------------------------------------------------------------------
 CHKIN__:jsr     LOOKUP
         beq     LB9C2
@@ -9676,361 +9680,374 @@ LC3B2:  dex
 
         clc
         rts
+
 ; ----------------------------------------------------------------------------
-LC3CB:  pha                                     ; C3CB 48                       H
-        lda     LC44A,x                         ; C3CC BD 4A C4                 .J.
-        bra     LC3D5                           ; C3CF 80 04                    ..
-LC3D1:  pha                                     ; C3D1 48                       H
-        lda     LC444,x                         ; C3D2 BD 44 C4                 .D.
-LC3D5:  cpx     #$00                            ; C3D5 E0 00                    ..
-        bne     LC3DC                           ; C3D7 D0 03                    ..
-        clc                                     ; C3D9 18                       .
-LC3DA:  pla                                     ; C3DA 68                       h
-        rts                                     ; C3DB 60                       `
+
+;Translate a character received from the ACIA RX
+;Called with A = char, X = secondary address & $0F
+TRANSL_ACIA_RX:
+        pha
+        lda     LC44A_ACIA_RX_ONLY,x
+        bra     TRANSLATE
+
+;Translate a character before sending it to ACIA TX or Centronics
+;Called with A = char, X = secondary address & $0F
+TRANSL_ACIA_TX_OR_CENTRONICS:
+        pha
+        lda     LC444_ACIA_TX_AND_CENTRONICS,x
+        ;Fall through
+
+TRANSLATE:
+        cpx     #$00
+        bne     LC3DC
+        clc
+LC3DA:  pla
+        rts
+
+LC3DC:  cpx     #$07
+        bcs     LC3DA
+        plx
+        phy
+        tay
+        txa
+LC3E4:  phy
+        ldx     TRANSL_HANDLER_OFFSETS,y
+        jsr     JMP_TO_TRANSL_HANDLER_X
+        ply
+        iny
+        bcs     LC3E4
+        ply
+        rts
+
+JMP_TO_TRANSL_HANDLER_X:
+        jmp     (TRANSL_HANDLERS,x)
+TRANSL_HANDLERS:
+        .addr   TRANSL_HANDLER_X00
+        .addr   TRANSL_HANDLER_X01
+        .addr   TRANSL_HANDLER_X02
+        .addr   TRANSL_HANDLER_X03
+        .addr   TRANSL_HANDLER_X04
+        .addr   TRANSL_HANDLER_X05
+        .addr   TRANSL_HANDLER_X06
+        .addr   TRANSL_HANDLER_X07
+        .addr   TRANSL_HANDLER_X08
+        .addr   TRANSL_HANDLER_X09
+        .addr   TRANSL_HANDLER_X0A
+        .addr   TRANSL_HANDLER_X0B
+        .addr   TRANSL_HANDLER_X0C
+        .addr   TRANSL_HANDLER_X0D
+        .addr   TRANSL_HANDLER_X0E
+        .addr   TRANSL_HANDLER_X0F
+        .addr   TRANSL_HANDLER_X10
+
+TRANSL_HANDLER_OFFSETS:
+        .byte   $02,$04,$06,$08,$0A,$0C,$00,$02
+        .byte   $06,$08,$0A,$0C,$00,$02,$18,$06
+        .byte   $1E,$0A,$1C,$10,$00,$02,$16,$0E
+        .byte   $00,$02,$1A,$1C,$10,$00,$04,$06
+        .byte   $14,$00,$04,$12,$00,$04,$20,$00
+        .byte   $06,$14,$00,$12,$00,$20
+
+LC444_ACIA_TX_AND_CENTRONICS:
+        .byte   $00,$00,$07,$0D,$15,$15
+
+LC44A_ACIA_RX_ONLY:
+        .byte   $19,$1E,$22,$25,$28,$2B,$2D
 ; ----------------------------------------------------------------------------
-LC3DC:  cpx     #$07                            ; C3DC E0 07                    ..
-        bcs     LC3DA                           ; C3DE B0 FA                    ..
-        plx                                     ; C3E0 FA                       .
-        phy                                     ; C3E1 5A                       Z
-        tay                                     ; C3E2 A8                       .
-        txa                                     ; C3E3 8A                       .
-LC3E4:  phy                                     ; C3E4 5A                       Z
-        ldx     LC416,y                         ; C3E5 BE 16 C4                 ...
-        jsr     LC3F1                           ; C3E8 20 F1 C3                  ..
-        ply                                     ; C3EB 7A                       z
-        iny                                     ; C3EC C8                       .
-        bcs     LC3E4                           ; C3ED B0 F5                    ..
-        ply                                     ; C3EF 7A                       z
-        rts                                     ; C3F0 60                       `
+TRANSL_HANDLER_X10:
+        cmp     #$5E
+        bcc     LC462
+        cmp     #$80
+        bcs     LC462
+        sec
+        sbc     #$5E
+        tay
+        lda     LC464,y
+        clc
+        rts
+LC462:  sec
+        rts
+LC464:  .byte   $71,$7F,$62,$60,$7B,$AE,$BD,$AD
+        .byte   $B0,$B1,$3E,$7F,$7A,$56,$AC,$BB
+        .byte   $BE,$BC,$B8,$68,$A9,$B2,$B3,$B1
+        .byte   $AB,$76,$6E,$6D,$B7,$AF,$67,$68
+        .byte   $78,$7E
 ; ----------------------------------------------------------------------------
-LC3F1:  jmp     (LC3F4,x)                       ; C3F1 7C F4 C3                 |..
-LC3F4:  .addr   LC486                           ; C3F4 86 C4                    ..
-        .addr   LC4C5                           ; C3F6 C5 C4                    ..
-        .addr   LC488                           ; C3F8 88 C4                    ..
-        .addr   LC496                           ; C3FA 96 C4                    ..
-        .addr   LC5BC                           ; C3FC BC C5                    ..
-        .addr   LC5AE                           ; C3FE AE C5                    ..
-        .addr   LC5E3                           ; C400 E3 C5                    ..
-        .addr   LC5F7                           ; C402 F7 C5                    ..
-        .addr   LC553                           ; C404 53 C5                    S.
-        .addr   LC55D                           ; C406 5D C5                    ].
-        .addr   LC4A4                           ; C408 A4 C4                    ..
-        .addr   LC58A                           ; C40A 8A C5                    ..
-        .addr   LC567                           ; C40C 67 C5                    g.
-        .addr   LC4D3                           ; C40E D3 C4                    ..
-        .addr   LC513                           ; C410 13 C5                    ..
-        .addr   LC59B                           ; C412 9B C5                    ..
-        .addr   LC451                           ; C414 51 C4                    Q.
+TRANSL_HANDLER_X00:
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-LC416:  .byte   $02,$04,$06,$08,$0A,$0C,$00,$02 ; C416 02 04 06 08 0A 0C 00 02  ........
-        .byte   $06,$08,$0A,$0C,$00,$02,$18,$06 ; C41E 06 08 0A 0C 00 02 18 06  ........
-        .byte   $1E,$0A,$1C,$10,$00,$02,$16,$0E ; C426 1E 0A 1C 10 00 02 16 0E  ........
-        .byte   $00,$02,$1A,$1C,$10,$00,$04,$06 ; C42E 00 02 1A 1C 10 00 04 06  ........
-        .byte   $14,$00,$04,$12,$00,$04,$20,$00 ; C436 14 00 04 12 00 04 20 00  ...... .
-        .byte   $06,$14,$00,$12,$00,$20         ; C43E 06 14 00 12 00 20        .....
-LC444:  .byte   $00,$00,$07,$0D,$15,$15         ; C444 00 00 07 0D 15 15        ......
-LC44A:  .byte   $19,$1E,$22,$25,$28,$2B,$2D     ; C44A 19 1E 22 25 28 2B 2D     .."%(+-
+TRANSL_HANDLER_X02:
+        cmp     #$41
+        bcc     LC494
+        cmp     #$5B
+        bcs     LC494
+        eor     #$20
+        clc
+        rts
+LC494:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC451:  cmp     #$5E                            ; C451 C9 5E                    .^
-        bcc     LC462                           ; C453 90 0D                    ..
-        cmp     #$80                            ; C455 C9 80                    ..
-        bcs     LC462                           ; C457 B0 09                    ..
-        sec                                     ; C459 38                       8
-        sbc     #$5E                            ; C45A E9 5E                    .^
-        tay                                     ; C45C A8                       .
-        lda     LC464,y                         ; C45D B9 64 C4                 .d.
-        clc                                     ; C460 18                       .
-        rts                                     ; C461 60                       `
+TRANSL_HANDLER_X03:
+        cmp     #$61
+        bcc     LC4A2
+        cmp     #$7B
+        bcs     LC4A2
+        eor     #$20
+        clc
+        rts
+LC4A2:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC462:  sec                                     ; C462 38                       8
-        rts                                     ; C463 60                       `
+TRANSL_HANDLER_X0A:
+        ldx     #$04
+LC4A6:  cmp     LC4B5,x
+        beq     LC4B0
+        dex
+        bpl     LC4A6
+        sec
+        rts
+LC4B0:  lda     LC4BD,x
+        clc
+        rts
+LC4B5:  .byte   $7B,$7D,$7E,$60,$5F,$7B,$7D,$60
+LC4BD:  .byte   $A6,$A8,$5F,$BA,$A4,$E6,$E8,$FA
 ; ----------------------------------------------------------------------------
-LC464:  .byte   $71,$7F,$62,$60,$7B,$AE,$BD,$AD ; C464 71 7F 62 60 7B AE BD AD  q.b`{...
-        .byte   $B0,$B1,$3E,$7F,$7A,$56,$AC,$BB ; C46C B0 B1 3E 7F 7A 56 AC BB  ..>.zV..
-        .byte   $BE,$BC,$B8,$68,$A9,$B2,$B3,$B1 ; C474 BE BC B8 68 A9 B2 B3 B1  ...h....
-        .byte   $AB,$76,$6E,$6D,$B7,$AF,$67,$68 ; C47C AB 76 6E 6D B7 AF 67 68  .vnm..gh
-        .byte   $78,$7E                         ; C484 78 7E                    x~
+TRANSL_HANDLER_X01:
+        cmp     #$80
+        bcc     LC4D1
+        cmp     #$A0
+        bcs     LC4D1
+        and     #$7F
+        clc
+        rts
+LC4D1:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC486:  clc                                     ; C486 18                       .
-        rts                                     ; C487 60                       `
+TRANSL_HANDLER_X0D:
+        cmp     #$60
+        bcc     LC4E4
+        cmp     #$80
+        bcs     LC4E4
+        sec
+        sbc     #$60
+LC4DE:  tay
+        lda     LC4F3,y
+        clc
+        rts
+LC4E4:  cmp     #$C0
+        bcc     LC4F1
+        cmp     #$E0
+        bcs     LC4F1
+        sec
+        sbc     #$C0
+        bra     LC4DE
+LC4F1:  sec
+        rts
+LC4F3:  .byte   $61,$73,$60,$61,$7A,$7A,$7B,$7C
+        .byte   $7D,$63,$65,$64,$4C,$79,$78,$66
+        .byte   $63,$5E,$7B,$6B,$7C,$66,$77,$4F
+        .byte   $7E,$7D,$6A,$62,$60,$60,$7F,$5F
 ; ----------------------------------------------------------------------------
-LC488:  cmp     #$41                            ; C488 C9 41                    .A
-        bcc     LC494                           ; C48A 90 08                    ..
-        cmp     #$5B                            ; C48C C9 5B                    .[
-        bcs     LC494                           ; C48E B0 04                    ..
-        eor     #$20                            ; C490 49 20                    I
-        clc                                     ; C492 18                       .
-        rts                                     ; C493 60                       `
+TRANSL_HANDLER_X0E:
+        cmp     #$A0
+        bcc     LC524
+        cmp     #$C0
+        bcs     LC524
+        sec
+        sbc     #$A0
+LC51E:  tay
+        lda     LC533,y
+        clc
+        rts
+LC524:  cmp     #$E0
+        bcc     LC531
+        cmp     #$FF
+        bcs     LC531
+        sec
+        sbc     #$E0
+        bra     LC51E
+LC531:  sec
+        rts
+LC533:  .byte   $20,$7C,$7B,$7A,$7B,$7C,$74,$7D
+        .byte   $76,$72,$7D,$76,$6C,$65,$63,$7B
+        .byte   $66,$75,$73,$74,$7C,$7C,$7D,$7A
+        .byte   $7A,$7B,$64,$6D,$6F,$64,$6E,$25
 ; ----------------------------------------------------------------------------
-LC494:  sec                                     ; C494 38                       8
-        rts                                     ; C495 60                       `
+TRANSL_HANDLER_X08:
+        cmp     #$FF
+        bne     LC55B
+        lda     #$7F
+        clc
+        rts
+LC55B:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC496:  cmp     #$61                            ; C496 C9 61                    .a
-        bcc     LC4A2                           ; C498 90 08                    ..
-        cmp     #$7B                            ; C49A C9 7B                    .{
-        bcs     LC4A2                           ; C49C B0 04                    ..
-        eor     #$20                            ; C49E 49 20                    I
-        clc                                     ; C4A0 18                       .
-        rts                                     ; C4A1 60                       `
+TRANSL_HANDLER_X09:
+        cmp     #$5F
+        bne     LC565
+        lda     #$A4
+        clc
+        rts
+LC565:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC4A2:  sec                                     ; C4A2 38                       8
-        rts                                     ; C4A3 60                       `
+TRANSL_HANDLER_X0C:
+        ldx     #$08
+LC569:  cmp     LC581,x
+        beq     LC573
+        dex
+        bpl     LC569
+        sec
+        rts
+LC573:  lda     LC578,x
+        clc
+        rts
+LC578:  .byte   $5B,$5C,$5D,$2D,$27,$5F,$5B,$5D,$27
+LC581:  .byte   $A6,$7C,$A8,$5F,$BA,$A4,$E6,$E8,$FA
 ; ----------------------------------------------------------------------------
-LC4A4:  ldx     #$04                            ; C4A4 A2 04                    ..
-LC4A6:  cmp     LC4B5,x                         ; C4A6 DD B5 C4                 ...
-        beq     LC4B0                           ; C4A9 F0 05                    ..
-        dex                                     ; C4AB CA                       .
-        bpl     LC4A6                           ; C4AC 10 F8                    ..
-        sec                                     ; C4AE 38                       8
-        rts                                     ; C4AF 60                       `
+TRANSL_HANDLER_X0B:
+        ldx     #$07
+LC58C:  cmp     LC4BD,x
+        beq     LC596
+        dex
+        bpl     LC58C
+        sec
+        rts
+LC596:  lda     LC4B5,x
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-LC4B0:  lda     LC4BD,x                         ; C4B0 BD BD C4                 ...
-        clc                                     ; C4B3 18                       .
-        rts                                     ; C4B4 60                       `
+TRANSL_HANDLER_X0F:
+        cmp     #$7B
+        bcc     LC5AC
+        cmp     #$80
+        bcs     LC5AC
+        sec
+        sbc     #$60
+        tay
+        lda     LC4F3,y
+        clc
+        rts
+LC5AC:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC4B5:  .byte   $7B,$7D,$7E,$60,$5F,$7B,$7D,$60 ; C4B5 7B 7D 7E 60 5F 7B 7D 60  {}~`_{}`
-LC4BD:  .byte   $A6,$A8,$5F,$BA,$A4,$E6,$E8,$FA ; C4BD A6 A8 5F BA A4 E6 E8 FA  .._.....
+TRANSL_HANDLER_X05:
+        cmp     #$C1
+        bcc     LC5BA
+        cmp     #$DB
+        bcs     LC5BA
+        eor     #$80
+        clc
+        rts
+LC5BA:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC4C5:  cmp     #$80                            ; C4C5 C9 80                    ..
-        bcc     LC4D1                           ; C4C7 90 08                    ..
-        cmp     #$A0                            ; C4C9 C9 A0                    ..
-        bcs     LC4D1                           ; C4CB B0 04                    ..
-        and     #$7F                            ; C4CD 29 7F                    ).
-        clc                                     ; C4CF 18                       .
-        rts                                     ; C4D0 60                       `
-LC4D1:  sec                                     ; C4D1 38                       8
-        rts                                     ; C4D2 60                       `
+TRANSL_HANDLER_X04:
+        ldx     #$0A
+LC5BE:  cmp     LC5CD,x
+        beq     LC5C8
+        dex
+        bpl     LC5BE
+        sec
+        rts
+LC5C8:  lda     LC5D8,x
+        clc
+        rts
+LC5CD:  .byte   $A6,$A8,$BA,$5F,$A4,$E6,$E8,$FA,$7B,$7E,$7F
+LC5D8:  .byte   $7B,$7D,$60,$7E,$5F,$7B,$7D,$60,$20,$20,$20
 ; ----------------------------------------------------------------------------
-LC4D3:  cmp     #$60                            ; C4D3 C9 60                    .`
-        bcc     LC4E4                           ; C4D5 90 0D                    ..
-        cmp     #$80                            ; C4D7 C9 80                    ..
-        bcs     LC4E4                           ; C4D9 B0 09                    ..
-        sec                                     ; C4DB 38                       8
-        sbc     #$60                            ; C4DC E9 60                    .`
-LC4DE:  tay                                     ; C4DE A8                       .
-        lda     LC4F3,y                         ; C4DF B9 F3 C4                 ...
-        clc                                     ; C4E2 18                       .
-        rts                                     ; C4E3 60                       `
+TRANSL_HANDLER_X06:
+        cmp     #$A0
+        bcc     LC5ED
+        cmp     #$C0
+        bcs     LC5ED
+        bra     LC5F1
+LC5ED:  cmp     #$E0
+        bcc     LC5F5
+LC5F1:  lda     #$20
+        clc
+        rts
+LC5F5:  sec
+        rts
 ; ----------------------------------------------------------------------------
-LC4E4:  cmp     #$C0                            ; C4E4 C9 C0                    ..
-        bcc     LC4F1                           ; C4E6 90 09                    ..
-        cmp     #$E0                            ; C4E8 C9 E0                    ..
-        bcs     LC4F1                           ; C4EA B0 05                    ..
-        sec                                     ; C4EC 38                       8
-        sbc     #$C0                            ; C4ED E9 C0                    ..
-        bra     LC4DE                           ; C4EF 80 ED                    ..
-LC4F1:  sec                                     ; C4F1 38                       8
-        rts                                     ; C4F2 60                       `
-; ----------------------------------------------------------------------------
-LC4F3:  .byte   $61,$73,$60,$61,$7A,$7A,$7B,$7C ; C4F3 61 73 60 61 7A 7A 7B 7C  as`azz{|
-        .byte   $7D,$63,$65,$64,$4C,$79,$78,$66 ; C4FB 7D 63 65 64 4C 79 78 66  }cedLyxf
-        .byte   $63,$5E,$7B,$6B,$7C,$66,$77,$4F ; C503 63 5E 7B 6B 7C 66 77 4F  c^{k|fwO
-        .byte   $7E,$7D,$6A,$62,$60,$60,$7F,$5F ; C50B 7E 7D 6A 62 60 60 7F 5F  ~}jb``._
-; ----------------------------------------------------------------------------
-LC513:  cmp     #$A0                            ; C513 C9 A0                    ..
-        bcc     LC524                           ; C515 90 0D                    ..
-        cmp     #$C0                            ; C517 C9 C0                    ..
-        bcs     LC524                           ; C519 B0 09                    ..
-        sec                                     ; C51B 38                       8
-        sbc     #$A0                            ; C51C E9 A0                    ..
-LC51E:  tay                                     ; C51E A8                       .
-        lda     LC533,y                         ; C51F B9 33 C5                 .3.
-        clc                                     ; C522 18                       .
-        rts                                     ; C523 60                       `
-; ----------------------------------------------------------------------------
-LC524:  cmp     #$E0                            ; C524 C9 E0                    ..
-        bcc     LC531                           ; C526 90 09                    ..
-        cmp     #$FF                            ; C528 C9 FF                    ..
-        bcs     LC531                           ; C52A B0 05                    ..
-        sec                                     ; C52C 38                       8
-        sbc     #$E0                            ; C52D E9 E0                    ..
-        bra     LC51E                           ; C52F 80 ED                    ..
-LC531:  sec                                     ; C531 38                       8
-        rts                                     ; C532 60                       `
-; ----------------------------------------------------------------------------
-LC533:  .byte   $20,$7C,$7B,$7A,$7B,$7C,$74,$7D ; C533 20 7C 7B 7A 7B 7C 74 7D   |{z{|t}
-        .byte   $76,$72,$7D,$76,$6C,$65,$63,$7B ; C53B 76 72 7D 76 6C 65 63 7B  vr}vlec{
-        .byte   $66,$75,$73,$74,$7C,$7C,$7D,$7A ; C543 66 75 73 74 7C 7C 7D 7A  fust||}z
-        .byte   $7A,$7B,$64,$6D,$6F,$64,$6E,$25 ; C54B 7A 7B 64 6D 6F 64 6E 25  z{dmodn%
-; ----------------------------------------------------------------------------
-LC553:  cmp     #$FF                            ; C553 C9 FF                    ..
-        bne     LC55B                           ; C555 D0 04                    ..
-        lda     #$7F                            ; C557 A9 7F                    ..
-        clc                                     ; C559 18                       .
-        rts                                     ; C55A 60                       `
-; ----------------------------------------------------------------------------
-LC55B:  sec                                     ; C55B 38                       8
-        rts                                     ; C55C 60                       `
-; ----------------------------------------------------------------------------
-LC55D:  cmp     #$5F                            ; C55D C9 5F                    ._
-        bne     LC565                           ; C55F D0 04                    ..
-        lda     #$A4                            ; C561 A9 A4                    ..
-        clc                                     ; C563 18                       .
-        rts                                     ; C564 60                       `
-; ----------------------------------------------------------------------------
-LC565:  sec                                     ; C565 38                       8
-        rts                                     ; C566 60                       `
-; ----------------------------------------------------------------------------
-LC567:  ldx     #$08                            ; C567 A2 08                    ..
-LC569:  cmp     LC581,x                         ; C569 DD 81 C5                 ...
-        beq     LC573                           ; C56C F0 05                    ..
-        dex                                     ; C56E CA                       .
-        bpl     LC569                           ; C56F 10 F8                    ..
-        sec                                     ; C571 38                       8
-        rts                                     ; C572 60                       `
-; ----------------------------------------------------------------------------
-LC573:  lda     LC578,x                         ; C573 BD 78 C5                 .x.
-        clc                                     ; C576 18                       .
-        rts                                     ; C577 60                       `
-; ----------------------------------------------------------------------------
-LC578:  .byte   $5B,$5C,$5D,$2D,$27,$5F,$5B,$5D ; C578 5B 5C 5D 2D 27 5F 5B 5D  [\]-'_[]
-        .byte   $27                             ; C580 27                       '
-LC581:  .byte   $A6,$7C,$A8,$5F,$BA,$A4,$E6,$E8 ; C581 A6 7C A8 5F BA A4 E6 E8  .|._....
-        .byte   $FA                             ; C589 FA                       .
-; ----------------------------------------------------------------------------
-LC58A:  ldx     #$07                            ; C58A A2 07                    ..
-LC58C:  cmp     LC4BD,x                         ; C58C DD BD C4                 ...
-        beq     LC596                           ; C58F F0 05                    ..
-        dex                                     ; C591 CA                       .
-        bpl     LC58C                           ; C592 10 F8                    ..
-        sec                                     ; C594 38                       8
-        rts                                     ; C595 60                       `
-; ----------------------------------------------------------------------------
-LC596:  lda     LC4B5,x                         ; C596 BD B5 C4                 ...
-        clc                                     ; C599 18                       .
-        rts                                     ; C59A 60                       `
-; ----------------------------------------------------------------------------
-LC59B:  cmp     #$7B                            ; C59B C9 7B                    .{
-        bcc     LC5AC                           ; C59D 90 0D                    ..
-        cmp     #$80                            ; C59F C9 80                    ..
-        bcs     LC5AC                           ; C5A1 B0 09                    ..
-        sec                                     ; C5A3 38                       8
-        sbc     #$60                            ; C5A4 E9 60                    .`
-        tay                                     ; C5A6 A8                       .
-        lda     LC4F3,y                         ; C5A7 B9 F3 C4                 ...
-        clc                                     ; C5AA 18                       .
-        rts                                     ; C5AB 60                       `
-; ----------------------------------------------------------------------------
-LC5AC:  sec                                     ; C5AC 38                       8
-        rts                                     ; C5AD 60                       `
-; ----------------------------------------------------------------------------
-LC5AE:  cmp     #$C1                            ; C5AE C9 C1                    ..
-        bcc     LC5BA                           ; C5B0 90 08                    ..
-        cmp     #$DB                            ; C5B2 C9 DB                    ..
-        bcs     LC5BA                           ; C5B4 B0 04                    ..
-        eor     #$80                            ; C5B6 49 80                    I.
-        clc                                     ; C5B8 18                       .
-        rts                                     ; C5B9 60                       `
-; ----------------------------------------------------------------------------
-LC5BA:  sec                                     ; C5BA 38                       8
-        rts                                     ; C5BB 60                       `
-; ----------------------------------------------------------------------------
-LC5BC:  ldx     #$0A                            ; C5BC A2 0A                    ..
-LC5BE:  cmp     LC5CD,x                         ; C5BE DD CD C5                 ...
-        beq     LC5C8                           ; C5C1 F0 05                    ..
-        dex                                     ; C5C3 CA                       .
-        bpl     LC5BE                           ; C5C4 10 F8                    ..
-        sec                                     ; C5C6 38                       8
-        rts                                     ; C5C7 60                       `
-; ----------------------------------------------------------------------------
-LC5C8:  lda     LC5D8,x                         ; C5C8 BD D8 C5                 ...
-        clc                                     ; C5CB 18                       .
-        rts                                     ; C5CC 60                       `
-; ----------------------------------------------------------------------------
-LC5CD:  .byte   $A6,$A8,$BA,$5F,$A4,$E6,$E8,$FA ; C5CD A6 A8 BA 5F A4 E6 E8 FA  ..._....
-        .byte   $7B,$7E,$7F                     ; C5D5 7B 7E 7F                 {~.
-LC5D8:  .byte   $7B,$7D,$60,$7E,$5F,$7B,$7D,$60 ; C5D8 7B 7D 60 7E 5F 7B 7D 60  {}`~_{}`
-        .byte   $20,$20,$20                     ; C5E0 20 20 20
-; ----------------------------------------------------------------------------
-LC5E3:  cmp     #$A0                            ; C5E3 C9 A0                    ..
-        bcc     LC5ED                           ; C5E5 90 06                    ..
-        cmp     #$C0                            ; C5E7 C9 C0                    ..
-        bcs     LC5ED                           ; C5E9 B0 02                    ..
-        bra     LC5F1                           ; C5EB 80 04                    ..
-LC5ED:  cmp     #$E0                            ; C5ED C9 E0                    ..
-        bcc     LC5F5                           ; C5EF 90 04                    ..
-LC5F1:  lda     #$20                            ; C5F1 A9 20                    .
-        clc                                     ; C5F3 18                       .
-        rts                                     ; C5F4 60                       `
-; ----------------------------------------------------------------------------
-LC5F5:  sec                                     ; C5F5 38                       8
-        rts                                     ; C5F6 60                       `
-; ----------------------------------------------------------------------------
-LC5F7:  cmp     #$60                            ; C5F7 C9 60                    .`
-        bcc     LC601                           ; C5F9 90 06                    ..
-        cmp     #$80                            ; C5FB C9 80                    ..
-        bcs     LC601                           ; C5FD B0 02                    ..
-        bra     LC605                           ; C5FF 80 04                    ..
-LC601:  cmp     #$A0                            ; C601 C9 A0                    ..
-        bcc     LC609                           ; C603 90 04                    ..
-LC605:  lda     #$20                            ; C605 A9 20                    .
-        clc                                     ; C607 18                       .
-        rts                                     ; C608 60                       `
-; ----------------------------------------------------------------------------
-LC609:  sec                                     ; C609 38                       8
-        rts                                     ; C60A 60                       `
+TRANSL_HANDLER_X07:
+        cmp     #$60
+        bcc     LC601
+        cmp     #$80
+        bcs     LC601
+        bra     LC605
+LC601:  cmp     #$A0
+        bcc     LC609
+LC605:  lda     #$20
+        clc
+        rts
+LC609:  sec
+        rts
+
 ; ----------------------------------------------------------------------------
 ;Bell-related
-LC60B:  jmp     (LC60E,x)                       ; C60B 7C 0E C6                 |..
-LC60E:  .addr   UDBELL                           ; C60E 18 C6                    ..
-        .addr   LC61E                           ; C610 1E C6                    ..
-        .addr   LC626                           ; C612 26 C6                    &.
-        .addr   LC63F                           ; C614 3F C6                    ?.
-        .addr   BELL                            ; C616 5C C6                    \.
+JMP_BELL_RELATED_X:
+        jmp     (LC60E,x)
+LC60E:  .addr   UDBELL
+        .addr   LC61E
+        .addr   LC626
+        .addr   LC63F
+        .addr   BELL
 ; ----------------------------------------------------------------------------
 ;Called at 60 Hz by the default IRQ handler (see LFA44_VIA1_T1_IRQ).
 ;Bell-related
-UDBELL: jsr     LC63F                           ; C618 20 3F C6                  ?.
-        bcs     LC634                           ; C61B B0 17                    ..
-        rts                                     ; C61D 60                       `
+UDBELL: jsr     LC63F
+        bcs     LC634
+        rts
 ; ----------------------------------------------------------------------------
 ;Bell-related
-LC61E:  sta     VIA2_T2CL                       ; C61E 8D 88 F8                 ...
-        sty     VIA2_T2CH                       ; C621 8C 89 F8                 ...
-        bra     LC63F                           ; C624 80 19                    ..
+LC61E:  sta     VIA2_T2CL
+        sty     VIA2_T2CH
+        bra     LC63F
 ; ----------------------------------------------------------------------------
 ;Bell-related
-LC626:  php                                     ; C626 08                       .
-        sei                                     ; C627 78                       x
-        eor     #$FF                            ; C628 49 FF                    I.
-        sta     $041A                           ; C62A 8D 1A 04                 ...
-        tya                                     ; C62D 98                       .
-        eor     #$FF                            ; C62E 49 FF                    I.
-        sta     $041B                           ; C630 8D 1B 04                 ...
-        .byte   $2C                             ; C633 2C                       ,
-LC634:  php                                     ; C634 08                       .
-        sei                                     ; C635 78                       x
-        inc     $041A                           ; C636 EE 1A 04                 ...
-        bne     LC63E                           ; C639 D0 03                    ..
-        inc     $041B                           ; C63B EE 1B 04                 ...
-LC63E:  .byte   $2C                             ; C63E 2C                       ,
-LC63F:  php                                     ; C63F 08                       .
-        sei                                     ; C640 78                       x
-        lda     $041A                           ; C641 AD 1A 04                 ...
-        ora     $041B                           ; C644 0D 1B 04                 ...
-        beq     LC654                           ; C647 F0 0B                    ..
-        lda     #$10                            ; C649 A9 10                    ..
-        tsb     VIA2_ACR                        ; C64B 0C 8B F8                 ...
-        sta     VIA2_SR                         ; C64E 8D 8A F8                 ...
-        plp                                     ; C651 28                       (
-        sec                                     ; C652 38                       8
-        rts                                     ; C653 60                       `
+LC626:  php
+        sei
+        eor     #$FF
+        sta     $041A
+        tya
+        eor     #$FF
+        sta     $041B
+        .byte   $2C
+LC634:  php
+        sei
+        inc     $041A
+        bne     LC63E
+        inc     $041B
+LC63E:  .byte   $2C
+LC63F:  php
+        sei
+        lda     $041A
+        ora     $041B
+        beq     LC654
+        lda     #$10
+        tsb     VIA2_ACR
+        sta     VIA2_SR
+        plp
+        sec
+        rts
 ; ----------------------------------------------------------------------------
 ;Bell-related
-LC654:  lda     #$10                            ; C654 A9 10                    ..
-        trb     VIA2_ACR                        ; C656 1C 8B F8                 ...
-        plp                                     ; C659 28                       (
-        clc                                     ; C65A 18                       .
-        rts                                     ; C65B 60                       `
+LC654:  lda     #$10
+        trb     VIA2_ACR
+        plp
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 ;CTRL$(7) Bell
 CODE_07_BELL:
-BELL:   lda     #$A0                            ; C65C A9 A0                    ..
-        tay                                     ; C65E A8                       .
-        jsr     LC61E                           ; C65F 20 1E C6                  ..
-        lda     #$06                            ; C662 A9 06                    ..
-        ldy     #$00                            ; C664 A0 00                    ..
-        jmp     LC626                           ; C666 4C 26 C6                 L&.
+BELL:   lda     #$A0
+        tay
+        jsr     LC61E
+        lda     #$06
+        ldy     #$00
+        jmp     LC626                 
 
 
 MMU_HELPER_ROUTINES:
@@ -17105,8 +17122,9 @@ WaitXticks:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-KR_LC60B:  sta     MMU_MODE_KERN
-        jsr     LC60B
+KR_JMP_BELL_RELATED_X:
+        sta     MMU_MODE_KERN
+        jsr     JMP_BELL_RELATED_X
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
@@ -17550,7 +17568,7 @@ LFF5C           := * + 2
 ; ----------------------------------------------------------------------------
         jmp     WaitXticks                      ; FF60 4C B0 FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     KR_LC60B                           ; FF63 4C BA FB                 L..
+        jmp     KR_JMP_BELL_RELATED_X                           ; FF63 4C BA FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     LFBC4                           ; FF66 4C C4 FB                 L..
 ; ----------------------------------------------------------------------------
