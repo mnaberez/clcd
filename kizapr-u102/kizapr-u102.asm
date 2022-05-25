@@ -1831,7 +1831,7 @@ L8BA0:  lda     #$0D                            ; 8BA0 A9 0D                    
 ;CHROUT to Virtual 1541
 V1541_CHROUT:
         jsr     L8BB0_V1541_INTERNAL_CHROUT     ; 8BAA 20 B0 8B                  ..
-        jmp     V1541_KERNAL_CALL_DONE    ; 8BAD 4C 3F 99                 L?.
+        jmp     V1541_KERNAL_CALL_DONE          ; 8BAD 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
 L8BB0_V1541_INTERNAL_CHROUT:
         sta     $039E                           ; 8BB0 8D 9E 03                 ...
@@ -2702,7 +2702,6 @@ V1541_CLOSE:
 L921A_V1541_INTERNAL_CLOSE:
         jsr     L8C36                           ; 921A 20 36 8C                  6.
         bcs     L9221                           ; 921D B0 02                    ..
-L921F:
         sec                                     ; 921F 38                       8
         rts                                     ; 9220 60                       `
 ; ----------------------------------------------------------------------------
@@ -3087,20 +3086,23 @@ LOAD__: sta     VERCHK
         stz     SATUS
         lda     FA
         bne     L9544
-L9541:  jmp     ERROR9 ;BAD DEVICE #
+        ;Device 0
+L9541_BAD_DEVICE:
+        jmp     ERROR9 ;BAD DEVICE #
 ; ----------------------------------------------------------------------------
 L9544:  cmp     #$01
-        beq     L9550_LOAD_V1541
+        beq     L9550_LOAD_V1541_OR_IEC
         cmp     #$04
-        bcc     L9541
+        bcc     L9541_BAD_DEVICE
         cmp     #$1E
-        bcs     L9541
-L9550_LOAD_V1541:
+        bcs     L9541_BAD_DEVICE
+L9550_LOAD_V1541_OR_IEC: ;Device=1 (Virtual 1541), Device=4-29 (IEC)
         ldy     FNLEN
-        bne     L9558
+        bne     L9558_LOAD_FNLEN_OK
         jmp     ERROR8 ;MISSING FILE NAME
 ; ----------------------------------------------------------------------------
-L9558:  jsr     LUKING  ;Print "SEARCHING FOR " then OUTFN
+L9558_LOAD_FNLEN_OK:
+        jsr     LUKING  ;Print "SEARCHING FOR " then do OUTFN
         ldx     SA
         stx     $0407
         stz     SA
@@ -3156,9 +3158,8 @@ L95AF:  lda     VERCHK
         beq     L9588
 L95D4:  lda     SA
         bne     L95F0
-        .byte   $AD
-        .byte   $A0
-L95DA:  .byte   $03
+L95DA := *+2
+        LDA     $03a0
         cmp     #$40
         bne     L95F0
         jsr     L96D6
@@ -3170,7 +3171,7 @@ L95ED := *+6
 L95F0:  lda     #$02
         trb     SATUS
         jsr     LFDB9_STOP
-        beq     L9657
+        beq     L9657_STOP_PRESSED
 L95F9:  jsr     L9661
         tax
         lda     SATUS
@@ -3216,7 +3217,8 @@ L9651:  ldx     EAL
         clc
         rts
 ; ----------------------------------------------------------------------------
-L9657:  lda     SA
+L9657_STOP_PRESSED:
+        lda     SA
         bne     L965E
         jsr     CLSEI
 L965E:  jmp     ERROR0  ;OK
@@ -3258,15 +3260,16 @@ L969A:  clc                                     ; 969A 18                       
 L969C:  jsr     L8D9F                           ; 969C 20 9F 8D                  ..
         bcc     L969A                           ; 969F 90 F9                    ..
         lda     $0218                           ; 96A1 AD 18 02                 ...
-        .byte   $89                             ; 96A4 89                       .
-L96A5:  jsr     $EDD0                           ; 96A5 20 D0 ED                  ..
+L96A5 := *+1
+        bit     #$20
+        bne     L9695
         bit     #$80                            ; 96A8 89 80                    ..
         bne     L96B1                           ; 96AA D0 05                    ..
         jsr     L8E20                           ; 96AC 20 20 8E                   .
         bcc     L969A                           ; 96AF 90 E9                    ..
 L96B1:  jsr     L9011                           ; 96B1 20 11 90                  ..
         bcc     L969A                           ; 96B4 90 E4                    ..
-        cpx     #$53                            ; 96B6 E0 53                    .S
+        cpx     #'S'                            ; 96B6 E0 53                    .S
         beq     L9692                           ; 96B8 F0 D8                    ..
         jsr     L8C2A                           ; 96BA 20 2A 8C                  *.
         jsr     L902D                           ; 96BD 20 2D 90                  -.
@@ -3627,73 +3630,41 @@ L9964:  stx     $0210                           ; 9964 8E 10 02                 
         stz     $0217
         rts                                     ; 9970 60                       `
 ; ----------------------------------------------------------------------------
-L9971:  .byte   "CHANNEL"                       ; 9971 43 48 41 4E 4E 45 4C     CHANNEL
-        .byte   $00                             ; 9978 00                       .
-        .byte   "COMMAND"                       ; 9979 43 4F 4D 4D 41 4E 44     COMMAND
-        .byte   $00                             ; 9980 00                       .
-        .byte   "DIRECTORY"                     ; 9981 44 49 52 45 43 54 4F 52  DIRECTOR
-                                                ; 9989 59                       Y
-        .byte   $00                             ; 998A 00                       .
-        .byte   "DISK"                          ; 998B 44 49 53 4B              DISK
-        .byte   $00                             ; 998F 00                       .
-        .byte   "DOS"                           ; 9990 44 4F 53                 DOS
-        .byte   $00                             ; 9993 00                       .
-        .byte   "ERROR"                         ; 9994 45 52 52 4F 52           ERROR
-        .byte   $00                             ; 9999 00                       .
-L999A:  .byte   "EXISTS"                        ; 999A 45 58 49 53 54 53        EXISTS
-        .byte   $00                             ; 99A0 00                       .
-        .byte   "F"                             ; 99A1 46                       F
-L99A2:  .byte   "ILE"                           ; 99A2 49 4C 45                 ILE
-        .byte   $00                             ; 99A5 00                       .
-L99A6:  .byte   "FILES"                         ; 99A6 46 49 4C 45 53           FILES
-        .byte   $00                             ; 99AB 00                       .
-        .byte   "FOUND"                         ; 99AC 46 4F 55 4E 44           FOUND
-        .byte   $00                             ; 99B1 00                       .
-        .byte   "FULL"                          ; 99B2 46 55 4C 4C              FULL
-        .byte   $00                             ; 99B6 00                       .
-        .byte   "ILLEGAL"                       ; 99B7 49 4C 4C 45 47 41 4C     ILLEGAL
-        .byte   $00                             ; 99BE 00                       .
-        .byte   "INVALID"                       ; 99BF 49 4E 56 41 4C 49 44     INVALID
-        .byte   $00                             ; 99C6 00                       .
-        .byte   "LARGE"                         ; 99C7 4C 41 52 47 45           LARGE
-        .byte   $00                             ; 99CC 00                       .
-        .byte   "LINE"                          ; 99CD 4C 49 4E 45              LINE
-        .byte   $00                             ; 99D1 00                       .
-        .byte   "LONG"                          ; 99D2 4C 4F 4E 47              LONG
-        .byte   $00                             ; 99D6 00                       .
-        .byte   "MISMATCH"                      ; 99D7 4D 49 53 4D 41 54 43 48  MISMATCH
-        .byte   $00                             ; 99DF 00                       .
-        .byte   "NO"                            ; 99E0 4E 4F                    NO
-        .byte   $00                             ; 99E2 00                       .
-        .byte   "NOT"                           ; 99E3 4E 4F 54                 NOT
-        .byte   $00                             ; 99E6 00                       .
-        .byte   "OK"                            ; 99E7 4F 4B                    OK
-        .byte   $00                             ; 99E9 00                       .
-        .byte   "OPEN"                          ; 99EA 4F 50 45 4E              OPEN
-        .byte   $00                             ; 99EE 00                       .
-        .byte   "PROTECT"                       ; 99EF 50 52 4F 54 45 43 54     PROTECT
-        .byte   $00                             ; 99F6 00                       .
-        .byte   "READ"                          ; 99F7 52 45 41 44              READ
-        .byte   $00                             ; 99FB 00                       .
-        .byte   "SCRATCHED"                     ; 99FC 53 43 52 41 54 43 48 45  SCRATCHE
-                                                ; 9A04 44                       D
-        .byte   $00                             ; 9A05 00                       .
-        .byte   "SYNTAX"                        ; 9A06 53 59 4E 54 41 58        SYNTAX
-        .byte   $00                             ; 9A0C 00                       .
-        .byte   "SYSTEM"                        ; 9A0D 53 59 53 54 45 4D        SYSTEM
-        .byte   $00                             ; 9A13 00                       .
-        .byte   "T&S"                           ; 9A14 54 26 53                 T&S
-        .byte   $00                             ; 9A17 00                       .
-        .byte   "TOO"                           ; 9A18 54 4F 4F                 TOO
-        .byte   $00                             ; 9A1B 00                       .
-        .byte   "TYPE"                          ; 9A1C 54 59 50 45              TYPE
-        .byte   $00                             ; 9A20 00                       .
-        .byte   "VERIFY"                        ; 9A21 56 45 52 49 46 59        VERIFY
-        .byte   $00                             ; 9A27 00                       .
-        .byte   "WR"                            ; 9A28 57 52                    WR
-L9A2A:  .byte   "I"                             ; 9A2A 49                       I
-L9A2B:  .byte   "TE"                            ; 9A2B 54 45                    TE
-        .byte   $00,$00                         ; 9A2D 00 00                    ..
+L9971:  .byte   "CHANNEL",0
+        .byte   "COMMAND",0
+        .byte   "DIRECTORY",0
+        .byte   "DISK",0
+        .byte   "DOS",0
+        .byte   "ERROR",0
+L999A:  .byte   "EXISTS",0
+L99A2 := *+1
+        .byte   "FILE",0
+L99A6:  .byte   "FILES",0
+        .byte   "FOUND",0
+        .byte   "FULL",0
+        .byte   "ILLEGAL",0
+        .byte   "INVALID",0
+        .byte   "LARGE",0
+        .byte   "LINE",0
+        .byte   "LONG",0
+        .byte   "MISMATCH",0
+        .byte   "NO",0
+        .byte   "NOT",0
+        .byte   "OK",0
+        .byte   "OPEN",0
+        .byte   "PROTECT",0
+        .byte   "READ",0
+        .byte   "SCRATCHED",0
+        .byte   "SYNTAX",0
+        .byte   "SYSTEM",0
+        .byte   "T&S",0
+        .byte   "TOO",0
+        .byte   "TYPE",0
+        .byte   "VERIFY",0
+L9A2A := *+2
+L9A2B := *+3
+        .byte   "WRITE",0
+        .byte   0
 ; ----------------------------------------------------------------------------
         .byte   $77,$00,$00,$01,$36,$8C,$00,$14 ; 9A2F 77 00 00 01 36 8C 00 14  w...6...
         .byte   $47,$A4,$00,$19,$B8,$B1,$24,$1A ; 9A37 47 A4 00 19 B8 B1 24 1A  G.....$.
@@ -3756,26 +3727,28 @@ L9AE8:  dec     a                               ; 9AE8 3A                       
         sta     $E0                             ; 9AE9 85 E0                    ..
         ldx     #$00                            ; 9AEB A2 00                    ..
         lda     $0210                           ; 9AED AD 10 02                 ...
-L9AF0:  inx                                     ; 9AF0 E8                       .
+L9AF0_LOOP:  inx                                     ; 9AF0 E8                       .
         inx                                     ; 9AF1 E8                       .
         inx                                     ; 9AF2 E8                       .
         inx                                     ; 9AF3 E8                       .
         beq     L9B12                           ; 9AF4 F0 1C                    ..
         cmp     L9A2A,x                         ; 9AF6 DD 2A 9A                 .*.
-        bne     L9AF0                           ; 9AF9 D0 F5                    ..
-L9AFB:  lda     #$20                            ; 9AFB A9 20                    .
+        bne     L9AF0_LOOP                           ; 9AF9 D0 F5                    ..
+L9AFB_OUTER_LOOP:
+        lda     #$20                            ; 9AFB A9 20                    .
         ldy     L9A2B,x                         ; 9AFD BC 2B 9A                 .+.
-        .byte   $F0                             ; 9B00 F0                       .
-L9B01:  .byte   $10                             ; 9B01 10                       .
-L9B02:  dec     $E0                             ; 9B02 C6 E0                    ..
+L9B01 := *+1
+        beq     L9B12
+L9B02_INNER_LOOP:
+        dec     $E0                             ; 9B02 C6 E0                    ..
         beq     L9B19                           ; 9B04 F0 13                    ..
         iny                                     ; 9B06 C8                       .
-        lda     L9971-2,y                         ; 9B07 B9 6F 99                 .o.
-        bne     L9B02                           ; 9B0A D0 F6                    ..
+        lda     L9971-2,y                       ; 9B07 B9 6F 99                 .o.
+        bne     L9B02_INNER_LOOP                ; 9B0A D0 F6                    ..
         inx                                     ; 9B0C E8                       .
         txa                                     ; 9B0D 8A                       .
         and     #$03                            ; 9B0E 29 03                    ).
-        bne     L9AFB                           ; 9B10 D0 E9                    ..
+        bne     L9AFB_OUTER_LOOP                ; 9B10 D0 E9                    ..
 L9B12:  lda     #$80                            ; 9B12 A9 80                    ..
         sta     $0217                           ; 9B14 8D 17 02                 ...
         lda     #$2C                            ; 9B17 A9 2C                    .,
@@ -8484,14 +8457,16 @@ LBBBC:  jmp     PrintNewLine
 ; ----------------------------------------------------------------------------
 LBBBF:  rts
 ; ----------------------------------------------------------------------------
-LBBC0:  lda     FA
-        bne     LD20
-LBBC4:  jmp     ERROR9 ;BAD DEVICE #
+SAVE__:
+        lda     FA
+        bne     LBBC7
+LBBC4_BAD_DEVICE:
+        jmp     ERROR9 ;BAD DEVICE #
 ; ----------------------------------------------------------------------------
-LD20:   cmp     #$03   ;DISALLOW SCREEN LOAD
-        beq     LBBC4
+LBBC7:  cmp     #$03
+        beq     LBBC4_BAD_DEVICE
         cmp     #$02
-        beq     LBBC4  ;DISALLOW MODEM LOAD
+        beq     LBBC4_BAD_DEVICE
         ldy     FNLEN
         bne     LBBD7
         jmp     ERROR8 ;MISSING FILE NAME
@@ -17410,7 +17385,7 @@ SAVE_:  stx     EAL
 ; ----------------------------------------------------------------------------
 DEFVEC_SAVE:
         sta     MMU_MODE_KERN
-        jsr     LBBC0
+        jsr     SAVE__
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
