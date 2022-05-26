@@ -70,6 +70,28 @@ This program sounds the alarm in 1 hour, 30 minutes, and 15 seconds:
 1 printpeek(917),peek(916),peek(915):goto1
 ```
 
+### Devices
+
+The KERNAL supports the following devices:
+
+| Device Number | Description |
+|--------------|--------------|
+|0 |Keyboard |
+|1 |Virtual 1541 (RAM Disk) |
+|2 |RS-232 Port (6551 ACIA) |
+|3 |Screen (LCD) |
+|4-29 |IEC Serial Bus |
+|30 |Centronics Port |
+|31 |Real Time Clock |
+
+There are 3 devices not found on other Commodore computers:
+
+ - Virtual 1541.  This is the RAM disk.  The cassette routines have been completely removed and device number 1 has been repurposed for the Virtual 1541.  Device 1 is the default device number so `LOAD` with no device number will load from the Virtual 1541.
+
+ - Centronics port.  This is an output-only device that sends data to the dedicated Centronics port on the side of the machine.  The secondary address (channel number) selects various character translation modes.  Translation is supported by the RS-232 (6551 ACIA) device, a feature that the Plus/4 does not have.
+
+ - Real Time Clock.  This device can set or read the LCD's built-in OKI M58321 RTC chip ([photo](https://flickr.com/photos/mnaberez/31314604052/in/album-72157673583276503/)).  It can also synchronize the RTC time with the software TOD clock.
+
 ### Editor
 
 The screen editor supports nearly all of the ESC codes in the C128:
