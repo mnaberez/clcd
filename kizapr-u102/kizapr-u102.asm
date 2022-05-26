@@ -134,11 +134,12 @@ RAMVEC_SAVE     := $0332
 L0334           := $0334
 L0336           := $0336
 GO_RAM_LOAD_GO_APPL       := $0338  ;
-GO_RAM_STORE_GO_APPL      := $0341  ;
-GO_RAM_LOAD_GO_KERN       := $034A  ; RAM-resident code loaded from:
-GO_NOWHERE_LOAD_GO_KERN   := $034D  ; MMU_HELPER_ROUTINES
-GO_APPL_LOAD_GO_KERN      := $0353  ;
-GO_RAM_STORE_GO_KERN      := $035C  ;
+GO_RAM_STORE_GO_APPL      := $0341  ; RAM-resident code loaded from:
+GO_RAM_LOAD_GO_KERN       := $034A  ; MMU_HELPER_ROUTINES
+GO_NOWHERE_LOAD_GO_KERN   := $034D  ;
+SINNER                    := $034E  ; "SINNER" name is from TED-series KERNAL,
+GO_APPL_LOAD_GO_KERN      := $0353  ; where similar RAM-resident code is
+GO_RAM_STORE_GO_KERN      := $035C  ; modified at runtime.
 GO_NOWHERE_STORE_GO_KERN  := $035F  ;
 REVERSE         := $036C  ;0=Reverse Off, 0x80=Reverse On
 BLNOFF          := $036F  ;0=Cursor Blink On, 0x80=Cursor Blink Off
@@ -559,8 +560,8 @@ L820A:  lda     ($DB),y
         plx
 L821C:  rts
 ; ----------------------------------------------------------------------------
-L821D:  lda     #$AE
-        sta     $034E
+L821D:  lda     #FNADR
+        sta     SINNER
         ldx     FNLEN
         beq     L826E
         ldy     #$01
@@ -2241,9 +2242,9 @@ L8EA7:  jsr     L8A39                           ; 8EA7 20 39 8A                 
         lda     #$01                            ; 8EAC A9 01                    ..
 L8EAE:  rts                                     ; 8EAE 60                       `
 ; ----------------------------------------------------------------------------
-L8EAF:  lda     FNADR                        ; 8EAF A5 AE                    ..
-        ldx     FNADR+1                        ; 8EB1 A6 AF                    ..
-        ldy     FNLEN                        ; 8EB3 AC 87 03                 ...
+L8EAF:  lda     FNADR                           ; 8EAF A5 AE                    ..
+        ldx     FNADR+1                         ; 8EB1 A6 AF                    ..
+        ldy     FNLEN                           ; 8EB3 AC 87 03                 ...
         sta     $E2                             ; 8EB6 85 E2                    ..
         stx     $E3                             ; 8EB8 86 E3                    ..
         sty     $039F                           ; 8EBA 8C 9F 03                 ...
@@ -2251,8 +2252,8 @@ L8EBD:  stz     $03A5                           ; 8EBD 9C A5 03                 
         stz     $03A3                           ; 8EC0 9C A3 03                 ...
         stz     $03A4                           ; 8EC3 9C A4 03                 ...
         stz     $03A0                           ; 8EC6 9C A0 03                 ...
-        lda     #$E2                            ; 8EC9 A9 E2                    ..
-        sta     $034E                           ; 8ECB 8D 4E 03                 .N.
+        lda     #$E2 ;ZP-address                ; 8EC9 A9 E2                    ..
+        sta     SINNER                          ; 8ECB 8D 4E 03                 .N.
         lda     $039F                           ; 8ECE AD 9F 03                 ...
         bne     L8ED7                           ; 8ED1 D0 04                    ..
 L8ED3:  lda     #$21                            ; 8ED3 A9 21                    .!
@@ -2381,8 +2382,8 @@ L8FBF:  brk                                     ; 8FBF 00                       
         ora     L8D22                           ; 8FC0 0D 22 8D                 .".
 L8FC3:  ldx     #$00                            ; 8FC3 A2 00                    ..
         ldy     MON_MMU_MODE                    ; 8FC5 AC A1 03                 ...
-        lda     #$E2                            ; 8FC8 A9 E2                    ..
-        sta     $034E                           ; 8FCA 8D 4E 03                 .N.
+        lda     #$E2 ;ZP-address                ; 8FC8 A9 E2                    ..
+        sta     SINNER                          ; 8FCA 8D 4E 03                 .N.
 L8FCD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FCD 20 4A 03                  J.
 L8FD0:  cmp     #'*'                            ; 8FD0 C9 2A                    .*
         beq     L8FE9                           ; 8FD2 F0 15                    ..
@@ -2407,8 +2408,8 @@ L8FF1:  clc                                     ; 8FF1 18                       
         rts                                     ; 8FF2 60                       `
 ; ----------------------------------------------------------------------------
 L8FF3:  stz     $02D8                           ; 8FF3 9C D8 02                 ...
-        lda     #$E2                            ; 8FF6 A9 E2                    ..
-        sta     $034E                           ; 8FF8 8D 4E 03                 .N.
+        lda     #$E2 ;ZP-address                ; 8FF6 A9 E2                    ..
+        sta     SINNER                          ; 8FF8 8D 4E 03                 .N.
         ldx     #$00                            ; 8FFB A2 00                    ..
         ldy     MON_MMU_MODE                    ; 8FFD AC A1 03                 ...
 L9000:  jsr     GO_RAM_LOAD_GO_KERN             ; 9000 20 4A 03                  J.
@@ -2456,8 +2457,8 @@ L9055:  bit     #$80                            ; 9055 89 80                    
         beq     L907D                           ; 9057 F0 24                    .$
         ldx     #$00                            ; 9059 A2 00                    ..
         ldy     MON_MMU_MODE                    ; 905B AC A1 03                 ...
-L905E:  lda     #$E2                            ; 905E A9 E2                    ..
-        sta     $034E                           ; 9060 8D 4E 03                 .N.
+L905E:  lda     #$E2 ;ZP-address                ; 905E A9 E2                    ..
+        sta     SINNER                          ; 9060 8D 4E 03                 .N.
         jsr     GO_RAM_LOAD_GO_KERN             ; 9063 20 4A 03                  J.
         sta     $0238,x                         ; 9066 9D 38 02                 .8.
         iny                                     ; 9069 C8                       .
@@ -2593,8 +2594,8 @@ L9150:  jsr     L91A4                           ; 9150 20 A4 91                 
         inc     a                               ; 9159 1A                       .
 L915A:  .byte   $02                             ; 915A 02                       .
         sta     $021B                           ; 915B 8D 1B 02                 ...
-        lda     #$E0                            ; 915E A9 E0                    ..
-        sta     $034E                           ; 9160 8D 4E 03                 .N.
+        lda     #$E0 ;ZP-address                ; 915E A9 E0                    ..
+        sta     SINNER                          ; 9160 8D 4E 03                 .N.
 L9163:  jsr     L89AF                           ; 9163 20 AF 89                  ..
         ldy     #$FF                            ; 9166 A0 FF                    ..
 L9168:  jsr     GO_RAM_LOAD_GO_KERN             ; 9168 20 4A 03                  J.
@@ -2661,8 +2662,8 @@ L91CC:  stx     $E1                             ; 91CC 86 E1                    
 L91D5:  pha                                     ; 91D5 48                       H
         sta     $E1                             ; 91D6 85 E1                    ..
         stz     $E0                             ; 91D8 64 E0                    d.
-        lda     #$B7                            ; 91DA A9 B7                    ..
-        sta     $034E                           ; 91DC 8D 4E 03                 .N.
+        lda     #STAH                           ; 91DA A9 B7                    ..
+        sta     SINNER                          ; 91DC 8D 4E 03                 .N.
         lda     #$E0                            ; 91DF A9 E0                    ..
         sta     $0360                           ; 91E1 8D 60 03                 .`.
 L91E4:  lda     STAH                            ; 91E4 A5 B7                    ..
@@ -3106,7 +3107,7 @@ L9558_LOAD_FNLEN_OK:
         beq     L957A
         lda     #$60
         sta     SA
-        jsr     LBB40_OPEN_IEC
+        jsr     OPENI
         lda     FA
         jsr     TALK__
         lda     SA
@@ -3177,8 +3178,8 @@ L95F9:  jsr     L9661
         beq     L9622
         ldy     #$00
         sta     WRBASE                ;save .A
-        lda     #$B2
-        sta     $034E
+        lda     #EAL
+        sta     SINNER
         jsr     GO_RAM_LOAD_GO_KERN
         cmp     WRBASE                ;compare with old .A
         beq     L963D
@@ -3344,8 +3345,8 @@ L9737:  jsr     L8C36                           ; 9737 20 36 8C                 
         bcs     L974A                           ; 9747 B0 01                    ..
 L9749:  rts                                     ; 9749 60                       `
 ; ----------------------------------------------------------------------------
-L974A:  lda     #$AE                            ; 974A A9 AE                    ..
-        sta     $034E                           ; 974C 8D 4E 03                 .N.
+L974A:  lda     #FNADR                          ; 974A A9 AE                    ..
+        sta     SINNER                          ; 974C 8D 4E 03                 .N.
         dey                                     ; 974F 88                       .
         bmi     L9749                           ; 9750 30 F7                    0.
 L9752:  jsr     GO_RAM_LOAD_GO_KERN             ; 9752 20 4A 03                  J.
@@ -3873,6 +3874,7 @@ L9BF6:  lda     $25                             ; 9BF6 A5 25                    
 L9C05:  ldx     #$0E                            ; 9C05 A2 0E                    ..
         jmp     LFB4B                           ; 9C07 4C 4B FB                 LK.
 ; ----------------------------------------------------------------------------
+;TODO probably a jmp
 L9C0A:  .byte   $4C                             ; 9C0A 4C                       L
         sec                                     ; 9C0B 38                       8
 L9C0C:  .byte   $A3                             ; 9C0C A3                       .
@@ -3881,8 +3883,8 @@ L9C0D:  inc     $3F                             ; 9C0D E6 3F                    
         inc     $40                             ; 9C11 E6 40                    .@
 L9C13:  sei                                     ; 9C13 78                       x
         ldy     #$00                            ; 9C14 A0 00                    ..
-        lda     #$3F                            ; 9C16 A9 3F                    .?
-        sta     $034E                           ; 9C18 8D 4E 03                 .N.
+        lda     #$3F ;ZP-address                ; 9C16 A9 3F                    .?
+        sta     SINNER                          ; 9C18 8D 4E 03                 .N.
         jsr     GO_RAM_LOAD_GO_KERN             ; 9C1B 20 4A 03                  J.
         cli                                     ; 9C1E 58                       X
         cmp     #$3A                            ; 9C1F C9 3A                    .:
@@ -3895,12 +3897,13 @@ L9C13:  sei                                     ; 9C13 78                       
         sbc     #$D0                            ; 9C2B E9 D0                    ..
 L9C2D:  rts                                     ; 9C2D 60                       `
 ; ----------------------------------------------------------------------------
-L9C2E:  lda     #$3F                            ; 9C2E A9 3F                    .?
-        sta     $034E                           ; 9C30 8D 4E 03                 .N.
+L9C2E:  lda     #$3F ;ZP-address                ; 9C2E A9 3F                    .?
+        sta     SINNER                          ; 9C30 8D 4E 03                 .N.
         jmp     GO_RAM_LOAD_GO_KERN             ; 9C33 4C 4A 03                 LJ.
 ; ----------------------------------------------------------------------------
-L9C36:  lda     #$08                            ; 9C36 A9 08                    ..
-        sta     $034E                           ; 9C38 8D 4E 03                 .N.
+L9C36:  lda     #$08 ;ZP-address                ; 9C36 A9 08                    ..
+        sta     SINNER                          ; 9C38 8D 4E 03                 .N.
+;TODO probably a JMP
         .byte   $4C                             ; 9C3B 4C                       L
 L9C3C:  lsr     a                               ; 9C3C 4A                       J
         .byte   $03                             ; 9C3D 03                       .
@@ -3908,8 +3911,8 @@ L9C3E:  lda     #$08                            ; 9C3E A9 08                    
         sta     $0357                           ; 9C40 8D 57 03                 .W.
         jmp     GO_APPL_LOAD_GO_KERN            ; 9C43 4C 53 03                 LS.
 ; ----------------------------------------------------------------------------
-L9C46:  lda     #$0A                            ; 9C46 A9 0A                    ..
-        sta     $034E                           ; 9C48 8D 4E 03                 .N.
+L9C46:  lda     #$0A ;ZP-address                ; 9C46 A9 0A                    ..
+        sta     SINNER                          ; 9C48 8D 4E 03                 .N.
         jmp     GO_RAM_LOAD_GO_KERN             ; 9C4B 4C 4A 03                 LJ.
 ; ----------------------------------------------------------------------------
 L9C4E:  pha                                     ; 9C4E 48                       H
@@ -7179,8 +7182,8 @@ LB293:  stx     $F1
         sty     $F2
         jsr     LB2E4_HIDE_CURSOR
         stz     $0382
-        lda     #$F1
-        sta     $034E
+        lda     #$F1 ;ZP-address
+        sta     SINNER
         sta     $0360
         ldy     #$00
         ldx     #$00
@@ -8439,7 +8442,7 @@ LBB25_OPEN_LT_30:
         bcc     LBB31_OPEN_LT_3   ;Device < 3
 
         sec
-        jsr     LBB40_OPEN_IEC    ;Device 4-29
+        jsr     OPENI    ;Device 4-29
 LBB2F_CLC_RTS:
         clc
         rts
@@ -8457,58 +8460,79 @@ LBB3B_OPEN_NOT_2:
         ;Device 1 Virtual 1541
         jmp     L9243_OPEN_V1541
 
-LBB3E_OPEN_CLC_RTS:
+OP175_OPEN_CLC_RTS:
         clc
         rts
 
 ; ----------------------------------------------------------------------------
 ;OPEN to IEC bus
-LBB40_OPEN_IEC:
+;OPEN_IEC
+OPENI:
         lda     SA
-        bmi     LBB3E_OPEN_CLC_RTS
+        bmi     OP175_OPEN_CLC_RTS  ;no sa...done
+
         ldy     FNLEN
-        beq     LBB3E_OPEN_CLC_RTS
-        stz     SATUS
+        beq     OP175_OPEN_CLC_RTS  ;no file name...done
+
+        stz     SATUS         ;clear the serial status
+
         lda     FA
-        jsr     LISTN
-        bit     SATUS
-        bmi     LBB5F
+        jsr     LISTN         ;device la to listen
+        bit     SATUS         ;anybody home?
+        bmi     UNP           ;nope
+
         lda     SA
         ora     #$F0
         jsr     SECND
-        lda     SATUS
-        bpl     LBB64
-LBB5F:  pla
+
+        lda     SATUS         ;anybody home?...get a dev -pres?
+        bpl     OP35          ;yes...continue
+
+;  this routine is called by other
+;  kernal routines which are called
+;  directly by os. kill return
+;  address to return to os.
+UNP:    pla
         pla
         jmp     ERROR5 ;DEVICE NOT PRESENT
-; ----------------------------------------------------------------------------
-LBB64:  lda     FNLEN
-        beq     LBB7C
+
+OP35:   lda     FNLEN
+        beq     OP45          ;no name...done sequence
+
+;
+;  send file name over serial
+;
         ldy     #$00
-LBB6B:  lda     #$AE
-        sta     $034E
-        jsr     GO_RAM_LOAD_GO_KERN
-        jsr     CIOUT
+OP40:   lda     #FNADR
+        sta     SINNER
+        jsr     GO_RAM_LOAD_GO_KERN   ;Get byte from filename
+        jsr     CIOUT                 ;Send it to IEC
         iny
         cpy     FNLEN
-        bne     LBB6B
-LBB7C:  jmp     CUNLSN
+        bne     OP40
+OP45:   jmp     CUNLSN
+
 ; ----------------------------------------------------------------------------
+
 SAVEING:jsr     PRIMM80
         .byte   "SAVEING ",0  ;Not "SAVING" like all other CBM computers
         bra     OUTFN
+
 ; ----------------------------------------------------------------------------
+
 LUKING: jsr     PRIMM80
         .byte   "SEARCHING FOR ",0
         ;Fall through
+
 ; ----------------------------------------------------------------------------
+
 OUTFN:  bit     MSGFLG
         bpl     LBBBF
         ldy     FNLEN
         beq     LBBBC
         ldy     #$00
-LBBAB:  lda     #$AE
-        sta     $034E
+LBBAB:  lda     #FNADR
+        sta     SINNER
         jsr     GO_RAM_LOAD_GO_KERN
         jsr     KR_ShowChar_
         iny
@@ -8542,7 +8566,7 @@ LBBD7:  cmp     #$01   ;Virtual 1541?
 LBBE1_SAVE_IEC:
         lda     #$61
         sta     SA
-        jsr     LBB40_OPEN_IEC
+        jsr     OPENI
         jsr     SAVEING ;Print SAVEING then OUTFN
 
         lda     FA
@@ -8571,7 +8595,7 @@ LBC09:  ;CMPSTE from C64 KERNAL inlined
 
         bcs     LBC33
         lda     #SAL
-        sta     $034E
+        sta     SINNER
         jsr     GO_RAM_LOAD_GO_KERN
         jsr     CIOUT
         jsr     LFDB9_STOP
@@ -9266,8 +9290,8 @@ LC075:  dec     a                               ; C075 3A                       
 ; ----------------------------------------------------------------------------
 ;OPEN the ACIA
 ACIA_OPEN:
-        lda     #$AE                            ; C082 A9 AE                    ..
-        sta     $034E                           ; C084 8D 4E 03                 .N.
+        lda     #FNADR                          ; C082 A9 AE                    ..
+        sta     SINNER                          ; C084 8D 4E 03                 .N.
         ldx     FNLEN                           ; C087 AE 87 03                 ...
         beq     LC0A6                           ; C08A F0 1A                    ..
         stz     ACIA_ST                         ; C08C 9C 81 F9                 ...
@@ -9495,8 +9519,8 @@ LC22A:  clc
 
 ;Set RTC from 8 bytes of time data in filename
 RTC_SET_FROM_OPEN:
-        lda     #$AE
-        sta     $034E
+        lda     #FNADR
+        sta     SINNER
 
         ldy     #$07
 LC233_LOOP:
@@ -10152,7 +10176,7 @@ MMU_HELPER_ROUTINES:
 ; loc of LDA (zp),Y op.
 ;GO_RAM_LOAD_GO_APPL:
         sta     MMU_MODE_RAM
-        lda     ($00),y
+        lda     ($00),y ;TODO add symbol for ZP address
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
@@ -10162,16 +10186,16 @@ MMU_HELPER_ROUTINES:
 ; It seems ZP loc of STA is modified in RAM.
 ;GO_RAM_STORE_GO_APPL:
         sta     MMU_MODE_RAM
-        sta     ($00),y
+        sta     ($00),y ;TODO add symbol for ZP address
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
 ; This will be $034A in RAM.
-; $034E will be the RAM zp loc of LDA (zp),Y op.
+; "SINNER" ($034E) will be the RAM zp loc of LDA (zp),Y op.
 ;GO_RAM_LOAD_GO_KERN:
         sta     MMU_MODE_RAM
 ;GO_NOWHERE_LOAD_GO_KERN:
-        lda     ($00),y
+        lda     ($00),y         ;ZP address is GRLGK_ADDR
         sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
@@ -10179,7 +10203,7 @@ MMU_HELPER_ROUTINES:
 ; $0357 will be the RAM zp loc of LDA (zp),Y op.
 ;GO_APPL_LOAD_GO_KERN:
         sta     MMU_MODE_APPL
-        lda     ($00),y
+        lda     ($00),y ;TODO add symbol for ZP address
         sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
@@ -10188,7 +10212,7 @@ MMU_HELPER_ROUTINES:
 ;GO_RAM_STORE_GO_KERN:
         sta     MMU_MODE_RAM
 ;GO_NOWHERE_STORE_GO_KERN:
-        sta     ($00),y
+        sta     ($00),y ;TODO add symbol for ZP address
         sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
@@ -10207,8 +10231,8 @@ LC6A3:  lda     MMU_HELPER_ROUTINES,x
         sta     GO_RAM_LOAD_GO_APPL,x
         dex
         bpl     LC6A3
-        ldy     #$AE
-        sty     $034E
+        ldy     #FNADR
+        sty     SINNER
         sty     $0360
         ldy     #$23
 LC6B6:  lda     RAMVEC_IRQ,y
@@ -11005,7 +11029,7 @@ LCC6D:  lda     #$D0
         eor     #$00
         rts
 ; ----------------------------------------------------------------------------
-LCC77:  sta     $034E
+LCC77:  sta     SINNER
         sta     $0357
         lda     MON_MMU_MODE
         and     #$03
@@ -12055,7 +12079,7 @@ LD437:  phx                                     ; D437 DA                       
         stx     $DA                             ; D453 86 DA                    ..
         sty     $D9                             ; D455 84 D9                    ..
         lda     #$D9                            ; D457 A9 D9                    ..
-        sta     $034E                           ; D459 8D 4E 03                 .N.
+        sta     SINNER                          ; D459 8D 4E 03                 .N.
         sta     $0360                           ; D45C 8D 60 03                 .`.
         ldx     #$07                            ; D45F A2 07                    ..
 LD461:  lda     #$00                            ; D461 A9 00                    ..
@@ -15777,7 +15801,7 @@ LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 
         lda     $67
         jsr     LB8D2
         sta     GO_NOWHERE_LOAD_GO_KERN
-        stx     $034E
+        stx     SINNER
         lda     $66
         jsr     LB8D2
         sta     $034F
