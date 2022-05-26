@@ -8339,18 +8339,43 @@ JZ100:  lda     LAT,x
 JZ101:  rts
 ; ----------------------------------------------------------------------------
 ;NCLALL
-LBAD4:  stz     LDTND
+;*************************************
+;* clall -- close all logical files  *
+;* deletes all table entries and     *
+;* restores default i/o channels     *
+;* and clears serial port devices.   *
+;*************************************
+CLALL__:stz     LDTND     ;Forget all files
+
 ;NCLRCH
+;****************************************
+;* clrch -- clear channels              *
+;* unlisten or untalk serial devcs, but *
+;* leave others alone. default channels *
+;* are restored.                        *
+;****************************************
+;
+;XXX This is a bug.  This routine assumes that any device > 3 is an
+;IEC device that needs to be UNTLKed or UNLSNed.  That was true on other
+;machines but the LCD has two new devices, the Centronics port ($1E / 30)
+;and the RTC ($1F / 31), that are not IEC.  When one of these devices is
+;open, this routine will needlessly send UNLSN or UNTLK to IEC.  This can
+;be seen at the power-on menu.  The menu continuously polls the RTC via
+;CHRIN and calls CLALL after each poll, which comes here (CLRCHN), and an
+;unnecessary UNTLK is sent.  To fix this, ignore devices $1E and $1F here.
 CLRCHN__:
-        ldx     #$03
-        cpx     DFLTO ;IS OUTPUT CHANNEL IEEE?
-        bcs     LBAE1 ;NO...
-        jsr     UNLSN  ;YES...UNLISTEN IT
-LBAE1:  cpx     DFLTN
-        bcs     LBAE9
-        jsr     UNTLK
-LBAE9:  stx     DFLTO
-        stz     DFLTN
+        ldx     #3        ;Device 3 (Screen)
+
+        cpx     DFLTO     ;Compare 3 to default output channel
+        bcs     LBAE1     ;Branch if DFLTO <= 3 (not IEC)
+        jsr     UNLSN     ;Device is IEC so UNLSN
+
+LBAE1:  cpx     DFLTN     ;Compare 3 to default input channel
+        bcs     LBAE9     ;Branch if DFLTN <= 3 (not IEC)
+        jsr     UNTLK     ;Device is IEC so UNTLK
+
+LBAE9:  stx     DFLTO     ;Default output device = 3 (Screen)
+        stz     DFLTN     ;Default output device = 0 (Keyboard)
         rts
 ; ----------------------------------------------------------------------------
 ;NOPEN
@@ -17478,7 +17503,7 @@ LFDDF:  sta     MMU_MODE_APPL
 ; ----------------------------------------------------------------------------
 DEFVEC_CLALL:
         sta     MMU_MODE_KERN
-        jsr     LBAD4
+        jsr     CLALL__
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
