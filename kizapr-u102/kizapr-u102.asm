@@ -9416,23 +9416,29 @@ LC211_RTC_OFFSETS:
       .byte   $04,$02,$00,$04,$06,$07,$09,$0B
 ; ----------------------------------------------------------------------------
 ;OPEN to RTC device 31
+;
+;OPENing the RTC device makes the RTC hardware available for reading via CHRIN
+;or for synchronizing with the software TOD clock via CHROUT.  OPEN will also
+;set the RTC hardware time when passed a filename with 8 bytes of time data.
 RTC_OPEN:
-        stz     RTC_IDX                         ; C219 9C 11 04                 ...
-        lda     FNLEN                           ; C21C AD 87 03                 ...
-        beq     LC22A                           ; C21F F0 09                    ..
-        cmp     #$08                            ; C221 C9 08                    ..
-        beq     LC22C                           ; C223 F0 07                    ..
-        lda     #$01                            ; C225 A9 01                    ..
-        jsr     UDST                            ; C227 20 CA FC                  ..
-LC22A:  clc                                     ; C22A 18                       .
-        rts                                     ; C22B 60                       `
+        stz     RTC_IDX
+        lda     FNLEN
+        beq     LC22A               ;No filename just opens
+        cmp     #$08
+        beq     RTC_SET_FROM_OPEN   ;Filename of 8 bytes sets time
+        lda     #$01                ;Any other length is an error
+        jsr     UDST
+LC22A:  clc
+        rts
 
-LC22C:  lda     #$AE
+;Set RTC from 8 bytes of time data in filename
+RTC_SET_FROM_OPEN:
+        lda     #$AE
         sta     $034E
 
         ldy     #$07
 LC233_LOOP:
-        jsr     GO_RAM_LOAD_GO_KERN
+        jsr     GO_RAM_LOAD_GO_KERN ;Get byte from filename
         sta     $0412,y
         dey
         bpl     LC233_LOOP
@@ -9464,7 +9470,10 @@ LC25D:  lda     $0412,x
         clc
         rts
 ; ----------------------------------------------------------------------------
-;CHROUT to RTC device
+;CHROUT to RTC device 31
+;
+;Sending any character to the RTC device will read the hardware RTC time
+;and set the software TOD clock (TI$) to it.  The character sent is ignored.
 RTC_CHROUT:
         jsr     LC2CE_READ_RTC_HARDWARE
         php
@@ -9495,6 +9504,11 @@ LC290:  jsr     RTC_SHIFT_LOOKUP_SUBTRACT
         rts
 ; ----------------------------------------------------------------------------
 ;CHRIN from RTC device 31
+;
+;Reading a character from the RTC device will read the RTC hardware and return
+;8 bytes of time data followed by a carriage return ($0D).  The software TOD
+;clock is not affected.  Reading past the CR will read the RTC hardware again
+;and return new time data.
 RTC_CHRIN:
         ldx     RTC_IDX
         beq     RTC_READ_HW_THEN_FIRST_RAM_VALUE
