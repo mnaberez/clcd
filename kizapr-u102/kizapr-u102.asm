@@ -112,8 +112,8 @@ LENGTH          := $00CF
 BLNCT           := $00EF  ;Counter for cursor blink
 stack           := $0100
 LAT             := $02DB
-FAT             := $02F3
-SAT             := $02E7
+SAT             := $02F3
+FAT             := $02E7
 L0300           := $0300
 RAMVEC_IRQ      := $0314
 RAMVEC_BRK      := $0316
@@ -153,8 +153,6 @@ MSGFLG          := $0383
 DFLTN           := $0385
 DFLTO           := $0386
 FNLEN           := $0387
-XON             := $0388  ;Character to send for an XON
-INQCNT          := $038D
 JIFFIES         := $038F
 TOD_SECS        := $0390
 TOD_MINS        := $0391
@@ -182,6 +180,7 @@ SWITCH_COUNT    := $03FB  ;Counts down to debounce switching upper/lowercase on 
 CAPS_FLAGS      := $03FC
 LDTND           := $0405
 VERCHK          := $0406
+WRBASE          := $0407  ;Temp storage (was low byte of tape write pointer in other CBMs)
 BSOUR           := $0408
 BSOUR1          := $0409
 R2D2            := $040A
@@ -190,7 +189,6 @@ IECCNT          := $040C
 RTC_IDX         := $0411
 L0450           := $0450
 L0470           := $0470
-INPQUE          := $04C0  ;RS-232 input queue
 L066A           := $066A
 L0810           := $0810
 L0A00           := $0A00
@@ -3104,7 +3102,7 @@ L9550_LOAD_V1541_OR_IEC: ;Device=1 (Virtual 1541), Device=4-29 (IEC)
 L9558_LOAD_FNLEN_OK:
         jsr     LUKING  ;Print "SEARCHING FOR " then do OUTFN
         ldx     SA
-        stx     $0407
+        stx     WRBASE  ;Save SA before changes
         stz     SA
         lda     FA
         dec     a
@@ -3137,7 +3135,7 @@ L9592:  jsr     L9661
         bne     L9585
         jsr     L9661
         sta     EAH
-        lda     $0407
+        lda     WRBASE  ;Recall SA before changes
         bne     L95AF
         lda     $B4
         sta     EAL
@@ -3182,11 +3180,11 @@ L95F9:  jsr     L9661
         ldy     VERCHK
         beq     L9622
         ldy     #$00
-        sta     $0407
+        sta     WRBASE                ;save .A
         lda     #$B2
         sta     $034E
         jsr     GO_RAM_LOAD_GO_KERN
-        cmp     $0407
+        cmp     WRBASE                ;compare with old .A
         beq     L963D
         lda     #$10
         jsr     UDST
@@ -8061,7 +8059,7 @@ LB937_NOT_KEYBOARD:
 LB93C = * + 1
 
         ;Device 2 RS-232
-        jsr     AGETCH ;Get byte from RS-232
+        jsr     AGETCH          ;Get byte from RS-232
         pha
         lda     SA
         and     #$0F            ;SA & 0x0F sets translation mode
@@ -8070,8 +8068,9 @@ LB93C = * + 1
         jmp     TRANSL_ACIA_RX  ;Translate char before returning it
 
 LB948_NOT_RS232:
-        bcs     LB94D
-        jmp     V1541_CHRIN ;Device 1 Virtual 1541
+        bcs     LB94D ;Device >= 2
+        ;Device 1 Virtual 1541
+        jmp     V1541_CHRIN
 
 LB94D:  cmp     #$03 ;Screen
 LB950 := * + 1
@@ -8250,59 +8249,72 @@ LBA4B:  txa
 LBA50:  jmp     ERROR5 ;DEVICE NOT PRESENT
 ; ----------------------------------------------------------------------------
 ;NCLOSE
-CLOSE__:ror     $0407
-        jsr     JLTLK
-        beq     JX050
-        clc
+;Called with logical file name in A
+CLOSE__:ror     WRBASE        ;save serial close flag (used below in JX120_CLOSE_IEC)
+        jsr     JLTLK         ;look file up
+        beq     JX050         ;file is open, branch to close it
+        clc                   ;else return
         rts
-; ----------------------------------------------------------------------------
-JX050:  jsr     JZ100
-        txa
+
+JX050:  jsr     JZ100         ;extract table data
+        txa                   ;save table index
         pha
+
         lda     FA
-        beq     JX150
+        beq     JX150         ;Device = 0 (Keyboard)
+
         cmp     #$1E
-        bcs     JX150
+        bcs     JX150         ;Device >= $1E (Device 30 Centronics or 31 RTC)
+
         cmp     #$03
-        beq     JX150
-        bcs     LBA7E
+        beq     JX150         ;Device = 3 (Screen)
+
+        bcs     JX120_CLOSE_IEC   ;Device >= 4 (IEC)
+
         cmp     #$02
-        bne     LBA79
-        jsr     LC0E8
+        bne     LBA79_CLOSE_V1541 ;Device = 1 (Virtual 1541)
+
+        jsr     ACIA_CLOSE    ;Device = 2 (ACIA)
         bra     JX150
-LBA79:  jsr     V1541_CLOSE
+
+LBA79_CLOSE_V1541:
+        jsr     V1541_CLOSE
         bra     JX150
-LBA7E:  bit     $0407
-        bpl     JX120
-        lda     FA
+
+JX120_CLOSE_IEC:
+        bit     WRBASE        ;do a real close?
+        bpl     ROPEN         ;yep
+        lda     FA            ;no if a disk & sa=$f
         cmp     #$08
-        bcc     JX120
+        bcc     ROPEN         ;>8 ==>not a disk, do real close
         lda     SA
         and     #$0F
         cmp     #$0F
-        beq     JX150
-;
-;CLOSE A SERIAL FILE
-;
-JX120:  jsr     CLSEI
-;
-;ENTRY TO REMOVE A GIVE LOGICAL FILE
-;FROM TABLE OF LOGICAL, PRIMARY,
-;AND SECONDARY ADDRESSES
-;
-JX150:  pla
+        beq     JX150         ;sa=$f, no real close
+
+ROPEN:  jsr     CLSEI
+
+; entry to remove a give logical file
+; from table of logical, primary,
+; and secondary addresses
+
+JX150:  pla                   ;get table index off stack
         tax
         dec     LDTND
-        cpx     LDTND
-        beq     JX170
+        cpx     LDTND         ;is deleted file at end?
+        beq     JX170         ;yes...done
+
+; delete entry in middle by moving
+; last entry to that position.
+
         ldy     LDTND
         lda     LAT,y
         sta     LAT,x
-        lda     SAT,y
-        sta     SAT,x
         lda     FAT,y
         sta     FAT,x
-JX170:  clc
+        lda     SAT,y
+        sta     SAT,x
+JX170:  clc                   ;close exit
         rts
 ; ----------------------------------------------------------------------------
 ;LOOKUP TABLIZED LOGICAL FILE DATA
@@ -8320,9 +8332,9 @@ JX600:  dex
 ;
 JZ100:  lda     LAT,x
         sta     LA
-        lda     FAT,x
-        sta     SA
         lda     SAT,x
+        sta     SA
+        lda     FAT,x
         sta     FA
 JZ101:  rts
 ; ----------------------------------------------------------------------------
@@ -8358,31 +8370,30 @@ OP110:  inc     LDTND
         lda     SA
         ora     #$60
         sta     SA
-        sta     FAT,x
-        lda     FA
         sta     SAT,x
+        lda     FA
+        sta     FAT,x
 ;
 ;PERFORM DEVICE SPECIFIC OPEN TASKS
 ;
-        beq     LBB2F_CLC_RTS  ;Device 0 (Keyboard), nothing to do.
+        beq     LBB2F_CLC_RTS     ;Device 0 (Keyboard), nothing to do.
 
-        cmp     #$1E           ;Device 30 (Centronics port)
-        beq     LBB2F_CLC_RTS  ;Nothing to do
+        cmp     #$1E              ;Device 30 (Centronics port)
+        beq     LBB2F_CLC_RTS     ;Nothing to do
 
-        bcc     LBB25_OPEN_LT_30
+        bcc     LBB25_OPEN_LT_30  ;Device <30
 
-        ;Device 31 (RTV)
+        ;Device 31 (RTC)
         jmp     RTC_OPEN
 
 ;Device < 30
 LBB25_OPEN_LT_30:
-        cmp     #$03  ;3 (Screen)
-        beq     LBB2F_CLC_RTS ;Return OK
-        bcc     LBB31_OPEN_LT_3
-
+        cmp     #$03              ;3 (Screen)
+        beq     LBB2F_CLC_RTS     ;Return OK
+        bcc     LBB31_OPEN_LT_3   ;Device < 3
 
         sec
-        jsr     LBB40_OPEN_IEC ;Device 4-29
+        jsr     LBB40_OPEN_IEC    ;Device 4-29
 LBB2F_CLC_RTS:
         clc
         rts
@@ -8393,8 +8404,8 @@ LBB31_OPEN_LT_3:
         bne     LBB3B_OPEN_NOT_2
 
         ;Device 2 RS232
-        jsr     LBE52_OPEN_RS232
-        jmp     LC082
+        jsr     ACIA_INIT
+        jmp     ACIA_OPEN
 
 LBB3B_OPEN_NOT_2:
         ;Device 1 Virtual 1541
@@ -8891,10 +8902,11 @@ W1MS1:  dex                   ;5us loop
         tax                   ;Restore X
         rts
 ; ----------------------------------------------------------------------------
-;RS-232 related
-LBE52_OPEN_RS232:
+;Initialize RS-232 variables and reset ACIA
+;AINIT
+ACIA_INIT:
         stz     $0389
-        stz     XON
+        stz     $0388
         lda     #$40
         sta     $038A
         lda     #$30
@@ -8902,13 +8914,13 @@ LBE52_OPEN_RS232:
         lda     #$10
         sta     $038C
         bra     LBE6C
-LBE69:  stz     ACIA_ST
+LBE69:  stz     ACIA_ST       ;programmed reset of the acia
 LBE6C:  php
         sei
         stz     $040F
         stz     $0410
         stz     $C3
-        stz     INQCNT
+        stz     $038D
         plp
         rts
 ; ----------------------------------------------------------------------------
@@ -8916,7 +8928,7 @@ LBE6C:  php
 ;Called from default interrupt handler (DEFVEC_IRQ)
 ;RS-232 related
 ;Similar to AOUT in TED-series KERNAL
-LBE7B_ACIA_IRQ:
+ACIA_IRQ:
         lda     ACIA_ST
         bit     #$10          ;Bit 4 = Transmit Data Register Empty (0=not empty, 1=empty)
         beq     TXNMT_AIN     ;tx reg is busy
@@ -8936,11 +8948,11 @@ LBE9A:  stx     ACIA_DATA
         cpx     #$00
         beq     TXNMT_AIN
         lda     #$10
-        cpx     XON
-        bne     LBEAE
+        cpx     $0388
+        bne     TRYCS
         tsb     $C3
         bra     TXNMT_AIN
-LBEAE:  cpx     $0389
+TRYCS:  cpx     $0389
         bne     TXNMT_AIN
         trb     $C3
 
@@ -8956,7 +8968,7 @@ TXNMT_AIN:
         cpx     #0
         beq     LBED9_GOT_NULL
         lda     #' '
-        cpx     XON
+        cpx     $0388
         bne     LBED1
 LBECE:  tsb     $C3
         rts
@@ -8966,13 +8978,13 @@ LBED1:  cpx     $0389
         rts
 
 LBED9_GOT_NULL:
-        ldy     INQCNT
+        ldy     $038D
         cpy     $038A
         bcs     RXFULL
-        inc     INQCNT
+        inc     $038D
         cpy     $038B
         bcc     LBEFB
-        ldy     XON
+        ldy     $0388
         beq     LBEFB
         lda     #$10
         bit     $C3
@@ -8985,7 +8997,7 @@ LBEFB:  txa
         bne     LBF04
         ldx     $038A
 LBF04:  dex
-        sta     INPQUE,x
+        sta     $04C0,x
         stx     $040F
 RXFULL:  rts
 ; ----------------------------------------------------------------------------
@@ -9003,10 +9015,10 @@ LBF16:  stx     $040D
         rts
 ; ----------------------------------------------------------------------------
 ;Get byte from RS-232 input buffer
-AGETCH: ldy     INQCNT
+AGETCH: ldy     $038D
         tya
         beq     LBF4D
-        dec     INQCNT
+        dec     $038D
         ldx     $0389
         beq     LBF3E
         cpy     $038C
@@ -9021,7 +9033,7 @@ LBF3E:  ldx     $0410
         bne     LBF46
         ldx     $038A
 LBF46:  dex
-        lda     INPQUE,x
+        lda     $04C0,x
         stx     $0410
 LBF4D:  clc
         rts
@@ -9206,7 +9218,9 @@ LC075:  dec     a                               ; C075 3A                       
         plp                                     ; C080 28                       (
         rts                                     ; C081 60                       `
 ; ----------------------------------------------------------------------------
-LC082:  lda     #$AE                            ; C082 A9 AE                    ..
+;OPEN the ACIA
+ACIA_OPEN:
+        lda     #$AE                            ; C082 A9 AE                    ..
         sta     $034E                           ; C084 8D 4E 03                 .N.
         ldx     FNLEN                           ; C087 AE 87 03                 ...
         beq     LC0A6                           ; C08A F0 1A                    ..
@@ -9252,9 +9266,11 @@ LC0CE:  jsr     LC1BB                           ; C0CE 20 BB C1                 
 LC0E3:  lda     LA                              ; C0E3 A5 C6                    ..
         jmp     LFCF1                           ; C0E5 4C F1 FC                 L..
 ; ----------------------------------------------------------------------------
-LC0E8:  php                                     ; C0E8 08                       .
+;CLOSE the ACIA
+ACIA_CLOSE:
+        php                                     ; C0E8 08                       .
         sei                                     ; C0E9 78                       x
-        jsr     LBE52_OPEN_RS232                ; C0EA 20 52 BE                  R.
+        jsr     ACIA_INIT                       ; C0EA 20 52 BE                  R.
         plp                                     ; C0ED 28                       (
         jmp     LC200                           ; C0EE 4C 00 C2                 L..
 ; ----------------------------------------------------------------------------
@@ -16901,7 +16917,7 @@ DEFVEC_IRQ:
 
         lda     ACIA_ST
         bpl     LFA3C               ;Branch if interrupt was not caused by ACIA
-        jsr     LBE7B_ACIA_IRQ      ;Service ACIA, then come back here for VIA1
+        jsr     ACIA_IRQ      ;Service ACIA, then come back here for VIA1
 
 LFA3C:  bit     VIA1_IFR
         bpl     LFA43               ;Branch if IRQ was not caused by VIA1
