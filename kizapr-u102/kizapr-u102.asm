@@ -737,13 +737,11 @@ PrintRomSumChkByPassed:
         phy
         jsr     PRIMM
         .byte   "ROMSUM CHECK BYPASSED, ROM #",0
-; ----------------------------------------------------------------------------
         pla
         ora     #$30
         jsr     KR_ShowChar_
         jsr     PRIMM
         .byte   "  INSTALLED",$0d,0
-; ----------------------------------------------------------------------------
         rts
 ; ----------------------------------------------------------------------------
 RomCheckSum:
@@ -1350,7 +1348,6 @@ L8841 := *+24
 L8844 := *+27
         jsr PRIMM
         .byte   " KBYTE SYSTEM ESTABLISHED",$0d,0
-; ----------------------------------------------------------------------------
         jsr     LD411                           ; 8847 20 11 D4                  ..
         jsr     L8644                           ; 884A 20 44 86                  D.
         jmp     L843F                           ; 884D 4C 3F 84                 L?.
@@ -3165,7 +3162,6 @@ L95DA := *+2
 L95E4:  jsr     PRIMM80                ; 95E4 20 56 FB                  V.
 L95ED := *+6
         .byte   $0d,"VERIFY ",0         ; 95E8 56 45 52 49 46           VERIF
-; ----------------------------------------------------------------------------
 L95F0:  lda     #$02
         trb     SATUS
         jsr     LFDB9_STOP
@@ -7205,7 +7201,8 @@ LB2A9_LOOP:
         inx
         cpx     #$3E
         bne     LB2A9_LOOP
-LB2C6:  sec
+LB2C6_SEC_JMP_LCDsetupGetOrSet:
+        sec
         jmp     LCDsetupGetOrSet
 ; ----------------------------------------------------------------------------
 ;ESC-E Set cursor to nonflashing mode
@@ -8087,12 +8084,18 @@ LB954_NOT_SCREEN:
         jmp     ERROR6 ;NOT INPUT FILE
 
 LB95B_NOT_CENTRONICS:
-        bcc     LB960
+        ;Device 4-29 (IEC)
+        bcc     ACPTR_IF_ST_OK_ELSE_0D
+
         ;Device 31 (RTC)
         jmp     RTC_CHRIN
 
 ; ----------------------------------------------------------------------------
-LB960:  lda     SATUS
+
+;If ST=0, read a byte from IEC.
+;Otherwise, return a carriage return (0x0D).
+ACPTR_IF_ST_OK_ELSE_0D:
+        lda     SATUS
         bne     LB968
         sec
         jmp     ACPTR
@@ -8126,10 +8129,10 @@ LB97D := * + 1
         cpx     #$01  ;1 = Virtual 1541
         bne     LB983
         jmp     V1541_CHROUT ;CHROUT to Virtual 1541
-; ----------------------------------------------------------------------------
+
 LB983:  bcs     LB988
 LB985:  jmp     KR_ShowChar_ ;X=0
-; ----------------------------------------------------------------------------
+
 LB988:  cpx     #$03
         beq     LB985 ;X=3 (Screen)
         bcs     LB994
@@ -8137,7 +8140,7 @@ LB988:  cpx     #$03
         ;Device = 2 (ACIA)
         jsr     USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS
         jmp     ACIA_CHROUT
-; ----------------------------------------------------------------------------
+
 LB994:  cpx     #$1E  ;30
         bne     LB9A7
         ;Device = 30 (Centronics port)
@@ -8149,13 +8152,15 @@ LB994:  cpx     #$1E  ;30
         pla
         jsr     USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS  ;Translate char before sending it
         jmp     CENTRONICS_CHROUT
-; ----------------------------------------------------------------------------
+
 LB9A7:  bcc     LB9AC
         jmp     RTC_CHROUT
-; ----------------------------------------------------------------------------
+
 LB9AC:  sec
         jmp     CIOUT ;IEC
+
 ; ----------------------------------------------------------------------------
+
 ;Translate character before sending it to ACIA TX or Centronics out
 ;Translation mode is set by secondary address
 ;Set X=SA & $0F, A=char to translate
@@ -8166,55 +8171,68 @@ LB9B1:  lda     SA
         tax
         pla
         jmp     TRANSL_ACIA_TX_OR_CENTRONICS
+
 ; ----------------------------------------------------------------------------
+
 CHKIN__:jsr     LOOKUP
         beq     LB9C2
         jmp     ERROR3 ;FILE NOT OPEN
-; ----------------------------------------------------------------------------
+
 LB9C2:  jsr     JZ100
-        beq     JX320
+        beq     JX320_NEW_DFLTN   ;Device 0 (Keyboard)
+
         cmp     #$1E
-        bcs     JX320
-        cmp     #$01    ;Virtual 1541
-        beq     LB9FE
-        cmp     #$03    ;Screen
-        beq     JX320
-        bcs     LB9E1
-        jsr     LBF4D   ;ACIA RS232
-        bcs     LB9E0
+        bcs     JX320_NEW_DFLTN   ;Device >= 30 (30=Centronics, 31=RTC)
+        cmp     #$01
+
+        beq     LB9FE             ;Device 1 (Virtual 1541)
+        cmp     #$03
+
+        beq     JX320_NEW_DFLTN   ;Device 3 (Screen)
+        bcs     LB9E1_CHKIN_IEC   ;Device 4-29 (IEC)
+
+        jsr     LBF4D_CHKIN_ACIA  ;Device 2 (ACIA)
+        bcs     LB9E0_RTS_ONLY    ;Branch if failed (never fails)
+
         lda     FA
-JX320:  sta     DFLTN
+JX320_NEW_DFLTN:
+        sta     DFLTN
         clc
-LB9E0:  rts
-; ----------------------------------------------------------------------------
-LB9E1:  tax
+LB9E0_RTS_ONLY:
+        rts
+
+LB9E1_CHKIN_IEC:
+        tax
         jsr     TALK__
         bit     SATUS
-        bmi     LB9FB
+        bmi     LB9FB_JMP_ERROR5
         lda     SA
         bpl     JX340
         jsr     LBD5B
         jmp     JX350
-; ----------------------------------------------------------------------------
+
 JX340:  jsr     TKSA
 JX350:  txa
         bit     SATUS
-        bpl     JX320
-LB9FB:  jmp     ERROR5 ;DEVICE NOT PRESENT
-; ----------------------------------------------------------------------------
+        bpl     JX320_NEW_DFLTN
+LB9FB_JMP_ERROR5:
+        jmp     ERROR5 ;DEVICE NOT PRESENT
 LB9FE:  jsr     L9962
-        bcc     JX320
-        bra     LB9FB
+        bcc     JX320_NEW_DFLTN
+        bra     LB9FB_JMP_ERROR5
+
+; ----------------------------------------------------------------------------
+
 ;NCKOUT
 CHKOUT__:
         jsr     LOOKUP
         beq     LBA0D
         jmp     ERROR3 ;FILE NOT OPEN
-; ----------------------------------------------------------------------------
+
 LBA0D:  jsr     JZ100
         bne     LBA15
         jmp     ERROR7 ;NOT OUTPUT FILE
-; ----------------------------------------------------------------------------
+
 LBA15:  cmp     #$1E
         bcs     LBA32
         cmp     #$02
@@ -8223,17 +8241,17 @@ LBA15:  cmp     #$1E
         jsr     L9962
         bcc     LBA32
         rts
-; ----------------------------------------------------------------------------
+
 LBA25:  cmp     #$03
         beq     LBA32
         bne     LBA37
-LBA2B:  jsr     LBF4D
+LBA2B:  jsr     LBF4D_CHKIN_ACIA
         bcs     LBA36
         lda     FA
 LBA32:  sta     DFLTO
         clc
 LBA36:  rts
-; ----------------------------------------------------------------------------
+
 LBA37:  tax
         jsr     LISTN
         bit     SATUS
@@ -8247,7 +8265,9 @@ LBA4B:  txa
         bit     SATUS
         bpl     LBA32
 LBA50:  jmp     ERROR5 ;DEVICE NOT PRESENT
+
 ; ----------------------------------------------------------------------------
+
 ;NCLOSE
 ;Called with logical file name in A
 CLOSE__:ror     WRBASE        ;save serial close flag (used below in JX120_CLOSE_IEC)
@@ -8261,20 +8281,19 @@ JX050:  jsr     JZ100         ;extract table data
         pha
 
         lda     FA
-        beq     JX150         ;Device = 0 (Keyboard)
+        beq     JX150             ;Device 0 (Keyboard)
 
         cmp     #$1E
-        bcs     JX150         ;Device >= $1E (Device 30 Centronics or 31 RTC)
+        bcs     JX150             ;Device >= 30 (30=Centronics, 31=RTC)
 
         cmp     #$03
-        beq     JX150         ;Device = 3 (Screen)
-
-        bcs     JX120_CLOSE_IEC   ;Device >= 4 (IEC)
+        beq     JX150             ;Device 3 (Screen)
+        bcs     JX120_CLOSE_IEC   ;Device 4-29 (IEC)
 
         cmp     #$02
         bne     LBA79_CLOSE_V1541 ;Device = 1 (Virtual 1541)
 
-        jsr     ACIA_CLOSE    ;Device = 2 (ACIA)
+        jsr     ACIA_CLOSE        ;Device = 2 (ACIA)
         bra     JX150
 
 LBA79_CLOSE_V1541:
@@ -8377,18 +8396,20 @@ LBAE1:  cpx     DFLTN     ;Compare 3 to default input channel
 LBAE9:  stx     DFLTO     ;Default output device = 3 (Screen)
         stz     DFLTN     ;Default output device = 0 (Keyboard)
         rts
+
 ; ----------------------------------------------------------------------------
+
 ;NOPEN
 Open__: ldx     LA
         jsr     LOOKUP
         bne     OP100
         jmp     ERROR2 ;FILE OPEN
-; ----------------------------------------------------------------------------
+
 OP100:  ldx     LDTND
         cpx     #$0C
         bcc     OP110
         jmp     ERROR1 ;TOO MANY FILES
-; ----------------------------------------------------------------------------
+
 OP110:  inc     LDTND
         lda     LA
         sta     LAT,x
@@ -8605,7 +8626,6 @@ ERROR16:lda     #$0A  ;OUT OF MEMORY
         bvc     EREXIT
         jsr     PRIMM
         .byte   $0d,"I/O ERROR #",0
-; ----------------------------------------------------------------------------
         pla
         pha
         jsr     L8850
@@ -9042,7 +9062,7 @@ LBF16:  stx     $040D
 ;Get byte from RS-232 input buffer
 AGETCH: ldy     $038D
         tya
-        beq     LBF4D
+        beq     LBF4D_CHKIN_ACIA
         dec     $038D
         ldx     $0389
         beq     LBF3E
@@ -9060,7 +9080,8 @@ LBF3E:  ldx     $0410
 LBF46:  dex
         lda     $04C0,x
         stx     $0410
-LBF4D:  clc
+LBF4D_CHKIN_ACIA:
+        clc
         rts
 ; ----------------------------------------------------------------------------
 ;Updates time-of-day (TOD) clock.
@@ -11040,7 +11061,6 @@ LCCD9:  dex
         bpl     LCCE6
         jsr     PRIMM
         .byte   "   ",0
-; ----------------------------------------------------------------------------
         jmp     LCCEC
 ; ----------------------------------------------------------------------------
 LCCE6:  jsr     LCC67
@@ -15436,16 +15456,17 @@ LF299:  ldx     $62                             ; F299 A6 62                    
         jsr     LB8A8                           ; F2A4 20 A8 B8                  ..
         jsr     LB8A8                           ; F2A7 20 A8 B8                  ..
 LF2AA:  bit     $0AB3                           ; F2AA 2C B3 0A                 ,..
-        bmi     LF2BA                           ; F2AD 30 0B                    0.
+        bmi     LF2BA_PLY_PLX_ACPTR_IF_ST_OK_ELSE_0D   ; F2AD 30 0B                    0.
         inc     $60                             ; F2AF E6 60                    .`
         bne     LF2C3                           ; F2B1 D0 10                    ..
         inc     $61                             ; F2B3 E6 61                    .a
         bne     LF2C3                           ; F2B5 D0 0C                    ..
         jmp     LF0BC-$4000                     ; F2B7 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
-LF2BA:  jsr     LB922_PLY_PLX_RTS                           ; F2BA 20 22 B9                  ".
-        jsr     LB960                           ; F2BD 20 60 B9                  `.
-        jmp     LB2C6                           ; F2C0 4C C6 B2                 L..
+LF2BA_PLY_PLX_ACPTR_IF_ST_OK_ELSE_0D:
+        jsr     LB922_PLY_PLX_RTS               ; F2BA 20 22 B9                  ".
+        jsr     ACPTR_IF_ST_OK_ELSE_0D          ; F2BD 20 60 B9                  `.
+        jmp     LB2C6_SEC_JMP_LCDsetupGetOrSet  ; F2C0 4C C6 B2                 L..
 ; ----------------------------------------------------------------------------
 LF2C3:  jsr     LB950                           ; F2C3 20 50 B9                  P.
         jsr     LB93C                           ; F2C6 20 3C B9                  <.
@@ -15794,7 +15815,6 @@ LF5A9:  jsr     LB90E                           ; F5A9 20 0E B9                 
         bcc     LF5D1                           ; F5AC 90 23                    .#
 LF5AE:  jsr     LFF7D_JMP_KR_LB640_SOMEHOW_PRIMMS
         .byte   $0D,$1B,"Q",0
-; ----------------------------------------------------------------------------
         jsr     LFFE1_STOP                           ; F5B5 20 E1 FF                  ..
         beq     LF5CE                           ; F5B8 F0 14                    ..
         jsr     LF5D4-$4000                     ; F5BA 20 D4 B5                  ..
