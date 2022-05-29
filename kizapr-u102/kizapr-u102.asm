@@ -9262,44 +9262,63 @@ LC019:  plp
 
 ; ----------------------------------------------------------------------------
 
-LC01E:  .byte   $01,$00,$01,$02,$00,$01,$02,$00,$01,$02,$00,$02
-LC02A:  .byte   $9D,$76,$51
-LC02D:  .byte   $03,$00,$00,$00,$01,$01
-LC033:  .byte   $01,$02,$02,$02,$03,$03
-LC039:  .byte   $8B,$9A,$AA,$BC
-LC03D:  .byte   $8C,$7E,$72,$67
+DTMF_CHAR_TO_T1CL_VALUE_INDEX:
+        ;Ordered by chars: "0123456789#*"
+        ;Each entry is an offset to the T1CL_VALUES table
+        .byte   $01,$00,$01,$02,$00,$01,$02,$00,$01,$02,$00,$02
+DTMF_T1CL_VALUES:
+        .byte   $9D,$76,$51
 
-;TODO maybe tone or pulse dials one digit
-;Called for these ACIA filename chars: 0123456789#*
-LC041_VIA2_ACR_AND_PB0_EOR_LOOPER:
+LC033 := *+6
+DTMF_DIGIT_TO_LOOP_COUNTS_INDEX:
+        ;Ordered by chars: "0123456789#*"
+        ;Each entry is an offset to the two loop iteration tables
+        .byte   $03,$00,$00,$00,$01,$01,$01,$02,$02,$02,$03,$03
+DTMF_OUTER_LOOP_COUNTS:
+        .byte   $8B,$9A,$AA,$BC
+DTMF_INNER_DELAY_LOOP_COUNTS:
+        .byte   $8C,$7E,$72,$67
+
+;Play the DTMF tone for a character
+;This is used to dial the telephone for the modem
+;Called with one of these characters in A: 0123456789#*
+DTMF_PLAY_TONE_FOR_CHAR:
         ldx     #$09
         jsr     WaitXticks_
         php
         sei
-        cmp     #$23
-        bne     LC04E
+        cmp     #'#'
+        bne     DTMF_PLAY_NOT_POUND
 LC04C:  lda     #$0b
-LC04E:  and     #$0f
+DTMF_PLAY_NOT_POUND:
+        and     #$0f
         tax
+
         lda     #$C0
         tsb     VIA2_ACR
-        ldy     LC01E,x
-        lda     LC02A,y
+
+        ldy     DTMF_CHAR_TO_T1CL_VALUE_INDEX,x
+        lda     DTMF_T1CL_VALUES,y
         sta     VIA2_T1CL
         lda     #$01
         sta     VIA2_T1CH
-        ldy     LC02D,x
-        ldx     LC039,y
-LC06A_OUTER_LOOP:
+
+        ldy     DTMF_DIGIT_TO_LOOP_COUNTS_INDEX,x
+        ldx     DTMF_OUTER_LOOP_COUNTS,y
+
+DTMF_PLAY_OUTER_LOOP:
         lda     VIA2_PORTB
-        eor     #$01
+        eor     #$01          ;PB1 turns DTMF generator circuit on/off
         sta     VIA2_PORTB
-        lda     LC03D,y
-LC075_INNER_LOOP:
+
+        lda     DTMF_INNER_DELAY_LOOP_COUNTS,y
+DTMF_PLAY_INNER_DELAY_LOOP:
         dec     a
-        bne     LC075_INNER_LOOP
+        bne     DTMF_PLAY_INNER_DELAY_LOOP
+
         dex
-        bne     LC06A_OUTER_LOOP
+        bne     DTMF_PLAY_OUTER_LOOP
+
         lda     #$C0
         trb     VIA2_ACR
         plp
@@ -9316,14 +9335,14 @@ ACIA_OPEN:
         stz     ACIA_ST
         ldy     #$00
         jsr     GO_RAM_LOAD_GO_KERN
-        sta     ACIA_CTRL
+        sta     ACIA_CTRL                 ;First char -> ACIA_CTRL
         cpx     #$01 ;FNLEN = 1?
         beq     LC0A6_CLC_RTS
         iny
         jsr     GO_RAM_LOAD_GO_KERN
         cpx     #$02 ;FNLEN = 2?
         bne     LC0A8_FNLEN_GT_2
-        sta     ACIA_CMD
+        sta     ACIA_CMD                  ;Second char -> ACIA_CMD
 LC0A6_CLC_RTS:
         clc
         rts
@@ -9331,34 +9350,43 @@ LC0A6_CLC_RTS:
 ;FNLEN > 2
 LC0A8_FNLEN_GT_2:
         and     #$E0
-        sta     ACIA_CMD
+        sta     ACIA_CMD                  ;Second char & $E0 -> ACIA_CMD
+
         jsr     LC193_VIA2_PB1_OFF
         jsr     LC1A1_ACIA_DTR_HI_ENABLE_RX_TX
         jsr     LC1AD_VIA2_PB4_ON
+
         ldy     #$02
-        jsr     GO_RAM_LOAD_GO_KERN
+        jsr     GO_RAM_LOAD_GO_KERN       ;A = third char
+
         cmp     #$41 ;'A'
         beq     LC0C3_GOT_A
+
         cmp     #$41 ;'A' again (weird)
         bne     LC0CE_NOT_A
+
 LC0C3_GOT_A:
         jsr     LC1DF_LOOP_78_WHILE_WAITING_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
         bcs     LC0E3_ERROR ;Timeout or STOP pressed
-        jsr     LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC
+        jsr     LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC ;TODO probably phone on hook or off hook
         jmp     LC1B4_VIA2_PB4_OFF
+
 LC0CE_NOT_A:
-        jsr     LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC
+        jsr     LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC ;TODO probably phone on hook or off hook
         jsr     LC189_WAIT_76_TICKS_CLC
         lda     #$02
-        jsr     LC0F1_DIAL_CHARS_IN_ACIA_FILENAME
+        jsr     DIAL_CHARS_IN_ACIA_FILENAME
         bcs     LC0E3_ERROR
-        jsr     LC1CD_DIAL_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
+        jsr     DIAL_CHAR_HANDLER_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
         bcs     LC0E3_ERROR
         jmp     LC1B4_VIA2_PB4_OFF
+
 LC0E3_ERROR:
         lda     LA
         jmp     LFCF1_APPL_CLOSE
+
 ; ----------------------------------------------------------------------------
+
 ;CLOSE the ACIA
 ACIA_CLOSE:
         php
@@ -9370,7 +9398,7 @@ ACIA_CLOSE:
 ; ----------------------------------------------------------------------------
 
 ;Dial the phone number in the filename passed to OPEN
-LC0F1_DIAL_CHARS_IN_ACIA_FILENAME:
+DIAL_CHARS_IN_ACIA_FILENAME:
         pha
         and     #$7F
         cmp     FNLEN
@@ -9387,7 +9415,7 @@ LC0FC:  tay
         bcs     LC10F_RTS
         lda     MODKEY
         lsr     a ;Bit 0 = MOD_STOP
-        bcc     LC0F1_DIAL_CHARS_IN_ACIA_FILENAME ;Keep going unless STOP pressed
+        bcc     DIAL_CHARS_IN_ACIA_FILENAME ;Keep going unless STOP pressed
 LC10F_RTS:
         rts
 
@@ -9399,21 +9427,21 @@ LC110_DIAL_CHAR:
 LC116_FIND_CHAR:
         ldy     #$0F
 LC118_FIND_CHAR_LOOP:
-        cmp     LC128_DIAL_CHARS,y
+        cmp     DIAL_CHARS,y
         bne     LC123_KEEP_GOING
-        ldx     LC138_DIAL_CHAR_HANDLER_ADDRESS_OFFSETS,y
-        jmp     (LC148_DIAL_CHAR_HANDLER_ADDRESSES,x)
+        ldx     DIAL_CHAR_HANDLER_OFFSETS,y
+        jmp     (DIAL_CHAR_HANDLERS,x)
 LC123_KEEP_GOING:
         dey
         bpl     LC118_FIND_CHAR_LOOP
         clc
         rts
 
-LC128_DIAL_CHARS:
+DIAL_CHARS:
         .byte   "0123456789#*RTW,"
 
-LC138_DIAL_CHAR_HANDLER_ADDRESS_OFFSETS:
-        .byte   $00 ;0 -> LC165_DIAL_CHAR_0_TO_9_POUND_STAR
+DIAL_CHAR_HANDLER_OFFSETS:
+        .byte   $00 ;0 -> DIAL_CHAR_HANDLER_0_TO_9_POUND_STAR
         .byte   $00 ;1
         .byte   $00 ;2
         .byte   $00 ;3
@@ -9425,27 +9453,27 @@ LC138_DIAL_CHAR_HANDLER_ADDRESS_OFFSETS:
         .byte   $00 ;9
         .byte   $00 ;#
         .byte   $00 ;*
-        .byte   $02 ;R -> LC15A_DIAL_CHAR_R
-        .byte   $04 ;T -> LC152_DIAL_CHAR_T
-        .byte   $06 ;W -> LC1CD_DIAL_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
-        .byte   $08 ;, -> LC18C_DIAL_COMMA_WAITS_3B_TICKS_CLC
+        .byte   $02 ;R -> DIAL_CHAR_HANDLER_R
+        .byte   $04 ;T -> DIAL_CHAR_HANDLER_T
+        .byte   $06 ;W -> DIAL_CHAR_HANDLER_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
+        .byte   $08 ;, -> DIAL_CHAR_HANDLER_COMMA_WAITS_3B_TICKS_CLC
 
-LC148_DIAL_CHAR_HANDLER_ADDRESSES:
-        .addr   LC165_DIAL_CHAR_0_TO_9_POUND_STAR
-        .addr   LC15A_DIAL_CHAR_R
-        .addr   LC152_DIAL_CHAR_T
-        .addr   LC1CD_DIAL_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
-        .addr   LC18C_DIAL_COMMA_WAITS_3B_TICKS_CLC
+DIAL_CHAR_HANDLERS:
+        .addr   DIAL_CHAR_HANDLER_0_TO_9_POUND_STAR
+        .addr   DIAL_CHAR_HANDLER_R
+        .addr   DIAL_CHAR_HANDLER_T
+        .addr   DIAL_CHAR_HANDLER_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
+        .addr   DIAL_CHAR_HANDLER_COMMA_WAITS_3B_TICKS_CLC
 
 ;Dial a "T" in ACIA device OPEN filename
-LC152_DIAL_CHAR_T:
+DIAL_CHAR_HANDLER_T:
         tsx
         lda     stack+3,x
         ora     #$80
         bra     LC160
 
 ;Dial a "R" in ACIA device OPEN filename
-LC15A_DIAL_CHAR_R:
+DIAL_CHAR_HANDLER_R:
         tsx
         lda     stack+3,x
         and     #$7F
@@ -9454,34 +9482,36 @@ LC160:  sta     stack+3,x
         rts
 
 ;Dial a "0"-"9", "#", and "*" in ACIA device OPEN filename
-LC165_DIAL_CHAR_0_TO_9_POUND_STAR:
+;Dial the character with a DTMF tone or rotary pulses
+DIAL_CHAR_HANDLER_0_TO_9_POUND_STAR:
         tsx
         ldy     stack+3,x
-        bpl     LC170
-        jsr     LC041_VIA2_ACR_AND_PB0_EOR_LOOPER ;TODO maybe tone or pulse dials one digit
+        bpl     PULSE_DIAL_CHAR
+        jsr     DTMF_PLAY_TONE_FOR_CHAR
         clc
         rts
-LC170:  cmp     #$30
+PULSE_DIAL_CHAR:
+        cmp     #'0'
         bcc     LC188_RTS
         and     #$0F
-        bne     LC17A_LOOP
+        bne     PULSE_DIAL_LOOP
         lda     #$0A
-LC17A_LOOP:
+PULSE_DIAL_LOOP:
         pha
-        jsr     LC1C4_ACIA_CMD_BIT_2_OFF_WAIT_4_TICKS_CLC
-        jsr     LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC
+        jsr     LC1C4_ACIA_CMD_BIT_2_OFF_WAIT_4_TICKS_CLC ;TODO probably phone on hook or off hook
+        jsr     LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC ;TODO probably phone on hook or off hook
         pla
         dec     a
-        bne     LC17A_LOOP
-        jsr     LC18C_DIAL_COMMA_WAITS_3B_TICKS_CLC
+        bne     PULSE_DIAL_LOOP
+        jsr     DIAL_CHAR_HANDLER_COMMA_WAITS_3B_TICKS_CLC
 LC188_RTS:
         rts
 
 LC189_WAIT_76_TICKS_CLC:
-        jsr     LC18C_DIAL_COMMA_WAITS_3B_TICKS_CLC
+        jsr     DIAL_CHAR_HANDLER_COMMA_WAITS_3B_TICKS_CLC
 
 ;Dial a "," in ACIA device OPEN filename
-LC18C_DIAL_COMMA_WAITS_3B_TICKS_CLC:
+DIAL_CHAR_HANDLER_COMMA_WAITS_3B_TICKS_CLC:
         ldx     #$3B
 WAIT_X_TICKS_CLC:
         jsr     WaitXticks_
@@ -9492,7 +9522,7 @@ WAIT_X_TICKS_CLC:
 LC193_VIA2_PB1_OFF:
         lda     #$02
         trb     VIA2_PORTB
-        bra     LC18C_DIAL_COMMA_WAITS_3B_TICKS_CLC
+        bra     DIAL_CHAR_HANDLER_COMMA_WAITS_3B_TICKS_CLC
 ; ----------------------------------------------------------------------------
 LC19A_VIA2_PB1_ON:
         lda     #$02
@@ -9522,27 +9552,27 @@ LC1B4_VIA2_PB4_OFF:
         clc
         rts
 ; ----------------------------------------------------------------------------
-LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC:
+LC1BB_ACIA_CMD_BIT_2_ON_WAIT_2_TICKS_CLC: ;TODO probably phone on hook or off hook
         lda     #$04
         tsb     ACIA_CMD
         ldx     #$02
         bra     WAIT_X_TICKS_CLC
 ; ----------------------------------------------------------------------------
-LC1C4_ACIA_CMD_BIT_2_OFF_WAIT_4_TICKS_CLC:
+LC1C4_ACIA_CMD_BIT_2_OFF_WAIT_4_TICKS_CLC: ;TODO probably phone on hook or off hook
         lda     #$04
         trb     ACIA_CMD
         ldx     #$04
         bra     WAIT_X_TICKS_CLC
 ; ----------------------------------------------------------------------------
-LC1CD_DIAL_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY:
+DIAL_CHAR_HANDLER_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY:
         lda     ACIA_ST
         bit     #%00100000 ;Bit 5 DCD Carrier Detect (0=carrier, 1=no carrier)
-        beq     LC18C_DIAL_COMMA_WAITS_3B_TICKS_CLC
+        beq     DIAL_CHAR_HANDLER_COMMA_WAITS_3B_TICKS_CLC
         bit     #%01000000 ;Bit 6 DSR Data Set Ready (0=ready, 1=no ready)
         bne     LC1DD_SEC_RTS
         lda     MODKEY
         lsr     a ;Bit 0 = MOD_STOP
-        bcc     LC1CD_DIAL_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY ;Keep waiting if STOP not pressed
+        bcc     DIAL_CHAR_HANDLER_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY ;Keep waiting if STOP not pressed
 LC1DD_SEC_RTS:
         sec
         rts
@@ -9552,7 +9582,7 @@ LC1DF_LOOP_78_WHILE_WAITING_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY:
 LC1E1_LOOP:
         ldx     #$01
         jsr     WaitXticks_
-        jsr     LC1CD_DIAL_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
+        jsr     DIAL_CHAR_HANDLER_W_WAITS_FOR_ACIA_DCD_OR_DSR_OR_STOP_KEY
         bcc     LC1EF_RTS
         dey
         bne     LC1E1_LOOP
@@ -9574,7 +9604,7 @@ LC1F7_LOOP:
 ;Called only from ACIA_CLOSE
 LC200_VIA2_PB4_OFF_ACIA_BITS_OFF_VIA2_PB1_ON_JMP_UDST:
         jsr     LC1B4_VIA2_PB4_OFF
-        jsr     LC1C4_ACIA_CMD_BIT_2_OFF_WAIT_4_TICKS_CLC
+        jsr     LC1C4_ACIA_CMD_BIT_2_OFF_WAIT_4_TICKS_CLC ;TODO probably phone on hook or off hook
         jsr     LC1A7_ACIA_DTR_LO_DISABLE_RX_TX
         jsr     LC19A_VIA2_PB1_ON
         lda     #$80 ;maybe BREAK detected?
@@ -9772,6 +9802,7 @@ RTC_UNKNOWN_VIA_STUFF:
         trb     VIA2_PORTA
         tya
         tsb     VIA2_PORTA
+
         pla
         tsb     VIA2_PORTA
         trb     VIA2_PORTA
@@ -9794,6 +9825,7 @@ RTC_READ_NIB:
 ; ----------------------------------------------------------------------------
 RTC_ACCESS_ON:
         stz     VIA2_PORTA
+
         lda     #$02
         tsb     VIA1_PORTB
         rts
@@ -13268,7 +13300,7 @@ LDD0E:  rts                                     ; DD0E 60                       
         bra     LDD51                           ; DD0F 80 40                    .@
         jsr     L0810                           ; DD11 20 10 08                  ..
         tsb     $02                             ; DD14 04 02                    ..
-        ora     (MODKEY,x)                 ; DD16 01 AD                    ..
+        ora     (MODKEY,x)                      ; DD16 01 AD                    ..
         and     ($11)                           ; DD18 32 11                    2.
         lsr     a                               ; DD1A 4A                       J
         bne     LDD3B                           ; DD1B D0 1E                    ..
@@ -13768,7 +13800,7 @@ LE08D:  txa                                     ; E08D 8A                       
 ; ----------------------------------------------------------------------------
 LE0B0:  ldx     #$00                            ; E0B0 A2 00                    ..
         jsr     LA81A                           ; E0B2 20 1A A8                  ..
-        jsr     LFFC6_CHKIN                           ; E0B5 20 C6 FF                  ..
+        jsr     LFFC6_CHKIN                     ; E0B5 20 C6 FF                  ..
         ldy     #$03                            ; E0B8 A0 03                    ..
 LE0BA:  sty     $1174                           ; E0BA 8C 74 11                 .t.
 LE0BD:  jsr     L9256                           ; E0BD 20 56 92                  V.
