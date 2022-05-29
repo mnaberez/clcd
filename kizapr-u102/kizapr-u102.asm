@@ -6215,10 +6215,10 @@ CTRL_CODES:
         .byte   $18 ;CHR$(24) Set or Clear Tab
         .addr   CODE_18_CTRL_X
 
-        .byte   $19 ;CHR$(25) CTRL-Y Lock (Disables Shift+Commodore)
+        .byte   $19 ;CHR$(25) CTRL-Y Lock (Disables Shift-Commodore)
         .addr   CODE_19_CTRL_Y_LOCK
 
-        .byte   $1A ;CHR$(26) CTRL-Z Unlock (Allows Shift+Commodore)
+        .byte   $1A ;CHR$(26) CTRL-Z Unlock (Enables Shift-Commodore)
         .addr   CODE_1A_CTRL_Z_UNLOCK
 
         .byte   $1D ;CHR$(29) Cursor Right
@@ -6259,7 +6259,7 @@ JMP_TO_CTRL_CODE:
         jmp     (CTRL_CODES+1,x)
 ; ----------------------------------------------------------------------------
 ;CHR$(25) CTRL-Y Lock
-;Disables swapping uppercase/lowercase mode when Shift+Commodore is pressed
+;Disables switching uppercase/lowercase mode when Shift-Commodore is pressed
 CODE_19_CTRL_Y_LOCK:
         lda     #$40
         tsb     $036D
@@ -6267,7 +6267,7 @@ CODE_19_CTRL_Y_LOCK:
 ; ----------------------------------------------------------------------------
 ;CHR$(26) CTRL-Z Unlock
 CODE_1A_CTRL_Z_UNLOCK:
-;Enables swapping uppercase/lowercase mode when Shift+Commodore is pressed
+;Enables switching uppercase/lowercase mode when Shift-Commodore is pressed
         lda     #$40
         trb     $036D
         rts

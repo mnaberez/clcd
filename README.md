@@ -94,7 +94,32 @@ There are 3 devices not found on other Commodore computers:
 
 ### Editor
 
-The screen editor supports nearly all of the ESC codes in the C128:
+The editor supports these control codes:
+
+| Code | CHR$ | Function | Source |
+|------|------|----------|--------|
+| $07 | CHR$(7) | Bell | $AC96 |
+| $09 | CHR$(9) | Tab | $AC99 |
+| $0A | CHR$(10) | Linefeed | $AC9C |
+| $0D | CHR$(13) | Carriage Return | $AC9F |
+| $0E | CHR$(14) | Lowercase Mode | $ACA2 |
+| $11 | CHR$(17) | Cursor Down | $ACA5 |
+| $12 | CHR$(18) | Reverse On | $ACA8 |
+| $13 | CHR$(19) | Home | $ACAB |
+| $14 | CHR$(14) | Delete | $ACAE |
+| $18 | CHR$(24) | Set or Clear Tab | $ACAE |
+| $19 | CHR$(25) | CTRL-Y Lock (Disables Shift-Commodore) | $ACB4 |
+| $1A | CHR$(26) | CTRL-Z Unlock (Enables Shift-Commodore) | $ACB7 |
+| $1D | CHR$(29) | Cursor Right | $ACBA |
+| $8D | CHR$(141) | Shift-Return | $ACBD |
+| $8E | CHR$(142) | Uppercase Mode | $ACC0 |
+| $91 | CHR$(145) | Cursor Up | $ACC3 |
+| $92 | CHR$(146) | Reverse Off | $ACC6 |
+| $93 | CHR$(147) |Clear Screen | $ACC9 |
+| $94 | CHR$(148) |Insert | $ACC9 |
+| $9D | CHR$(157) |Cursor Left | $ACCF |
+
+It also supports nearly all of the ESC codes in the C128:
 
 | ESC Code | Function | Source |
 |--------------|----------|--------|
