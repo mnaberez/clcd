@@ -1605,14 +1605,13 @@ L8A14:  pha                                     ; 8A14 48                       
 L8A1A:  pha                                     ; 8A1A 48                       H
         txa                                     ; 8A1B 8A                       .
         sta     ($D9),y                         ; 8A1C 91 D9                    ..
-;TODO code
-        .byte   $AD                             ; 8A1E AD                       .
-        .byte   $16                             ; 8A1F 16                       .
-L8A20:  .byte   $02                             ; 8A20 02                       .
-        .byte   $8D                             ; 8A21 8D                       .
-        brk                                     ; 8A22 00                       .
-L8A23:  bbs7    $68,L89B8-1                     ; 8A23 FF 68 91                 .h.
-        cpx     $C8                             ; 8A26 E4 C8                    ..
+L8A20 := *+2
+        lda     $0216
+L8A23 := *+2
+        sta     MMU_KERN_WINDOW
+        pla
+        sta     ($e4),y
+        iny
         bne     L8A10                           ; 8A28 D0 E6                    ..
         pla                                     ; 8A2A 68                       h
         inc     $020A                           ; 8A2B EE 0A 02                 ...
@@ -1908,11 +1907,10 @@ L8C27_71_DIR_ERROR:
         lda     #$47 ;71 directory error        ; 8C27 A9 47                    .G
         rts                                     ; 8C29 60                       `
 ; ----------------------------------------------------------------------------
-;TODO probably a jsr
-L8C2A:  .byte   $20                             ; 8C2A 20
-L8C2B:  .byte   $3B                             ; 8C2B 3B                       ;
-        sty     $894C                           ; 8C2C 8C 4C 89                 .L.
-        .byte   $8C                             ; 8C2F 8C                       .
+L8C2B := *+1
+L8C2A:  jsr     L8C3B
+        jmp     L8C89
+
 L8C30:  jsr     L8C3E                           ; 8C30 20 3E 8C                  >.
         jmp     L8C89                           ; 8C33 4C 89 8C                 L..
 ; ----------------------------------------------------------------------------
@@ -1955,9 +1953,9 @@ L8C6F_V1541_I_INITIALIZE:
         lda     #$0E                            ; 8C6F A9 0E                    ..
         jsr     L8C40                           ; 8C71 20 40 8C                  @.
         ldx     #$47                            ; 8C74 A2 47                    .G
-;TODO code
-L8C76:  .byte   $9E                             ; 8C76 9E                       .
-L8C77:  eor     $CA02                           ; 8C77 4D 02 CA                 M..
+L8C77 := *+1
+L8C76:  STZ     $024D,X                             ; 8C76 9E                       .
+        dex
 L8C7A:  bpl     L8C76                           ; 8C7A 10 FA                    ..
         stz     $02D5                           ; 8C7C 9C D5 02                 ...
         inx                                     ; 8C7F E8                       .
@@ -2148,7 +2146,6 @@ L8DDC:  pla                                     ; 8DDC 68                       
         rts                                     ; 8DDF 60                       `
 ; ----------------------------------------------------------------------------
 L8DE0:  lda     $0219                           ; 8DE0 AD 19 02                 ...
-;TODO code
         .byte   $2C                             ; 8DE3 2C                       ,
 L8DE4:  lda     #$00                            ; 8DE4 A9 00                    ..
         ldx     #$00                            ; 8DE6 A2 00                    ..
@@ -2183,7 +2180,6 @@ L8E10:  lda     $0219                           ; 8E10 AD 19 02                 
 ; ----------------------------------------------------------------------------
 L8E20_MAYBE_CHECKS_HEADER:
         lda     $0219                           ; 8E20 AD 19 02                 ...
-;TODO probably jsr
 L8E25 := *+2
         jsr     L8E5E
         cmp     $021a
@@ -2383,20 +2379,18 @@ L8F9B:  cld                                     ; 8F9B D8                       
         lda     #$10                            ; 8F9D A9 10                    ..
         adc     MON_MMU_MODE                    ; 8F9F 6D A1 03                 m..
         cmp     $03A2                           ; 8FA2 CD A2 03                 ...
-        lda     #$21 ;33 syntax error                           ; 8FA5 A9 21                    .!
-        bcc     L8FAC_RTS                           ; 8FA7 90 03                    ..
-;TODO code
-        .byte   $AD                             ; 8FA9 AD                       .
-L8FAA:  lda     $03                             ; 8FAA A5 03                    ..
-L8FAC_RTS:  rts                                     ; 8FAC 60                       `
+        lda     #$21 ;33 syntax error           ; 8FA5 A9 21                    .!
+        bcc     L8FAC_RTS                       ; 8FA7 90 03                    ..
+L8FAA := *+1
+        lda     $03a5
+L8FAC_RTS:  rts                                 ; 8FAC 60                       `
 ; ----------------------------------------------------------------------------
 L8FAD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FAD 20 4A 03                  J.
         iny                                     ; 8FB0 C8                       .
 L8FB1:  ldx     #$03                            ; 8FB1 A2 03                    ..
-;TODO code
-L8FB3:  .byte   $DD                             ; 8FB3 DD                       .
-L8FB4:  bbs3    $8F,L8F86+1                     ; 8FB4 BF 8F D0                 ...
-        .byte   $02                             ; 8FB7 02                       .
+L8FB4 := *+1
+L8FB3:  cmp L8FBF,X
+        bne L8FBA
         clc                                     ; 8FB8 18                       .
         rts                                     ; 8FB9 60                       `
 ; ----------------------------------------------------------------------------
@@ -2405,6 +2399,7 @@ L8FBA:  dex                                     ; 8FBA CA                       
         sec                                     ; 8FBD 38                       8
         rts                                     ; 8FBE 60                       `
 ; ----------------------------------------------------------------------------
+;TODO possibly data, see L8FB3
 L8FBF:  brk                                     ; 8FBF 00                       .
         ora     L8D22                           ; 8FC0 0D 22 8D                 .".
 L8FC3:  ldx     #$00                            ; 8FC3 A2 00                    ..
@@ -2427,11 +2422,10 @@ L8FDD:  iny                                     ; 8FDD C8                       
 L8FE9:  sec                                     ; 8FE9 38                       8
         rts                                     ; 8FEA 60                       `
 ; ----------------------------------------------------------------------------
+L8FED := *+2
 L8FEB:  inx                                     ; 8FEB E8                       .
-;TODO code
-        .byte   $BD                             ; 8FEC BD                       .
-L8FED:  ora     $D002,x                         ; 8FED 1D 02 D0                 ...
-        .byte   $DC                             ; 8FF0 DC                       .
+        lda     $021D,X
+        bne     L8FCD
 L8FF1:  clc                                     ; 8FF1 18                       .
         rts                                     ; 8FF2 60                       `
 ; ----------------------------------------------------------------------------
@@ -2498,10 +2492,8 @@ L905E:  lda     #$E2 ;ZP-address                ; 905E A9 E2                    
         cpx     #$14                            ; 9070 E0 14                    ..
         bcs     L9077                           ; 9072 B0 03                    ..
         stz     $0238,x                         ; 9074 9E 38 02                 .8.
-;TODO code
-L9077:  .byte   $AD                             ; 9077 AD                       .
-        .byte   $A4                             ; 9078 A4                       .
-L9079:  .byte   $03                             ; 9079 03                       .
+L9079 := *+2
+L9077:  LDA     $03a4
         sta     $024C                           ; 907A 8D 4C 02                 .L.
 L907D:  sec                                     ; 907D 38                       8
         rts                                     ; 907E 60                       `
@@ -2815,7 +2807,7 @@ L929A:  bit     #$40                            ; 929A 89 40                    
         bne     L9285                           ; 92A1 D0 E2                    ..
 L92A3:  jsr     L8D9F                           ; 92A3 20 9F 8D                  ..
         bcc     L9317                           ; 92A6 90 6F                    .o
-        jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;TODO maybe returns cbm dos error code in A                          ; 92A8 20 11 90                  ..
+        jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S  ; 92A8 20 11 90                  ..
         bcc     L92C7_ERROR                     ; 92AB 90 1A                    ..
         ldy     $03A3                           ; 92AD AC A3 03                 ...
 
@@ -2867,7 +2859,7 @@ L92F8:  ldy     $03A3                           ; 92F8 AC A3 03                 
         bra     L9317                           ; 930A 80 0B                    ..
 L930C:  cpy     #$4D                            ; 930C C0 4D                    .M
         beq     L9315                           ; 930E F0 05                    ..
-        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A                          ; 9310 20 20 8E                   .
+        jsr     L8E20_MAYBE_CHECKS_HEADER       ; 9310 20 20 8E                   .
         bcc     L92C7_ERROR ;branch if error                          ; 9313 90 B2                    ..
 L9315:  bra     L9335                           ; 9315 80 1E                    ..
 L9317:  ldy     $03A3                           ; 9317 AC A3 03                 ...
@@ -2889,8 +2881,8 @@ L9326:  lda     #'W'                            ; 9326 A9 57                    
 L9335:  ldy     $03A3                           ; 9335 AC A3 03                 ...
         cpy     #'W'                            ; 9338 C0 57                    .W
         bne     L935A                           ; 933A D0 1E                    ..
-        jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL ;maybe returns cbm dos error code in a                          ; 933C 20 13 8B                  ..
-        bcc     L9358 ;branch on error                          ; 933F 90 17                    ..
+        jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL
+        bcc     L9358 ;branch on error
         jsr     L8FF3                           ; 9341 20 F3 8F                  ..
         stz     $0218                           ; 9344 9C 18 02                 ...
         lda     $03A4                           ; 9347 AD A4 03                 ...
@@ -3270,9 +3262,9 @@ V1541_OPEN:
         jmp     V1541_KERNAL_CALL_DONE          ; 966E 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
 L9671_V1541_INTERNAL_OPEN:
-        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP ;maybe returns a cbm dos error code                          ; 9671 20 AF 8E                  ..
+        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP
 L9675 := *+1
-        BCC     L969A_ERROR
+        BCC     L969A_ERROR ;branch if error
         BIT     #$20
         BNE     L969A_ERROR
         ldx     $03A0                           ; 967A AE A0 03                 ...
@@ -3306,10 +3298,10 @@ L96A5 := *+1
         bne     L9695_ERROR_60_WRITE_FILE_OPEN
         bit     #$80                            ; 96A8 89 80                    ..
         bne     L96B1                           ; 96AA D0 05                    ..
-        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A                          ; 96AC 20 20 8E                   .
-        bcc     L969A_ERROR ;branch if error                          ; 96AF 90 E9                    ..
-L96B1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;maybe returns cbm dos error code in A                          ; 96B1 20 11 90                  ..
-        bcc     L969A_ERROR                           ; 96B4 90 E4                    ..
+        jsr     L8E20_MAYBE_CHECKS_HEADER       ; 96AC 20 20 8E                   .
+        bcc     L969A_ERROR ;branch if error    ; 96AF 90 E9                    ..
+L96B1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ; 96B1 20 11 90                  ..
+        bcc     L969A_ERROR                     ; 96B4 90 E4                    ..
         cpx     #'S'                            ; 96B6 E0 53                    .S
         beq     L9692_ERROR_64_FILE_TYPE_MISMATCH                           ; 96B8 F0 D8                    ..
         jsr     L8C2A                           ; 96BA 20 2A 8C                  *.
@@ -3593,6 +3585,7 @@ L98AB:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER   ; 98AB 20 D5 8A                
         beq     L9897                           ; 98B2 F0 E3                    ..
 L98B4:  jsr     L8D17 ;maybe returns cbm dos error in a                          ; 98B4 20 17 8D                  ..
         bra     L9890                           ; 98B7 80 D7                    ..
+
 L98B9:  inc     $E9                             ; 98B9 E6 E9                    ..
         ldy     #$02                            ; 98BB A0 02                    ..
         lda     ($E4),y                         ; 98BD B1 E4                    ..
@@ -3930,13 +3923,12 @@ L9BE0:  lda     $2D                             ; 9BE0 A5 2D                    
         cmp     #$91                            ; 9BE6 C9 91                    ..
         bcs     L9C05                           ; 9BE8 B0 1B                    ..
         jsr     LA338                           ; 9BEA 20 38 A3                  8.
-;TODO code
-        .byte   $A5                             ; 9BED A5                       .
-L9BEE:  .byte   $2B                             ; 9BEE 2B                       +
-        ldy     $2C                             ; 9BEF A4 2C                    .,
-        sty     $06                             ; 9BF1 84 06                    ..
-        .byte   $85                             ; 9BF3 85                       .
-L9BF4:  rmb0    $60                             ; 9BF4 07 60                    .`
+L9BEE := *+1
+         LDA    $2b
+         LDY    $2c
+         STY    $06
+         STA    $07
+L9BF4:   rts
 ; ----------------------------------------------------------------------------
 L9BF6:  lda     $25                             ; 9BF6 A5 25                    .%
         cmp     #$90                            ; 9BF8 C9 90                    ..
@@ -3948,10 +3940,8 @@ L9BF6:  lda     $25                             ; 9BF6 A5 25                    
 L9C05:  ldx     #$0E                            ; 9C05 A2 0E                    ..
         jmp     LFB4B                           ; 9C07 4C 4B FB                 LK.
 ; ----------------------------------------------------------------------------
-;TODO probably a jmp
-L9C0A:  .byte   $4C                             ; 9C0A 4C                       L
-        sec                                     ; 9C0B 38                       8
-L9C0C:  .byte   $A3                             ; 9C0C A3                       .
+L9C0C := *+2
+L9C0A:  jmp     LA338
 L9C0D:  inc     $3F                             ; 9C0D E6 3F                    .?
         bne     L9C13                           ; 9C0F D0 02                    ..
         inc     $40                             ; 9C11 E6 40                    .@
@@ -3977,10 +3967,8 @@ L9C2E:  lda     #$3F ;ZP-address                ; 9C2E A9 3F                    
 ; ----------------------------------------------------------------------------
 L9C36:  lda     #$08 ;ZP-address                ; 9C36 A9 08                    ..
         sta     SINNER                          ; 9C38 8D 4E 03                 .N.
-;TODO probably a JMP
-        .byte   $4C                             ; 9C3B 4C                       L
-L9C3C:  lsr     a                               ; 9C3C 4A                       J
-        .byte   $03                             ; 9C3D 03                       .
+L9C3C := *+1
+        jmp     GO_RAM_LOAD_GO_KERN
 L9C3E:  lda     #$08                            ; 9C3E A9 08                    ..
         sta     $0357                           ; 9C40 8D 57 03                 .W.
         jmp     GO_APPL_LOAD_GO_KERN            ; 9C43 4C 53 03                 LS.
