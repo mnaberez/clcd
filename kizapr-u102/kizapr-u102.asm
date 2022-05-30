@@ -1547,7 +1547,7 @@ L89A8:  tax                                     ; 89A8 AA                       
         rts                                     ; 89AE 60                       `
 ; ----------------------------------------------------------------------------
 L89AF:  jsr     L8A39                           ; 89AF 20 39 8A                  9.
-        bcs     L89B5                           ; 89B2 B0 01                    ..
+        bcs     L89B5 ;branch if no error                          ; 89B2 B0 01                    ..
         rts                                     ; 89B4 60                       `
 ; ----------------------------------------------------------------------------
 L89B5:  lda     $020A                           ; 89B5 AD 0A 02                 ...
@@ -1583,8 +1583,8 @@ L89F2:  jsr     L8A61                           ; 89F2 20 61 8A                 
         sec                                     ; 89F7 38                       8
         rts                                     ; 89F8 60                       `
 ; ----------------------------------------------------------------------------
-L89F9:  jsr     L8AD5                           ; 89F9 20 D5 8A                  ..
-        bcs     L89FF                           ; 89FC B0 01                    ..
+L89F9:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 89F9 20 D5 8A                  ..
+        bcs     L89FF ;branch if no error       ; 89FC B0 01                    ..
         rts                                     ; 89FE 60                       `
 ; ----------------------------------------------------------------------------
 L89FF:  lda     $0216                           ; 89FF AD 16 02                 ...
@@ -1605,6 +1605,7 @@ L8A14:  pha                                     ; 8A14 48                       
 L8A1A:  pha                                     ; 8A1A 48                       H
         txa                                     ; 8A1B 8A                       .
         sta     ($D9),y                         ; 8A1C 91 D9                    ..
+;TODO code
         .byte   $AD                             ; 8A1E AD                       .
         .byte   $16                             ; 8A1F 16                       .
 L8A20:  .byte   $02                             ; 8A20 02                       .
@@ -1626,11 +1627,11 @@ L8A39:  ldx     $020B                           ; 8A39 AE 0B 02                 
         dex                                     ; 8A41 CA                       .
 L8A42:  dec     a                               ; 8A42 3A                       :
         cpx     $020D                           ; 8A43 EC 0D 02                 ...
-        bne     L8A4E                           ; 8A46 D0 06                    ..
+        bne     L8A4E_25_WRITE_ERROR                           ; 8A46 D0 06                    ..
         cmp     $020C                           ; 8A48 CD 0C 02                 ...
-        bne     L8A4E                           ; 8A4B D0 01                    ..
+        bne     L8A4E_25_WRITE_ERROR                           ; 8A4B D0 01                    ..
         clc                                     ; 8A4D 18                       .
-L8A4E:  lda     #$19                            ; 8A4E A9 19                    ..
+L8A4E_25_WRITE_ERROR:  lda     #$19 ;25 write error (write-verify error)                           ; 8A4E A9 19                    ..
         rts                                     ; 8A50 60                       `
 ; ----------------------------------------------------------------------------
         cld                                     ; 8A51 D8                       .
@@ -1705,7 +1706,9 @@ L8ACD:  stx     $020E                           ; 8ACD 8E 0E 02                 
         sec                                     ; 8AD3 38                       8
         rts                                     ; 8AD4 60                       `
 ; ----------------------------------------------------------------------------
-L8AD5:  jsr     L8AA9                           ; 8AD5 20 A9 8A                  ..
+;maybe returns a cbm dos error code
+L8AD5_MAYBE_READS_BLOCK_HEADER:
+        jsr     L8AA9                           ; 8AD5 20 A9 8A                  ..
         jsr     L8AEE                           ; 8AD8 20 EE 8A                  ..
         beq     L8AFA                           ; 8ADB F0 1D                    ..
         jsr     L8A81                           ; 8ADD 20 81 8A                  ..
@@ -1714,7 +1717,7 @@ L8AE0:  jsr     L8AEE                           ; 8AE0 20 EE 8A                 
         jsr     L8A61                           ; 8AE5 20 61 8A                  a.
         bcs     L8AE0                           ; 8AE8 B0 F6                    ..
         clc                                     ; 8AEA 18                       .
-        lda     #$14                            ; 8AEB A9 14                    ..
+        lda     #$14 ;20 read error (block header not found)                           ; 8AEB A9 14                    ..
         rts                                     ; 8AED 60                       `
 ; ----------------------------------------------------------------------------
 L8AEE:  lda     $E8                             ; 8AEE A5 E8                    ..
@@ -1736,25 +1739,30 @@ L8B0B:  stz     $020E                           ; 8B0B 9C 0E 02                 
         sec                                     ; 8B11 38                       8
         rts                                     ; 8B12 60                       `
 ; ----------------------------------------------------------------------------
-L8B13:  lda     $0207                           ; 8B13 AD 07 02                 ...
+;maybe returns cbm dos error code in a
+L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL:
+        lda     $0207                           ; 8B13 AD 07 02                 ...
         bne     L8B1D                           ; 8B16 D0 05                    ..
         inc     $0207                           ; 8B18 EE 07 02                 ...
-        bra     L8B13                           ; 8B1B 80 F6                    ..
+        bra     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL  ; 8B1B 80 F6                    ..
+
 L8B1D:  pha                                     ; 8B1D 48                       H
         jsr     L8DBE                           ; 8B1E 20 BE 8D                  ..
         pla                                     ; 8B21 68                       h
         bcs     L8B27                           ; 8B22 B0 03                    ..
         sec                                     ; 8B24 38                       8
-        bra     L8B31                           ; 8B25 80 0A                    ..
+        bra     L8B31_STORE_STUFF_THEN_72_DISK_FULL ; 8B25 80 0A                    ..
+
 L8B27:  inc     a                               ; 8B27 1A                       .
         bne     L8B2B                           ; 8B28 D0 01                    ..
         inc     a                               ; 8B2A 1A                       .
 L8B2B:  cmp     $0207                           ; 8B2B CD 07 02                 ...
         bne     L8B1D                           ; 8B2E D0 ED                    ..
         clc                                     ; 8B30 18                       .
-L8B31:  sta     $0207                           ; 8B31 8D 07 02                 ...
+L8B31_STORE_STUFF_THEN_72_DISK_FULL:
+        sta     $0207                           ; 8B31 8D 07 02                 ...
         sta     $0219                           ; 8B34 8D 19 02                 ...
-        lda     #$48                            ; 8B37 A9 48                    .H
+        lda     #$48 ;72 disk full              ; 8B37 A9 48                    .H
         rts                                     ; 8B39 60                       `
 ; ----------------------------------------------------------------------------
 ;CHRIN to Virtual 1541
@@ -1772,7 +1780,7 @@ L8B40_V1541_INTERNAL_CHRIN:
 L8B46:  lda     $E7                             ; 8B46 A5 E7                    ..
         bit     #$10                            ; 8B48 89 10                    ..
         bne     L8B50                           ; 8B4A D0 04                    ..
-        lda     #$3D                            ; 8B4C A9 3D                    .=
+        lda     #$3D ;File not open             ; 8B4C A9 3D                    .=
         clc                                     ; 8B4E 18                       .
         rts                                     ; 8B4F 60                       `
 ; ----------------------------------------------------------------------------
@@ -1791,8 +1799,8 @@ L8B59:  lda     $E7                             ; 8B59 A5 E7                    
 L8B66:  stz     SXREG                           ; 8B66 9C 9D 03                 ...
         lda     $EA                             ; 8B69 A5 EA                    ..
         bne     L8B7F                           ; 8B6B D0 12                    ..
-        jsr     L8AD5                           ; 8B6D 20 D5 8A                  ..
-        bcs     L8B7B                           ; 8B70 B0 09                    ..
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8B6D 20 D5 8A                  ..
+        bcs     L8B7B ;branch if no error       ; 8B70 B0 09                    ..
         dec     SXREG                           ; 8B72 CE 9D 03                 ...
         lda     #$0D                            ; 8B75 A9 0D                    ..
         sec                                     ; 8B77 38                       8
@@ -1801,8 +1809,8 @@ L8B66:  stz     SXREG                           ; 8B66 9C 9D 03                 
 L8B79:  inc     $E9                             ; 8B79 E6 E9                    ..
 L8B7B:  lda     #$02                            ; 8B7B A9 02                    ..
         sta     $EA                             ; 8B7D 85 EA                    ..
-L8B7F:  jsr     L8AD5                           ; 8B7F 20 D5 8A                  ..
-        bcc     L8B9F                           ; 8B82 90 1B                    ..
+L8B7F:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8B7F 20 D5 8A                  ..
+        bcc     L8B9F_RTS ;branch if error      ; 8B82 90 1B                    ..
         ldy     #$02                            ; 8B84 A0 02                    ..
         lda     ($E4),y                         ; 8B86 B1 E4                    ..
         beq     L8B8E                           ; 8B88 F0 04                    ..
@@ -1817,7 +1825,7 @@ L8B92:  lda     $EA                             ; 8B92 A5 EA                    
 L8B9B:  tay                                     ; 8B9B A8                       .
         lda     ($E4),y                         ; 8B9C B1 E4                    ..
         sec                                     ; 8B9E 38                       8
-L8B9F:  rts                                     ; 8B9F 60                       `
+L8B9F_RTS:  rts                                     ; 8B9F 60                       `
 ; ----------------------------------------------------------------------------
 L8BA0:  lda     #$0D                            ; 8BA0 A9 0D                    ..
         stz     SXREG                           ; 8BA2 9C 9D 03                 ...
@@ -1856,15 +1864,15 @@ L8BD4:  sta     $039E                           ; 8BD4 8D 9E 03                 
 L8BD7:  lda     $EA                             ; 8BD7 A5 EA                    ..
         bne     L8BE1                           ; 8BD9 D0 06                    ..
         jsr     L8A39                           ; 8BDB 20 39 8A                  9.
-        bcs     L8BF7                           ; 8BDE B0 17                    ..
+        bcs     L8BF7 ;branch if no error                          ; 8BDE B0 17                    ..
         rts                                     ; 8BE0 60                       `
 ; ----------------------------------------------------------------------------
 L8BE1:  inc     $EA                             ; 8BE1 E6 EA                    ..
         bne     L8BFE                           ; 8BE3 D0 19                    ..
         jsr     L8A39                           ; 8BE5 20 39 8A                  9.
-        bcc     L8C0E                           ; 8BE8 90 24                    .$
-        jsr     L8AD5                           ; 8BEA 20 D5 8A                  ..
-        bcc     L8C0E                           ; 8BED 90 1F                    ..
+        bcc     L8C0E_RTS ;branch if error      ; 8BE8 90 24                    .$
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8BEA 20 D5 8A                  ..
+        bcc     L8C0E_RTS ;branch if error      ; 8BED 90 1F                    ..
         ldy     #$02                            ; 8BEF A0 02                    ..
         lda     #$00                            ; 8BF1 A9 00                    ..
 L8BF3:  sta     ($E4),y                         ; 8BF3 91 E4                    ..
@@ -1872,7 +1880,7 @@ L8BF3:  sta     ($E4),y                         ; 8BF3 91 E4                    
 L8BF7:  ldy     #$03                            ; 8BF7 A0 03                    ..
         sty     $EA                             ; 8BF9 84 EA                    ..
         jsr     L89C6                           ; 8BFB 20 C6 89                  ..
-L8BFE:  jsr     L8AD5                           ; 8BFE 20 D5 8A                  ..
+L8BFE:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8BFE 20 D5 8A                  ..
         ldy     #$02                            ; 8C01 A0 02                    ..
         lda     $EA                             ; 8C03 A5 EA                    ..
         sta     ($E4),y                         ; 8C05 91 E4                    ..
@@ -1880,9 +1888,10 @@ L8BFE:  jsr     L8AD5                           ; 8BFE 20 D5 8A                 
         lda     $039E                           ; 8C08 AD 9E 03                 ...
         sta     ($E4),y                         ; 8C0B 91 E4                    ..
         sec                                     ; 8C0D 38                       8
-L8C0E:  rts                                     ; 8C0E 60                       `
+L8C0E_RTS:  rts                                     ; 8C0E 60                       `
 ; ----------------------------------------------------------------------------
-L8C0F:  pha                                     ; 8C0F 48                       H
+L8C0F_DIR_RELATED:
+        pha                                     ; 8C0F 48                       H
         lda     $EA                             ; 8C10 A5 EA                    ..
 L8C12:  inc     a                               ; 8C12 1A                       .
         bne     L8C17                           ; 8C13 D0 02                    ..
@@ -1890,14 +1899,16 @@ L8C12:  inc     a                               ; 8C12 1A                       
 L8C17:  cmp     #$03                            ; 8C17 C9 03                    ..
         bcc     L8C12                           ; 8C19 90 F7                    ..
 L8C1B:  sta     $EA                             ; 8C1B 85 EA                    ..
-        jsr     L8AD5                           ; 8C1D 20 D5 8A                  ..
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8C1D 20 D5 8A                  ..
         pla                                     ; 8C20 68                       h
-        bcc     L8C27                           ; 8C21 90 04                    ..
+        bcc     L8C27_71_DIR_ERROR ;branch if error                          ; 8C21 90 04                    ..
         ldy     $EA                             ; 8C23 A4 EA                    ..
         sta     ($E4),y                         ; 8C25 91 E4                    ..
-L8C27:  lda     #$47                            ; 8C27 A9 47                    .G
+L8C27_71_DIR_ERROR:
+        lda     #$47 ;71 directory error        ; 8C27 A9 47                    .G
         rts                                     ; 8C29 60                       `
 ; ----------------------------------------------------------------------------
+;TODO probably a jsr
 L8C2A:  .byte   $20                             ; 8C2A 20
 L8C2B:  .byte   $3B                             ; 8C2B 3B                       ;
         sty     $894C                           ; 8C2C 8C 4C 89                 .L.
@@ -1953,7 +1964,7 @@ L8C7A:  bpl     L8C76                           ; 8C7A 10 FA                    
         txa                                     ; 8C80 8A                       .
         tay                                     ; 8C81 A8                       .
         sec                                     ; 8C82 38                       8
-        jmp     L9964                           ; 8C83 4C 64 99                 Ld.
+        jmp     L9964_STORE_XAYZ                           ; 8C83 4C 64 99                 Ld.
 ; ----------------------------------------------------------------------------
 L8C86:  jsr     L8C36                           ; 8C86 20 36 8C                  6.
 L8C89:  ldx     #$03                            ; 8C89 A2 03                    ..
@@ -2018,43 +2029,46 @@ L8CEE:  ldx     $03                             ; 8CEE A6 03                    
         ldx     #$FF                            ; 8CF3 A2 FF                    ..
 L8CF5:  inx                                     ; 8CF5 E8                       .
         cpx     #$19                            ; 8CF6 E0 19                    ..
-        beq     L8D13                           ; 8CF8 F0 19                    ..
+        beq     L8D13_67_ILLEGAL_SYS_TS                           ; 8CF8 F0 19                    ..
         phx                                     ; 8CFA DA                       .
         jsr     L8B66                           ; 8CFB 20 66 8B                  f.
         plx                                     ; 8CFE FA                       .
-        bcc     L8D15                           ; 8CFF 90 14                    ..
+        bcc     L8D15_CLC_RTS ;branch if error                          ; 8CFF 90 14                    ..
         sta     $0218,x                         ; 8D01 9D 18 02                 ...
         cpx     #$05                            ; 8D04 E0 05                    ..
         bit     SXREG                           ; 8D06 2C 9D 03                 ,..
-        bmi     L8D12                           ; 8D09 30 07                    0.
+        bmi     L8D12_RTS                           ; 8D09 30 07                    0.
         bcc     L8CF5                           ; 8D0B 90 E8                    ..
         cmp     #$00                            ; 8D0D C9 00                    ..
         bne     L8CF5                           ; 8D0F D0 E4                    ..
         sec                                     ; 8D11 38                       8
-L8D12:  rts                                     ; 8D12 60                       `
+L8D12_RTS:  rts                                     ; 8D12 60                       `
 ; ----------------------------------------------------------------------------
-L8D13:  lda     #$43                            ; 8D13 A9 43                    .C
-L8D15:  clc                                     ; 8D15 18                       .
+L8D13_67_ILLEGAL_SYS_TS:
+        lda     #$43 ;67 illegal system t or s  ; 8D13 A9 43                    .C
+L8D15_CLC_RTS:
+        clc                                     ; 8D15 18                       .
         rts                                     ; 8D16 60                       `
 ; ----------------------------------------------------------------------------
+;maybe returns cbm dos error in a
 L8D17:  jsr     L8C92                           ; 8D17 20 92 8C                  ..
         jsr     L8C3E                           ; 8D1A 20 3E 8C                  >.
         jsr     L8CE6                           ; 8D1D 20 E6 8C                  ..
         bcc     L8D3C                           ; 8D20 90 1A                    ..
 L8D22:  bit     SXREG                           ; 8D22 2C 9D 03                 ,..
         bmi     L8D3C                           ; 8D25 30 15                    0.
-L8D27:  jsr     L8B66                           ; 8D27 20 66 8B                  f.
-        bcc     L8D5A                           ; 8D2A 90 2E                    ..
+L8D27:  jsr     L8B66 ;maybe returns cbm dos error in a                          ; 8D27 20 66 8B                  f.
+        bcc     L8D5A_RTS ;branch if error                      ; 8D2A 90 2E                    ..
         jsr     L8CD1                           ; 8D2C 20 D1 8C                  ..
-        jsr     L8C0F                           ; 8D2F 20 0F 8C                  ..
-        bcc     L8D5A                           ; 8D32 90 26                    .&
+        jsr     L8C0F_DIR_RELATED ;maybe returns cbm dos error in a                          ; 8D2F 20 0F 8C                  ..
+        bcc     L8D5A_RTS                       ; 8D32 90 26                    .&
         jsr     L8CD1                           ; 8D34 20 D1 8C                  ..
         bit     SXREG                           ; 8D37 2C 9D 03                 ,..
         bpl     L8D27                           ; 8D3A 10 EB                    ..
 L8D3C:  jsr     L8CD1                           ; 8D3C 20 D1 8C                  ..
-        jsr     L8AD5                           ; 8D3F 20 D5 8A                  ..
-        lda     #$47                            ; 8D42 A9 47                    .G
-        bcc     L8D5A                           ; 8D44 90 14                    ..
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8D3F 20 D5 8A                  ..
+        lda     #$47 ;71 directory error        ; 8D42 A9 47                    .G
+        bcc     L8D5A_RTS ;branch if error      ; 8D44 90 14                    ..
         lda     $EA                             ; 8D46 A5 EA                    ..
         beq     L8D50                           ; 8D48 F0 06                    ..
         ldy     #$02                            ; 8D4A A0 02                    ..
@@ -2064,7 +2078,8 @@ L8D50:  jsr     L89F9                           ; 8D50 20 F9 89                 
         jsr     L8C30                           ; 8D53 20 30 8C                  0.
         jsr     L8E39                           ; 8D56 20 39 8E                  9.
         sec                                     ; 8D59 38                       8
-L8D5A:  rts                                     ; 8D5A 60                       `
+L8D5A_RTS:
+        rts                                 ; 8D5A 60                       `
 ; ----------------------------------------------------------------------------
 L8D5B:  jsr     L8E10                           ; 8D5B 20 10 8E                  ..
         lda     #$30                            ; 8D5E A9 30                    .0
@@ -2076,8 +2091,8 @@ L8D63:  jsr     L8E91                           ; 8D63 20 91 8E                 
         lda     #$10                            ; 8D6E A9 10                    ..
         sta     $E7                             ; 8D70 85 E7                    ..
 L8D72:  jsr     L8B66                           ; 8D72 20 66 8B                  f.
-        bcs     L8D7A                           ; 8D75 B0 03                    ..
-        lda     #$47                            ; 8D77 A9 47                    .G
+        bcs     L8D7A ;branch if no error                          ; 8D75 B0 03                    ..
+        lda     #$47 ;maybe: 71 directory error ; 8D77 A9 47                    .G
         rts                                     ; 8D79 60                       `
 ; ----------------------------------------------------------------------------
 L8D7A:  lda     SXREG                           ; 8D7A AD 9D 03                 ...
@@ -2112,7 +2127,7 @@ L8DAA:  bcc     L8DBA                           ; 8DAA 90 0E                    
 L8DB5:  bit     SXREG                           ; 8DB5 2C 9D 03                 ,..
         bpl     L8DA7                           ; 8DB8 10 ED                    ..
 L8DBA:  clc                                     ; 8DBA 18                       .
-        lda     #$3E                            ; 8DBB A9 3E                    .>
+        lda     #$3E ;File not found            ; 8DBB A9 3E                    .>
         rts                                     ; 8DBD 60                       `
 ; ----------------------------------------------------------------------------
 L8DBE:  pha                                     ; 8DBE 48                       H
@@ -2129,10 +2144,11 @@ L8DCA:  bcc     L8DDC                           ; 8DCA 90 10                    
         cmp     stack+1,x                       ; 8DD7 DD 01 01                 ...
         bne     L8DC7                           ; 8DDA D0 EB                    ..
 L8DDC:  pla                                     ; 8DDC 68                       h
-        lda     #$3E                            ; 8DDD A9 3E                    .>
+        lda     #$3E ;File not found            ; 8DDD A9 3E                    .>
         rts                                     ; 8DDF 60                       `
 ; ----------------------------------------------------------------------------
 L8DE0:  lda     $0219                           ; 8DE0 AD 19 02                 ...
+;TODO code
         .byte   $2C                             ; 8DE3 2C                       ,
 L8DE4:  lda     #$00                            ; 8DE4 A9 00                    ..
         ldx     #$00                            ; 8DE6 A2 00                    ..
@@ -2165,18 +2181,20 @@ L8E10:  lda     $0219                           ; 8E10 AD 19 02                 
         sty     $021C                           ; 8E1C 8C 1C 02                 ...
         rts                                     ; 8E1F 60                       `
 ; ----------------------------------------------------------------------------
-L8E20:  lda     $0219                           ; 8E20 AD 19 02                 ...
-        .byte   $20                             ; 8E23 20
-        .byte   $5E                             ; 8E24 5E                       ^
-L8E25:  stx     $1ACD                           ; 8E25 8E CD 1A                 ...
-        .byte   $02                             ; 8E28 02                       .
-        bne     L8E35                           ; 8E29 D0 0A                    ..
+L8E20_MAYBE_CHECKS_HEADER:
+        lda     $0219                           ; 8E20 AD 19 02                 ...
+;TODO probably jsr
+L8E25 := *+2
+        jsr     L8E5E
+        cmp     $021a
+        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER  ; 8E29 D0 0A                    ..
         cpx     $021B                           ; 8E2B EC 1B 02                 ...
-        bne     L8E35                           ; 8E2E D0 05                    ..
+        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER  ; 8E2E D0 05                    ..
         cpy     $021C                           ; 8E30 CC 1C 02                 ...
         beq     L8E36                           ; 8E33 F0 01                    ..
-L8E35:  clc                                     ; 8E35 18                       .
-L8E36:  lda     #$1B                            ; 8E36 A9 1B                    ..
+L8E35_27_CHECKSUM_ERROR_IN_HEADER:
+        clc         ; 8E35 18                       .
+L8E36:  lda     #$1B ;27 read error (checksum error in header)  ; 8E36 A9 1B                    ..
         rts                                     ; 8E38 60                       `
 ; ----------------------------------------------------------------------------
 L8E39:  jsr     L8E5C                           ; 8E39 20 5C 8E                  \.
@@ -2241,11 +2259,12 @@ L8E99:  inc     a                               ; 8E99 1A                       
         rts                                     ; 8EA6 60                       `
 ; ----------------------------------------------------------------------------
 L8EA7:  jsr     L8A39                           ; 8EA7 20 39 8A                  9.
-        bcc     L8EAE                           ; 8EAA 90 02                    ..
+        bcc     L8EAE_RTS ;branch if error                          ; 8EAA 90 02                    ..
         lda     #$01                            ; 8EAC A9 01                    ..
-L8EAE:  rts                                     ; 8EAE 60                       `
+L8EAE_RTS:  rts                                     ; 8EAE 60                       `
 ; ----------------------------------------------------------------------------
-L8EAF:  lda     FNADR                           ; 8EAF A5 AE                    ..
+L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP:
+        lda     FNADR                           ; 8EAF A5 AE                    ..
         ldx     FNADR+1                         ; 8EB1 A6 AF                    ..
         ldy     FNLEN                           ; 8EB3 AC 87 03                 ...
 L8EB6:  sta     $E2                             ; 8EB6 85 E2                    ..
@@ -2259,14 +2278,15 @@ L8EBD:  stz     $03A5                           ; 8EBD 9C A5 03                 
         sta     SINNER                          ; 8ECB 8D 4E 03                 .N.
         lda     $039F                           ; 8ECE AD 9F 03                 ...
         bne     L8ED7                           ; 8ED1 D0 04                    ..
-L8ED3:  lda     #$21                            ; 8ED3 A9 21                    .!
+L8ED3_33_SYNTAX_ERROR:
+        lda     #$21 ;33 invalid filename       ; 8ED3 A9 21                    .!
         clc                                     ; 8ED5 18                       .
         rts                                     ; 8ED6 60                       `
 ; ----------------------------------------------------------------------------
 L8ED7:  ldy     #$00                            ; 8ED7 A0 00                    ..
         jsr     L8FAD                           ; 8ED9 20 AD 8F                  ..
         dey                                     ; 8EDC 88                       .
-        bcc     L8ED3                           ; 8EDD 90 F4                    ..
+        bcc     L8ED3_33_SYNTAX_ERROR                           ; 8EDD 90 F4                    ..
         cmp     #'$'                            ; 8EDF C9 24                    .$
         beq     L8EE7                           ; 8EE1 F0 04                    ..
         cmp     #'@'                            ; 8EE3 C9 40                    .@
@@ -2281,7 +2301,7 @@ L8EEE:  sty     $03A2                           ; 8EEE 8C A2 03                 
 ; ----------------------------------------------------------------------------
 ;Looks like filename parsing for directory listing LOAD"$0:*=P"
 L8EF9:  jsr     L8FAD                           ; 8EF9 20 AD 8F                  ..
-        bcc     L8ED3                           ; 8EFC 90 D5                    ..
+        bcc     L8ED3_33_SYNTAX_ERROR                           ; 8EFC 90 D5                    ..
         tax                                     ; 8EFE AA                       .
         cpx     #' '                            ; 8EFF E0 20                    .
         beq     L8EEE                           ; 8F01 F0 EB                    ..
@@ -2291,7 +2311,7 @@ L8EF9:  jsr     L8FAD                           ; 8EF9 20 AD 8F                 
         bne     L8F14                           ; 8F09 D0 09                    ..
         lda     #$03                            ; 8F0B A9 03                    ..
         tsb     $03A5                           ; 8F0D 0C A5 03                 ...
-        bne     L8ED3                           ; 8F10 D0 C1                    ..
+        bne     L8ED3_33_SYNTAX_ERROR           ; 8F10 D0 C1                    ..
         bra     L8EEB                           ; 8F12 80 D7                    ..
 L8F14:  lda     #$02                            ; 8F14 A9 02                    ..
         tsb     $03A5                           ; 8F16 0C A5 03                 ...
@@ -2309,17 +2329,17 @@ L8F2A:  cpx     #','                            ; 8F2A E0 2C                    
 L8F2F:  cpy     $039F                           ; 8F2F CC 9F 03                 ...
         beq     L8F86                           ; 8F32 F0 52                    .R
         jsr     L8FAD                           ; 8F34 20 AD 8F                  ..
-        bcc     L8F5F                           ; 8F37 90 26                    .&
+        bcc     L8F5F_21_INVALID_FILENAME       ; 8F37 90 26                    .&
         cmp     #'='                            ; 8F39 C9 3D                    .=
         beq     L8F81                           ; 8F3B F0 44                    .D
         cmp     #' '                            ; 8F3D C9 20                    .
         beq     L8F2F                           ; 8F3F F0 EE                    ..
         cmp     #','                            ; 8F41 C9 2C                    .,
-        bne     L8F5F                           ; 8F43 D0 1A                    ..
+        bne     L8F5F_21_INVALID_FILENAME       ; 8F43 D0 1A                    ..
 L8F45:  cpy     $039F                           ; 8F45 CC 9F 03                 ...
-        bcs     L8F5F                           ; 8F48 B0 15                    ..
+        bcs     L8F5F_21_INVALID_FILENAME       ; 8F48 B0 15                    ..
         jsr     L8FAD                           ; 8F4A 20 AD 8F                  ..
-        bcc     L8F5F                           ; 8F4D 90 10                    ..
+        bcc     L8F5F_21_INVALID_FILENAME       ; 8F4D 90 10                    ..
         cmp     #' '                            ; 8F4F C9 20                    .
         beq     L8F45                           ; 8F51 F0 F2                    ..
         and     #$DF                            ; 8F53 29 DF                    ).
@@ -2328,20 +2348,22 @@ L8F57:  cmp     L8F7B,x                         ; 8F57 DD 7B 8F                 
         beq     L8F63                           ; 8F5A F0 07                    ..
         dex                                     ; 8F5C CA                       .
         bpl     L8F57                           ; 8F5D 10 F8                    ..
-L8F5F:  lda     #$21                            ; 8F5F A9 21                    .!
+L8F5F_21_INVALID_FILENAME:
+        lda     #$21 ;Invalid filename          ; 8F5F A9 21                    .!
         clc                                     ; 8F61 18                       .
         rts                                     ; 8F62 60                       `
 ; ----------------------------------------------------------------------------
 L8F63:  cpx     #$02                            ; 8F63 E0 02                    ..
         bcs     L8F71                           ; 8F65 B0 0A                    ..
         ldx     $03A4                           ; 8F67 AE A4 03                 ...
-        bne     L8F5F                           ; 8F6A D0 F3                    ..
+        bne     L8F5F_21_INVALID_FILENAME                           ; 8F6A D0 F3                    ..
         sta     $03A4                           ; 8F6C 8D A4 03                 ...
         bra     L8F2F                           ; 8F6F 80 BE                    ..
 L8F71:  ldx     $03A3                           ; 8F71 AE A3 03                 ...
-        bne     L8F5F                           ; 8F74 D0 E9                    ..
+        bne     L8F5F_21_INVALID_FILENAME                           ; 8F74 D0 E9                    ..
         sta     $03A3                           ; 8F76 8D A3 03                 ...
         bra     L8F2F                           ; 8F79 80 B4                    ..
+;TODO looks like data (see L8F57)
 L8F7B:  .byte   $53                             ; 8F7B 53                       S
         bvc     L8FD0                           ; 8F7C 50 52                    PR
         rmb5    $41                             ; 8F7E 57 41                    WA
@@ -2361,15 +2383,17 @@ L8F9B:  cld                                     ; 8F9B D8                       
         lda     #$10                            ; 8F9D A9 10                    ..
         adc     MON_MMU_MODE                    ; 8F9F 6D A1 03                 m..
         cmp     $03A2                           ; 8FA2 CD A2 03                 ...
-        lda     #$21                            ; 8FA5 A9 21                    .!
-        bcc     L8FAC                           ; 8FA7 90 03                    ..
+        lda     #$21 ;33 syntax error                           ; 8FA5 A9 21                    .!
+        bcc     L8FAC_RTS                           ; 8FA7 90 03                    ..
+;TODO code
         .byte   $AD                             ; 8FA9 AD                       .
 L8FAA:  lda     $03                             ; 8FAA A5 03                    ..
-L8FAC:  rts                                     ; 8FAC 60                       `
+L8FAC_RTS:  rts                                     ; 8FAC 60                       `
 ; ----------------------------------------------------------------------------
 L8FAD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FAD 20 4A 03                  J.
         iny                                     ; 8FB0 C8                       .
 L8FB1:  ldx     #$03                            ; 8FB1 A2 03                    ..
+;TODO code
 L8FB3:  .byte   $DD                             ; 8FB3 DD                       .
 L8FB4:  bbs3    $8F,L8F86+1                     ; 8FB4 BF 8F D0                 ...
         .byte   $02                             ; 8FB7 02                       .
@@ -2404,6 +2428,7 @@ L8FE9:  sec                                     ; 8FE9 38                       
         rts                                     ; 8FEA 60                       `
 ; ----------------------------------------------------------------------------
 L8FEB:  inx                                     ; 8FEB E8                       .
+;TODO code
         .byte   $BD                             ; 8FEC BD                       .
 L8FED:  ora     $D002,x                         ; 8FED 1D 02 D0                 ...
         .byte   $DC                             ; 8FF0 DC                       .
@@ -2424,12 +2449,14 @@ L9000:  jsr     GO_RAM_LOAD_GO_KERN             ; 9000 20 4A 03                 
         stz     $021D,x                         ; 900D 9E 1D 02                 ...
         rts                                     ; 9010 60                       `
 ; ----------------------------------------------------------------------------
-L9011:  ldx     #$53                            ; 9011 A2 53                    .S
+;maybe returns cbm dos error code in A
+L9011_MAYBE_CHECKS_FILE_TYPE_S:
+        ldx     #'S'                            ; 9011 A2 53                    .S
         lda     $0218                           ; 9013 AD 18 02                 ...
         bit     #$40                            ; 9016 89 40                    .@
         beq     L901C                           ; 9018 F0 02                    ..
         ldx     #$50                            ; 901A A2 50                    .P
-L901C:  lda     #$40                            ; 901C A9 40                    .@
+L901C:  lda     #$40 ;64 file type mismatch                            ; 901C A9 40                    .@
         cpx     $03A4                           ; 901E EC A4 03                 ...
         beq     L9029                           ; 9021 F0 06                    ..
         ldy     $03A4                           ; 9023 AC A4 03                 ...
@@ -2471,6 +2498,7 @@ L905E:  lda     #$E2 ;ZP-address                ; 905E A9 E2                    
         cpx     #$14                            ; 9070 E0 14                    ..
         bcs     L9077                           ; 9072 B0 03                    ..
         stz     $0238,x                         ; 9074 9E 38 02                 .8.
+;TODO code
 L9077:  .byte   $AD                             ; 9077 AD                       .
         .byte   $A4                             ; 9078 A4                       .
 L9079:  .byte   $03                             ; 9079 03                       .
@@ -2493,55 +2521,59 @@ L908B_V1541_INTERNAL_SAVE:
         sta     SAL                             ; 908F 85 B8                    ..
         stx     SAH                             ; 9091 86 B9                    ..
         cpx     #$08                            ; 9093 E0 08                    ..
-        bcc     L90DD                           ; 9095 90 46                    .F
+        bcc     L90DD_25_WRITE_ERROR                           ; 9095 90 46                    .F
         cpx     #$F8                            ; 9097 E0 F8                    ..
-        bcs     L90DD                           ; 9099 B0 42                    .B
+        bcs     L90DD_25_WRITE_ERROR                           ; 9099 B0 42                    .B
         lda     EAH                             ; 909B A5 B3                    ..
         cmp     #$F8                            ; 909D C9 F8                    ..
         bcc     L90A7                           ; 909F 90 06                    ..
-        bne     L90DD                           ; 90A1 D0 3A                    .:
+        bne     L90DD_25_WRITE_ERROR            ; 90A1 D0 3A                    .:
         lda     EAL                             ; 90A3 A5 B2                    ..
-        bne     L90DD                           ; 90A5 D0 36                    .6
-L90A7:  jsr     L8EAF                           ; 90A7 20 AF 8E                  ..
-        bcc     L90DA                           ; 90AA 90 2E                    ..
+        bne     L90DD_25_WRITE_ERROR            ; 90A5 D0 36                    .6
+L90A7:  jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP  ; 90A7 20 AF 8E                  ..
+        bcc     L90DA_33_SYNTAX_ERROR           ; 90AA 90 2E                    ..
         bit     #$80                            ; 90AC 89 80                    ..
-        beq     L90DA                           ; 90AE F0 2A                    .*
+        beq     L90DA_33_SYNTAX_ERROR           ; 90AE F0 2A                    .*
         bit     #$60                            ; 90B0 89 60                    .`
-        bne     L90DA                           ; 90B2 D0 26                    .&
+        bne     L90DA_33_SYNTAX_ERROR           ; 90B2 D0 26                    .&
         lda     $03A3                           ; 90B4 AD A3 03                 ...
-        bne     L90DA                           ; 90B7 D0 21                    .!
+        bne     L90DA_33_SYNTAX_ERROR           ; 90B7 D0 21                    .!
         lda     $03A0                           ; 90B9 AD A0 03                 ...
         beq     L90C2                           ; 90BC F0 04                    ..
         cmp     #$40                            ; 90BE C9 40                    .@
-        bne     L90DA                           ; 90C0 D0 18                    ..
+        bne     L90DA_33_SYNTAX_ERROR           ; 90C0 D0 18                    ..
 L90C3 := *+1
 L90C2:  jsr     L8D9F
         bcc     L90EC
         lda     $03A0
 L90CB := *+1
         bne     L90D0
-        lda     #$3f
-        bra     L90DF
+        lda     #$3f ;64 file exists
+        bra     L90DF_ERROR
+
 L90D2 := *+2
 L90D0:  LDA $0218
         and     #$80                            ; 90D3 29 80                    ).
         beq     L90E1                           ; 90D5 F0 0A                    ..
-        lda     #$1A                            ; 90D7 A9 1A                    ..
+        lda     #$1A ;26 write protect on                           ; 90D7 A9 1A                    ..
         .byte   $2C                             ; 90D9 2C                       ,
-L90DA:  lda     #$21                            ; 90DA A9 21                    .!
+L90DA_33_SYNTAX_ERROR:
+        lda     #$21 ;33 syntax error (invalid filename)                           ; 90DA A9 21                    .!
         .byte   $2C                             ; 90DC 2C                       ,
-L90DD:  lda     #$19                            ; 90DD A9 19                    ..
-L90DF:  clc                                     ; 90DF 18                       .
+L90DD_25_WRITE_ERROR:
+        lda     #$19 ;25 write error (write-verify error)                           ; 90DD A9 19                    ..
+L90DF_ERROR:
+        clc                                     ; 90DF 18                       .
         rts                                     ; 90E0 60                       `
 ; ----------------------------------------------------------------------------
-L90E1:  jsr     L9011                           ; 90E1 20 11 90                  ..
-        bcc     L90DF                           ; 90E4 90 F9                    ..
+L90E1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;maybe returns cbm dos error code in A                          ; 90E1 20 11 90                  ..
+        bcc     L90DF_ERROR ;branch if error                          ; 90E4 90 F9                    ..
         jsr     L8DE0                           ; 90E6 20 E0 8D                  ..
         inc     a                               ; 90E9 1A                       .
         bra     L910D                           ; 90EA 80 21                    .!
 L90EC:  stz     $03A0                           ; 90EC 9C A0 03                 ...
-        jsr     L8B13                           ; 90EF 20 13 8B                  ..
-L90F2:  bcc     L90DF                           ; 90F2 90 EB                    ..
+        jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL ;maybe returns cbm dos error code in A                               ; 90EF 20 13 8B                  ..
+L90F2:  bcc     L90DF_ERROR ;branch if error                          ; 90F2 90 EB                    ..
         jsr     L8FF3                           ; 90F4 20 F3 8F                  ..
         stz     $0218                           ; 90F7 9C 18 02                 ...
         lda     $03A4                           ; 90FA AD A4 03                 ...
@@ -2578,7 +2610,7 @@ L912A:  dec     a                               ; 912A 3A                       
         bne     L913A                           ; 9130 D0 08                    ..
         cmp     $020C                           ; 9132 CD 0C 02                 ...
         bcs     L913A                           ; 9135 B0 03                    ..
-L9137:  jmp     L90DD                           ; 9137 4C DD 90                 L..
+L9137:  jmp     L90DD_25_WRITE_ERROR            ; 9137 4C DD 90                 L..
 ; ----------------------------------------------------------------------------
 L913A:  cpx     #$00                            ; 913A E0 00                    ..
         bne     L9145                           ; 913C D0 07                    ..
@@ -2588,7 +2620,7 @@ L913A:  cpx     #$00                            ; 913A E0 00                    
 L9145:  lda     $03A0                           ; 9145 AD A0 03                 ...
         beq     L9150                           ; 9148 F0 06                    ..
         jsr     L89E2                           ; 914A 20 E2 89                  ..
-        jsr     L8D17                           ; 914D 20 17 8D                  ..
+        jsr     L8D17 ;maybe returns cbm dos error in a                          ; 914D 20 17 8D                  ..
 L9150:  jsr     L91A4                           ; 9150 20 A4 91                  ..
         cpy     #$00                            ; 9153 C0 00                    ..
         beq     L91A1                           ; 9155 F0 4A                    .J
@@ -2730,13 +2762,15 @@ L924A := *+1
 L9249_V1541_INTERNAL_OPEN:
         jsr     L8C36
         lda     $E6                             ; 924C A5 E6                    ..
-        cmp     #$0F                            ; 924E C9 0F                    ..
+        cmp     #$0F ;command channel           ; 924E C9 0F                    ..
 L9250:  bne     L9255                           ; 9250 D0 03                    ..
-        jmp     L9737                           ; 9252 4C 37 97                 L7.
-; ----------------------------------------------------------------------------
+        jmp     L9737_V1541_INTERNAL_OPEN_CMD_CHAN ; 9252 4C 37 97                 L7.
+
+        ;not the command channel
+
 L9256 := *+1
 L9255:  jsr     L8C89
-        jsr     L8EAF                           ; 9258 20 AF 8E                  ..
+        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP                           ; 9258 20 AF 8E                  ..
 L925C := *+1
         BCC     L9287
         bit     #$20                            ; 925D 89 20                    .
@@ -2761,10 +2795,10 @@ L927A:  rts                                     ; 927A 60                       
 L927B:  ldy     $03A3                           ; 927B AC A3 03                 ...
 L927E:  cpy     #$57                            ; 927E C0 57                    .W
         beq     L9289                           ; 9280 F0 07                    ..
-L9282:  lda     #$21                            ; 9282 A9 21                    .!
+L9282:  lda     #$21 ;33 syntax error (invalid filename)                           ; 9282 A9 21                    .!
         .byte   $2C ;skip next two bytes        ; 9284 2C                       ,
 L9286 := *+1
-L9285:  lda #$21
+L9285:  lda #$21 ;33 syntax error (invalid filename)
 L9287:  clc                                     ; 9287 18                       .
         rts                                     ; 9288 60                       `
 ; ----------------------------------------------------------------------------
@@ -2781,21 +2815,24 @@ L929A:  bit     #$40                            ; 929A 89 40                    
         bne     L9285                           ; 92A1 D0 E2                    ..
 L92A3:  jsr     L8D9F                           ; 92A3 20 9F 8D                  ..
         bcc     L9317                           ; 92A6 90 6F                    .o
-        jsr     L9011                           ; 92A8 20 11 90                  ..
-        bcc     L92C7                           ; 92AB 90 1A                    ..
+        jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;TODO maybe returns cbm dos error code in A                          ; 92A8 20 11 90                  ..
+        bcc     L92C7_ERROR                     ; 92AB 90 1A                    ..
         ldy     $03A3                           ; 92AD AC A3 03                 ...
-        lda     #$3F                            ; 92B0 A9 3F                    .?
+
+        lda     #$3F ;63 file exists            ; 92B0 A9 3F                    .?
         cpy     #$57                            ; 92B2 C0 57                    .W
-        beq     L92C7                           ; 92B4 F0 11                    ..
+        beq     L92C7_ERROR                           ; 92B4 F0 11                    ..
         lda     $0218                           ; 92B6 AD 18 02                 ...
         bit     #$80                            ; 92B9 89 80                    ..
         beq     L92C9                           ; 92BB F0 0C                    ..
-        lda     #$1A                            ; 92BD A9 1A                    ..
+
+        lda     #$1A ;26 write protect on       ; 92BD A9 1A                    ..
         cpy     #$40                            ; 92BF C0 40                    .@
-        beq     L92C7                           ; 92C1 F0 04                    ..
+        beq     L92C7_ERROR                           ; 92C1 F0 04                    ..
         cpy     #$41                            ; 92C3 C0 41                    .A
         bne     L9315                           ; 92C5 D0 4E                    .N
-L92C7:  clc                                     ; 92C7 18                       .
+L92C7_ERROR:
+        clc                                     ; 92C7 18                       .
         rts                                     ; 92C8 60                       `
 ; ----------------------------------------------------------------------------
 L92C9:  lda     $0219                           ; 92C9 AD 19 02                 ...
@@ -2804,14 +2841,14 @@ L92C9:  lda     $0219                           ; 92C9 AD 19 02                 
         lda     $E7                             ; 92D1 A5 E7                    ..
         and     #$20                            ; 92D3 29 20                    )
         beq     L92DB                           ; 92D5 F0 04                    ..
-        lda     #$3C                            ; 92D7 A9 3C                    .<
-        bra     L92C7                           ; 92D9 80 EC                    ..
+        lda     #$3C ;60 write file open        ; 92D7 A9 3C                    .<
+        bra     L92C7_ERROR                     ; 92D9 80 EC                    ..
 L92DD := *+2
 L92DB:  ldy     $03a3
         cpy     #$52                            ; 92DE C0 52                    .R
         beq     L92F8                           ; 92E0 F0 16                    ..
-L92E2:  lda     #$3C                            ; 92E2 A9 3C                    .<
-        bra     L92C7                           ; 92E4 80 E1                    ..
+L92E2:  lda     #$3C ;60 write file open        ; 92E2 A9 3C                    .<
+        bra     L92C7_ERROR                     ; 92E4 80 E1                    ..
 L92E6:  lda     $0218                           ; 92E6 AD 18 02                 ...
         bit     #$20                            ; 92E9 89 20                    .
         beq     L92F8                           ; 92EB F0 0B                    ..
@@ -2823,22 +2860,23 @@ L92E6:  lda     $0218                           ; 92E6 AD 18 02                 
 L92F8:  ldy     $03A3                           ; 92F8 AC A3 03                 ...
         cpy     #$40                            ; 92FB C0 40                    .@
         bne     L930C                           ; 92FD D0 0D                    ..
-        jsr     L8D17                           ; 92FF 20 17 8D                  ..
+        jsr     L8D17 ;maybe returns cbm dos error in a                          ; 92FF 20 17 8D                  ..
         jsr     L89E2                           ; 9302 20 E2 89                  ..
         lda     #$57                            ; 9305 A9 57                    .W
         sta     $03A3                           ; 9307 8D A3 03                 ...
         bra     L9317                           ; 930A 80 0B                    ..
 L930C:  cpy     #$4D                            ; 930C C0 4D                    .M
         beq     L9315                           ; 930E F0 05                    ..
-        jsr     L8E20                           ; 9310 20 20 8E                   .
-        bcc     L92C7                           ; 9313 90 B2                    ..
+        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A                          ; 9310 20 20 8E                   .
+        bcc     L92C7_ERROR ;branch if error                          ; 9313 90 B2                    ..
 L9315:  bra     L9335                           ; 9315 80 1E                    ..
 L9317:  ldy     $03A3                           ; 9317 AC A3 03                 ...
         cpy     #$52                            ; 931A C0 52                    .R
-        beq     L9322                           ; 931C F0 04                    ..
+        beq     L9322_ERROR                           ; 931C F0 04                    ..
         cpy     #$4D                            ; 931E C0 4D                    .M
         bne     L9326                           ; 9320 D0 04                    ..
-L9322:  lda     #$3E                            ; 9322 A9 3E                    .>
+L9322_ERROR:
+        lda     #$3E ;62 file not found                           ; 9322 A9 3E                    .>
         clc                                     ; 9324 18                       .
         rts                                     ; 9325 60                       `
 ; ----------------------------------------------------------------------------
@@ -2851,8 +2889,8 @@ L9326:  lda     #'W'                            ; 9326 A9 57                    
 L9335:  ldy     $03A3                           ; 9335 AC A3 03                 ...
         cpy     #'W'                            ; 9338 C0 57                    .W
         bne     L935A                           ; 933A D0 1E                    ..
-        jsr     L8B13                           ; 933C 20 13 8B                  ..
-        bcc     L9358                           ; 933F 90 17                    ..
+        jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL ;maybe returns cbm dos error code in a                          ; 933C 20 13 8B                  ..
+        bcc     L9358 ;branch on error                          ; 933F 90 17                    ..
         jsr     L8FF3                           ; 9341 20 F3 8F                  ..
         stz     $0218                           ; 9344 9C 18 02                 ...
         lda     $03A4                           ; 9347 AD A4 03                 ...
@@ -2884,8 +2922,8 @@ L9378:  sec                                     ; 9378 38                       
 ; ----------------------------------------------------------------------------
 L937A:  cpy     #$41                            ; 937A C0 41                    .A
         bne     L938D                           ; 937C D0 0F                    ..
-        jsr     L8D17                           ; 937E 20 17 8D                  ..
-L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN                           ; 9381 20 40 8B                  @.
+        jsr     L8D17  ;maybe returns cbm dos error in a                         ; 937E 20 17 8D                  ..
+L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN      ; 9381 20 40 8B                  @.
         lda     #$47                            ; 9384 A9 47                    .G
         bcc     L9358                           ; 9386 90 D0                    ..
         bit     SXREG                           ; 9388 2C 9D 03                 ,..
@@ -3232,43 +3270,48 @@ V1541_OPEN:
         jmp     V1541_KERNAL_CALL_DONE          ; 966E 4C 3F 99                 L?.
 ; ----------------------------------------------------------------------------
 L9671_V1541_INTERNAL_OPEN:
-        jsr     L8EAF                           ; 9671 20 AF 8E                  ..
+        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP ;maybe returns a cbm dos error code                          ; 9671 20 AF 8E                  ..
 L9675 := *+1
-        BCC     L969A
+        BCC     L969A_ERROR
         BIT     #$20
-        BNE     L969A
+        BNE     L969A_ERROR
         ldx     $03A0                           ; 967A AE A0 03                 ...
         cpx     #'$'                            ; 967D E0 24                    .$
         bne     L969C                           ; 967F D0 1B                    ..
         ldx     $03A3                           ; 9681 AE A3 03                 ...
-        bne     L9698                           ; 9684 D0 12                    ..
+        bne     L9698_ERROR_34_SYNTAX_ERROR     ; 9684 D0 12                    ..
         jsr     L9041                           ; 9686 20 41 90                  A.
         jsr     L8C2A                           ; 9689 20 2A 8C                  *.
         lda     #$40                            ; 968C A9 40                    .@
         tsb     $E7                             ; 968E 04 E7                    ..
         bra     L96C0                           ; 9690 80 2E                    ..
-L9692:  lda     #$40                            ; 9692 A9 40                    .@
+; ----------------------------------------------------------------------------
+L9692_ERROR_64_FILE_TYPE_MISMATCH:
+        lda     #$40                            ; 9692 A9 40                    .@
         .byte   $2C                             ; 9694 2C                       ,
-L9695:  lda     #$3C                            ; 9695 A9 3C                    .<
+L9695_ERROR_60_WRITE_FILE_OPEN:
+        lda     #$3C                            ; 9695 A9 3C                    .<
         .byte   $2C                             ; 9697 2C                       ,
-L9698:  lda     #$22                            ; 9698 A9 22                    ."
-L969A:  clc                                     ; 969A 18                       .
+L9698_ERROR_34_SYNTAX_ERROR:
+        lda     #$22                            ; 9698 A9 22                    ."
+L969A_ERROR:
+        clc                                     ; 969A 18                       .
         rts                                     ; 969B 60                       `
 ; ----------------------------------------------------------------------------
 L969C:  jsr     L8D9F                           ; 969C 20 9F 8D                  ..
-        bcc     L969A                           ; 969F 90 F9                    ..
+        bcc     L969A_ERROR                           ; 969F 90 F9                    ..
         lda     $0218                           ; 96A1 AD 18 02                 ...
 L96A5 := *+1
         bit     #$20
-        bne     L9695
+        bne     L9695_ERROR_60_WRITE_FILE_OPEN
         bit     #$80                            ; 96A8 89 80                    ..
         bne     L96B1                           ; 96AA D0 05                    ..
-        jsr     L8E20                           ; 96AC 20 20 8E                   .
-        bcc     L969A                           ; 96AF 90 E9                    ..
-L96B1:  jsr     L9011                           ; 96B1 20 11 90                  ..
-        bcc     L969A                           ; 96B4 90 E4                    ..
+        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A                          ; 96AC 20 20 8E                   .
+        bcc     L969A_ERROR ;branch if error                          ; 96AF 90 E9                    ..
+L96B1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;maybe returns cbm dos error code in A                          ; 96B1 20 11 90                  ..
+        bcc     L969A_ERROR                           ; 96B4 90 E4                    ..
         cpx     #'S'                            ; 96B6 E0 53                    .S
-        beq     L9692                           ; 96B8 F0 D8                    ..
+        beq     L9692_ERROR_64_FILE_TYPE_MISMATCH                           ; 96B8 F0 D8                    ..
         jsr     L8C2A                           ; 96BA 20 2A 8C                  *.
         jsr     L902D                           ; 96BD 20 2D 90                  -.
 L96C0:  lda     #$10                            ; 96C0 A9 10                    ..
@@ -3340,19 +3383,21 @@ L9732:  rol     a                               ; 9732 2A                       
         ror     a                               ; 9735 6A                       j
         rts                                     ; 9736 60                       `
 ; ----------------------------------------------------------------------------
-L9737:  jsr     L8C36                           ; 9737 20 36 8C                  6.
+L9737_V1541_INTERNAL_OPEN_CMD_CHAN:
+        jsr     L8C36                           ; 9737 20 36 8C                  6.
         lda     #$10                            ; 973A A9 10                    ..
         tsb     $E7                             ; 973C 04 E7                    ..
         ldy     FNLEN                           ; 973E AC 87 03                 ...
         sty     $02D5                           ; 9741 8C D5 02                 ...
         jsr     L972E                           ; 9744 20 2E 97                  ..
         bcs     L974A                           ; 9747 B0 01                    ..
-L9749:  rts                                     ; 9749 60                       `
+L9749_RTS:
+        rts                                     ; 9749 60                       `
 ; ----------------------------------------------------------------------------
 L974A:  lda     #FNADR                          ; 974A A9 AE                    ..
         sta     SINNER                          ; 974C 8D 4E 03                 .N.
         dey                                     ; 974F 88                       .
-        bmi     L9749                           ; 9750 30 F7                    0.
+        bmi     L9749_RTS                       ; 9750 30 F7                    0.
 L9752:  jsr     GO_RAM_LOAD_GO_KERN             ; 9752 20 4A 03                  J.
         sta     $0295,y                         ; 9755 99 95 02                 ...
         dey                                     ; 9758 88                       .
@@ -3370,6 +3415,7 @@ L9769:  INC     $02d5
         beq     L9772_V1541_INTERPRET_CMD       ; 976E F0 02                    ..
         sec                                     ; 9770 38                       8
         rts                                     ; 9771 60                       `
+
 L9772_V1541_INTERPRET_CMD:
         lda     $0295                           ; 9772 AD 95 02                 ...
 L9775:  ldx     #$07                            ; 9775 A2 07                    ..
@@ -3378,9 +3424,10 @@ L9777:  cmp     L978E_V1541_CMDS,x              ; 9777 DD 8E 97                 
         dex                                     ; 977C CA                       .
 L977E := *+1
         bpl     L9777
-        lda     #$1F                            ; 977F A9 1F                    ..
+        lda     #$1F ;Invalid command           ; 977F A9 1F                    ..
         clc                                     ; 9781 18                       .
         rts                                     ; 9782 60                       `
+
 L9783:  txa                                     ; 9783 8A                       .
         and     #$FE                            ; 9784 29 FE                    ).
         pha                                     ; 9786 48                       H
@@ -3390,7 +3437,7 @@ L9783:  txa                                     ; 9783 8A                       
 L9792 := *+4
 
 L978E_V1541_CMDS:
-        .byte 'I', 'i', 'R', 'r', 'S', 's', 'V', 'v'
+        .byte "Ii", "Rr", "Ss", "Vv"
 L9796_V1541_CMD_HANDLERS:
         .word L8C6F_V1541_I_INITIALIZE
         .word L980E_V1541_R_RENAME
@@ -3403,6 +3450,7 @@ L979E:  ldy     $02d5
         ldx     #$02
 L97A7 := *+1
         jmp     L8EB6
+
 L97A9:  jsr     L979E                           ; 97A9 20 9E 97                  ..
 L97AC:  lda     ($E2)                           ; 97AC B2 E2                    ..
         inc     $E2                             ; 97AE E6 E2                    ..
@@ -3410,7 +3458,7 @@ L97AC:  lda     ($E2)                           ; 97AC B2 E2                    
         inc     $E3                             ; 97B2 E6 E3                    ..
 L97B4:  dec     $039F                           ; 97B4 CE 9F 03                 ...
         beq     L97D2                           ; 97B7 F0 19                    ..
-        cmp     #$3D                            ; 97B9 C9 3D                    .=
+        cmp     #'='                            ; 97B9 C9 3D                    .=
         bne     L97AC                           ; 97BB D0 EF                    ..
         jsr     L8EBD                           ; 97BD 20 BD 8E                  ..
         bcc     L97D4                           ; 97C0 90 12                    ..
@@ -3421,22 +3469,23 @@ L97B4:  dec     $039F                           ; 97B4 CE 9F 03                 
         bne     L97D2                           ; 97CD D0 03                    ..
         jmp     L8D9F                           ; 97CF 4C 9F 8D                 L..
 ; ----------------------------------------------------------------------------
-L97D2:  lda     #$21                            ; 97D2 A9 21                    .!
+L97D2:  lda     #$21 ;Invalid filename          ; 97D2 A9 21                    .!
 L97D4:  clc                                     ; 97D4 18                       .
         rts                                     ; 97D5 60                       `
 ; ----------------------------------------------------------------------------
 L97D6_V1541_S_SCRATCH:
         bcs     L97DC                           ; 97D6 B0 04                    ..
-L97D8:  lda     #$22                            ; 97D8 A9 22                    ."
+L97D8_SCRATCH_NO_FILENAME:
+        lda     #$22 ;34 No file given          ; 97D8 A9 22                    ."
         clc                                     ; 97DA 18                       .
         rts                                     ; 97DB 60                       `
 ; ----------------------------------------------------------------------------
 L97DC:  bit     #$80                            ; 97DC 89 80                    ..
-        beq     L97D8                           ; 97DE F0 F8                    ..
+        beq     L97D8_SCRATCH_NO_FILENAME       ; 97DE F0 F8                    ..
         and     #$20                            ; 97E0 29 20                    )
         ora     $03A4                           ; 97E2 0D A4 03                 ...
         ora     $03A3                           ; 97E5 0D A3 03                 ...
-        bne     L97D8                           ; 97E8 D0 EE                    ..
+        bne     L97D8_SCRATCH_NO_FILENAME       ; 97E8 D0 EE                    ..
         lda     #$00                            ; 97EA A9 00                    ..
         pha                                     ; 97EC 48                       H
 L97ED:
@@ -3446,7 +3495,7 @@ L97EE           := * + 1
 L97F2:  tsx                                     ; 97F2 BA                       .
 L97F5           := * + 2
         inc     stack+1,x                       ; 97F3 FE 01 01                 ...
-        jsr     L8D17                           ; 97F6 20 17 8D                  ..
+        jsr     L8D17  ;maybe returns cbm dos error in a                         ; 97F6 20 17 8D                  ..
         lda     $0218                           ; 97F9 AD 18 02                 ...
         and     #$80                            ; 97FC 29 80                    ).
         bne     L97ED                           ; 97FE D0 ED                    ..
@@ -3456,33 +3505,35 @@ L9805:  pla                                     ; 9805 68                       
         ldx     #$01                            ; 9806 A2 01                    ..
         ldy     #$00                            ; 9808 A0 00                    ..
         sec                                     ; 980A 38                       8
-        jmp     L9964                           ; 980B 4C 64 99                 Ld.
+        jmp     L9964_STORE_XAYZ                           ; 980B 4C 64 99                 Ld.
 ; ----------------------------------------------------------------------------
 L980F := *+1
 L980E_V1541_R_RENAME:
-        bcc     L9840
+        bcc     L9840_RENAME_ERROR
         bit     #$80
-        beq     L983E
+        beq     L983E_RENAME_INVALID_FILENAME
         and     #$40                            ; 9814 29 40                    )@
         ora     $03A0                           ; 9816 0D A0 03                 ...
         ora     $03A3                           ; 9819 0D A3 03                 ...
 L981D := *+1
         ORA     $03a4
-        bne     L983E                           ; 981F D0 1D                    ..
+        bne     L983E_RENAME_INVALID_FILENAME   ; 981F D0 1D                    ..
         jsr     L8D9F                           ; 9821 20 9F 8D                  ..
-        lda     #$3F                            ; 9824 A9 3F                    .?
-        bcs     L9840                           ; 9826 B0 18                    ..
+        lda     #$3F ;63 File exists            ; 9824 A9 3F                    .?
+        bcs     L9840_RENAME_ERROR              ; 9826 B0 18                    ..
         jsr     L97A9                           ; 9828 20 A9 97                  ..
-        bcc     L9840                           ; 982B 90 13                    ..
+        bcc     L9840_RENAME_ERROR              ; 982B 90 13                    ..
         jsr     L979E                           ; 982D 20 9E 97                  ..
         jsr     L8FF3                           ; 9830 20 F3 8F                  ..
 L9833:  jsr     L8D5B                           ; 9833 20 5B 8D                  [.
-        bcc     L9840                           ; 9836 90 08                    ..
+        bcc     L9840_RENAME_ERROR              ; 9836 90 08                    ..
         jsr     L97A9                           ; 9838 20 A9 97                  ..
-        jmp     L8D17                           ; 983B 4C 17 8D                 L..
+        jmp     L8D17 ;maybe returns cbm dos error in a                          ; 983B 4C 17 8D                 L..
 ; ----------------------------------------------------------------------------
-L983E:  lda     #$21                            ; 983E A9 21                    .!
-L9840:  clc                                     ; 9840 18                       .
+L983E_RENAME_INVALID_FILENAME:
+        lda     #$21 ;33 Invalid filename       ; 983E A9 21                    .!
+L9840_RENAME_ERROR:
+        clc                                     ; 9840 18                       .
         rts                                     ; 9841 60                       `
 ; ----------------------------------------------------------------------------
 L9842_V1541_V_VALIDATE:
@@ -3509,7 +3560,7 @@ L986C:  jsr     L8CBB                           ; 986C 20 BB 8C                 
 L9871:  jsr     L8CC3                           ; 9871 20 C3 8C                  ..
         bcc     L988B                           ; 9874 90 15                    ..
         jsr     L8CD1                           ; 9876 20 D1 8C                  ..
-        jsr     L8AD5                           ; 9879 20 D5 8A                  ..
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 9879 20 D5 8A                  ..
         ldy     #$02                            ; 987C A0 02                    ..
         lda     $EA                             ; 987E A5 EA                    ..
         sta     ($E4),y                         ; 9880 91 E4                    ..
@@ -3520,10 +3571,12 @@ L9882:  inc     $E9                             ; 9882 E6 E9                    
 L988B:  bit     SXREG                           ; 988B 2C 9D 03                 ,..
         bpl     L9871                           ; 988E 10 E1                    ..
 L9890:  jsr     L8CBB                           ; 9890 20 BB 8C                  ..
+;TODO probably code
         .byte   $90                             ; 9893 90                       .
 L9894:  .byte   $3B                             ; 9894 3B                       ;
         bra     L98AB                           ; 9895 80 14                    ..
 L9897:  jsr     L8CC3                           ; 9897 20 C3 8C                  ..
+;TODO probably code
         .byte   $90                             ; 989A 90                       .
 L989B:  bit     $20,x                           ; 989B 34 20                    4
         rol     a                               ; 989D 2A                       *
@@ -3533,11 +3586,12 @@ L989E:  sty     $18AD                           ; 989E 8C AD 18                 
         bne     L98B4                           ; 98A4 D0 0E                    ..
         lda     $0219                           ; 98A6 AD 19 02                 ...
         sta     $E8                             ; 98A9 85 E8                    ..
-L98AB:  jsr     L8AD5                           ; 98AB 20 D5 8A                  ..
-        bcs     L98B9                           ; 98AE B0 09                    ..
+L98AB:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER   ; 98AB 20 D5 8A                  ..
+        bcs     L98B9 ;branch if no error        ; 98AE B0 09                    ..
+        ;error
         lda     $E9                             ; 98B0 A5 E9                    ..
         beq     L9897                           ; 98B2 F0 E3                    ..
-L98B4:  jsr     L8D17                           ; 98B4 20 17 8D                  ..
+L98B4:  jsr     L8D17 ;maybe returns cbm dos error in a                          ; 98B4 20 17 8D                  ..
         bra     L9890                           ; 98B7 80 D7                    ..
 L98B9:  inc     $E9                             ; 98B9 E6 E9                    ..
         ldy     #$02                            ; 98BB A0 02                    ..
@@ -3549,6 +3603,7 @@ L98B9:  inc     $E9                             ; 98B9 E6 E9                    
         sta     $E9                             ; 98C7 85 E9                    ..
         pla                                     ; 98C9 68                       h
         cmp     $E9                             ; 98CA C5 E9                    ..
+;TODO probably code
         .byte   $D0                             ; 98CC D0                       .
 L98CD:  inc     $80                             ; 98CD E6 80                    ..
         .byte   $C7                             ; 98CF C7                       .
@@ -3560,7 +3615,7 @@ L98D2:  stz     $0295,x                         ; 98D2 9E 95 02                 
         jsr     L8CBB                           ; 98DB 20 BB 8C                  ..
 L98DE:  bcc     L9917                           ; 98DE 90 37                    .7
         bra     L98E5                           ; 98E0 80 03                    ..
-L98E2:  jsr     L8D17                           ; 98E2 20 17 8D                  ..
+L98E2:  jsr     L8D17 ;maybe returns cbm dos error in a                          ; 98E2 20 17 8D                  ..
 L98E5:  jsr     L8CBB                           ; 98E5 20 BB 8C                  ..
 L98E8:  bra     L98ED                           ; 98E8 80 03                    ..
 L98EA:  jsr     L8CC3                           ; 98EA 20 C3 8C                  ..
@@ -3575,9 +3630,10 @@ L98ED:  bcc     L9917                           ; 98ED 90 28                    
         trb     $0218                           ; 9902 1C 18 02                 ...
         bne     L990F                           ; 9905 D0 08                    ..
         lda     $0219                           ; 9907 AD 19 02                 ...
-        jsr     L8E20                           ; 990A 20 20 8E                   .
-        bcs     L98EA                           ; 990D B0 DB                    ..
-L990F:  jsr     L8D17                           ; 990F 20 17 8D                  ..
+        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A                          ; 990A 20 20 8E                   .
+        bcs     L98EA ;branch if no error       ; 990D B0 DB                    ..
+        ;error occurred
+L990F:  jsr     L8D17 ;maybe returns cbm dos error in a                          ; 990F 20 17 8D                  ..
         jsr     L8D5B                           ; 9912 20 5B 8D                  [.
         bra     L98D0                           ; 9915 80 B9                    ..
 L9917:  jsr     L8A81                           ; 9917 20 81 8A                  ..
@@ -3605,14 +3661,16 @@ L9932:  pha                                     ; 9932 48                       
 L993E:  rts                                     ; 993E 60                       `
 ; ----------------------------------------------------------------------------
 V1541_KERNAL_CALL_DONE:
-        tax                                     ; 993F AA                       .
+        tax ;Save error code in X               ; 993F AA                       .
         lda     #$00                            ; 9940 A9 00                    ..
-        bcs     L9955                           ; 9942 B0 11                    ..
+        bcs     L9955 ;error occurred?          ; 9942 B0 11                    ..
+
+        ;error occurred
         lda     $E8                             ; 9944 A5 E8                    ..
         ldy     $E9                             ; 9946 A4 E9                    ..
-        jsr     L9964                           ; 9948 20 64 99                  d.
+        jsr     L9964_STORE_XAYZ                ; 9948 20 64 99                  d.
         lda     #$04                            ; 994B A9 04                    ..
-        cpx     #$19                            ; 994D E0 19                    ..
+        cpx     #$19 ;25 write-verify error     ; 994D E0 19                    ..
         bne     L9953                           ; 994F D0 02                    ..
         ora     #$08                            ; 9951 09 08                    ..
 L9953:  ldx     #$0D                            ; 9953 A2 0D                    ..
@@ -3625,7 +3683,8 @@ L995C:  sta     SATUS                           ; 995C 85 BA                    
 L9962:  clc                                     ; 9962 18                       .
         rts                                     ; 9963 60                       `
 ; ----------------------------------------------------------------------------
-L9964:  stx     $0210                           ; 9964 8E 10 02                 ...
+L9964_STORE_XAYZ:
+        stx     $0210                           ; 9964 8E 10 02                 ...
         sta     $0211                           ; 9967 8D 11 02                 ...
 L96A9 := *-1
         sty     $0212                           ; 996A 8C 12 02                 ...
@@ -3679,8 +3738,15 @@ L9A2B := *+3
 L9A6A:  .byte   $3E,$31,$73,$3C,$3F,$31,$2A,$00 ; 9A6A 3E 31 73 3C 3F 31 2A 00  >1s<?1*.
         .byte   $40,$31,$AC,$67,$43,$47,$9D,$A4 ; 9A72 40 31 AC 67 43 47 9D A4  @1.gCG..
         .byte   $46,$70,$01,$00,$47,$11,$24,$00 ; 9A7A 46 70 01 00 47 11 24 00  Fp..G.$.
-        .byte   $47,$11,$24,$00,$48             ; 9A82 47 11 24 00 48           G.$.H
-L9A87:  .byte   $1B,$42,$00,$49,$20,$67,$24     ; 9A87 1B 42 00 49 20 67 24     .B.I g$
+        .byte   $47,$11,$24,$00
+        .byte   $48 ;72 Disk full
+L9A87:  .byte   $1B ;27 Read error (checksum error in header)
+        .byte   $42 ;66 Illegal track or sector
+        .byte   $00 ;0 OK
+        .byte   $49 ;73 Power-on message
+        .byte   $20 ;32 Syntax error (long line)
+        .byte   $67 ;103
+        .byte   $24 ;36
 L9A8E:  .byte   $00,$01,$02,$80,$81,$82,$83,$84 ; 9A8E 00 01 02 80 81 82 83 84  ........
         .byte   $85,$86,$87,$88                 ; 9A96 85 86 87 88              ....
 L9A9A:  .byte   $41,$81,$10,$22,$42,$82,$10,$23 ; 9A9A 41 81 10 22 42 82 10 23  A.."B..#
@@ -3864,6 +3930,7 @@ L9BE0:  lda     $2D                             ; 9BE0 A5 2D                    
         cmp     #$91                            ; 9BE6 C9 91                    ..
         bcs     L9C05                           ; 9BE8 B0 1B                    ..
         jsr     LA338                           ; 9BEA 20 38 A3                  8.
+;TODO code
         .byte   $A5                             ; 9BED A5                       .
 L9BEE:  .byte   $2B                             ; 9BEE 2B                       +
         ldy     $2C                             ; 9BEF A4 2C                    .,
@@ -12369,7 +12436,7 @@ LD584:  cpy     $78                             ; D584 C4 78                    
 LD58C:  jsr     L98DE                           ; D58C 20 DE 98                  ..
         bne     LD57C                           ; D58F D0 EB                    ..
         beq     LD5BA                           ; D591 F0 27                    .'
-LD593:  jsr     L8E35                           ; D593 20 35 8E                  5.
+LD593:  jsr     L8E35_27_CHECKSUM_ERROR_IN_HEADER                           ; D593 20 35 8E                  5.
         ldy     #$FF                            ; D596 A0 FF                    ..
 LD598:  iny                                     ; D598 C8                       .
         lda     stack,y                         ; D599 B9 00 01                 ...
@@ -15128,7 +15195,7 @@ LEAEA:  .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; EAEA FF FF FF FF FF FF FF FF  
 ; ----------------------------------------------------------------------------
         jmp     L792A                           ; EF03 4C 2A 79                 L*y
 ; ----------------------------------------------------------------------------
-        jmp     L8E35                           ; EF06 4C 35 8E                 L5.
+        jmp     L8E35_27_CHECKSUM_ERROR_IN_HEADER                           ; EF06 4C 35 8E                 L5.
 ; ----------------------------------------------------------------------------
         jmp     L8052                           ; EF09 4C 52 80                 LR.
 ; ----------------------------------------------------------------------------
