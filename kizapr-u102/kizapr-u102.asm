@@ -1111,7 +1111,7 @@ L8685:  stz     $0200
         jsr     L87BA
         jsr     KL_RESTOR
         jsr     LFDDF
-        jsr     L8C6F
+        jsr     L8C6F_V1541_I_INITIALIZE
         stz     $0384
 ; Set MEMBOT vector to $0FFF
         ldy     #>$0FFF
@@ -1161,7 +1161,7 @@ L86E3:  lda     $D9
         plp
         rts
 ; ----------------------------------------------------------------------------
-L86E9:  jsr     L8C6F
+L86E9:  jsr     L8C6F_V1541_I_INITIALIZE
         jsr     L86F6
         sta     $02D9
         sty     $02DA
@@ -1940,9 +1940,11 @@ L8C68:  clc                                     ; 8C68 18                       
         sec                                     ; 8C6D 38                       8
 L8C6E:  rts                                     ; 8C6E 60                       `
 ; ----------------------------------------------------------------------------
-L8C6F:  lda     #$0E                            ; 8C6F A9 0E                    ..
+L8C6F_V1541_I_INITIALIZE:
+        lda     #$0E                            ; 8C6F A9 0E                    ..
         jsr     L8C40                           ; 8C71 20 40 8C                  @.
         ldx     #$47                            ; 8C74 A2 47                    .G
+;TODO code
 L8C76:  .byte   $9E                             ; 8C76 9E                       .
 L8C77:  eor     $CA02                           ; 8C77 4D 02 CA                 M..
 L8C7A:  bpl     L8C76                           ; 8C7A 10 FA                    ..
@@ -2246,7 +2248,7 @@ L8EAE:  rts                                     ; 8EAE 60                       
 L8EAF:  lda     FNADR                           ; 8EAF A5 AE                    ..
         ldx     FNADR+1                         ; 8EB1 A6 AF                    ..
         ldy     FNLEN                           ; 8EB3 AC 87 03                 ...
-        sta     $E2                             ; 8EB6 85 E2                    ..
+L8EB6:  sta     $E2                             ; 8EB6 85 E2                    ..
         stx     $E3                             ; 8EB8 86 E3                    ..
         sty     $039F                           ; 8EBA 8C 9F 03                 ...
 L8EBD:  stz     $03A5                           ; 8EBD 9C A5 03                 ...
@@ -3315,6 +3317,7 @@ L9703:  iny                                     ; 9703 C8                       
 L9712:  ply                                     ; 9712 7A                       z
         cpy     $E0                             ; 9713 C4 E0                    ..
         bne     L9703                           ; 9715 D0 EC                    ..
+;TODO probably wrong
         .byte   $80                             ; 9717 80                       .
 L9718:  .byte   $C1                             ; 9718 C1                       .
 L9719:  .byte   $20                             ; 9719 20
@@ -3354,53 +3357,52 @@ L9752:  jsr     GO_RAM_LOAD_GO_KERN             ; 9752 20 4A 03                 
         sta     $0295,y                         ; 9755 99 95 02                 ...
         dey                                     ; 9758 88                       .
         bpl     L9752                           ; 9759 10 F7                    ..
-        bra     L9772                           ; 975B 80 15                    ..
+        bra     L9772_V1541_INTERPRET_CMD       ; 975B 80 15                    ..
 L975D:  ldy     $02D5                           ; 975D AC D5 02                 ...
         jsr     L972E                           ; 9760 20 2E 97                  ..
         bcs     L9766                           ; 9763 B0 01                    ..
         rts                                     ; 9765 60                       `
 ; ----------------------------------------------------------------------------
-L9766:  .byte   $99                             ; 9766 99                       .
-L9767:  sta     $02,x                           ; 9767 95 02                    ..
-        inc     $02D5                           ; 9769 EE D5 02                 ...
-        cmp     #$0D                            ; 976C C9 0D                    ..
-        beq     L9772                           ; 976E F0 02                    ..
+L9767 :=  *+1
+L9766:  STA     $0295,Y
+L9769:  INC     $02d5
+        cmp     #$0D ;CR?                       ; 976C C9 0D                    ..
+        beq     L9772_V1541_INTERPRET_CMD       ; 976E F0 02                    ..
         sec                                     ; 9770 38                       8
         rts                                     ; 9771 60                       `
-; ----------------------------------------------------------------------------
-L9772:  lda     $0295                           ; 9772 AD 95 02                 ...
+L9772_V1541_INTERPRET_CMD:
+        lda     $0295                           ; 9772 AD 95 02                 ...
 L9775:  ldx     #$07                            ; 9775 A2 07                    ..
-L9777:  cmp     L978E,x                         ; 9777 DD 8E 97                 ...
+L9777:  cmp     L978E_V1541_CMDS,x              ; 9777 DD 8E 97                 ...
         beq     L9783                           ; 977A F0 07                    ..
         dex                                     ; 977C CA                       .
-        .byte   $10                             ; 977D 10                       .
-L977E:  sed                                     ; 977E F8                       .
+L977E := *+1
+        bpl     L9777
         lda     #$1F                            ; 977F A9 1F                    ..
         clc                                     ; 9781 18                       .
         rts                                     ; 9782 60                       `
-; ----------------------------------------------------------------------------
 L9783:  txa                                     ; 9783 8A                       .
         and     #$FE                            ; 9784 29 FE                    ).
         pha                                     ; 9786 48                       H
         jsr     L979E                           ; 9787 20 9E 97                  ..
         plx                                     ; 978A FA                       .
-        jmp     (L9796,x)                       ; 978B 7C 96 97                 |..
-L978E:  eor     #$69                            ; 978E 49 69                    Ii
-        eor     ($72)                           ; 9790 52 72                    Rr
-L9792:  .byte   $53                             ; 9792 53                       S
-        .byte   $73                             ; 9793 73                       s
-        lsr     $76,x                           ; 9794 56 76                    Vv
-L9796:  bbr6    $8C,L97A7                       ; 9796 6F 8C 0E                 o..
-        tya                                     ; 9799 98                       .
-L979A:  dec     $97,x                           ; 979A D6 97                    ..
-        .byte   $42                             ; 979C 42                       B
-        tya                                     ; 979D 98                       .
-L979E:  ldy     $02D5                           ; 979E AC D5 02                 ...
-        dey                                     ; 97A1 88                       .
-        lda     #$96                            ; 97A2 A9 96                    ..
-        ldx     #$02                            ; 97A4 A2 02                    ..
-        .byte   $4C                             ; 97A6 4C                       L
-L97A7:  ldx     $8E,y                           ; 97A7 B6 8E                    ..
+        jmp     (L9796_V1541_CMD_HANDLERS,x)    ; 978B 7C 96 97                 |..
+L9792 := *+4
+
+L978E_V1541_CMDS:
+        .byte 'I', 'i', 'R', 'r', 'S', 's', 'V', 'v'
+L9796_V1541_CMD_HANDLERS:
+        .word L8C6F_V1541_I_INITIALIZE
+        .word L980E_V1541_R_RENAME
+L979A:  .word L97D6_V1541_S_SCRATCH
+        .word L9842_V1541_V_VALIDATE
+
+L979E:  ldy     $02d5
+        dey
+        lda     #$96
+        ldx     #$02
+L97A7 := *+1
+        jmp     L8EB6
 L97A9:  jsr     L979E                           ; 97A9 20 9E 97                  ..
 L97AC:  lda     ($E2)                           ; 97AC B2 E2                    ..
         inc     $E2                             ; 97AE E6 E2                    ..
@@ -3423,6 +3425,7 @@ L97D2:  lda     #$21                            ; 97D2 A9 21                    
 L97D4:  clc                                     ; 97D4 18                       .
         rts                                     ; 97D5 60                       `
 ; ----------------------------------------------------------------------------
+L97D6_V1541_S_SCRATCH:
         bcs     L97DC                           ; 97D6 B0 04                    ..
 L97D8:  lda     #$22                            ; 97D8 A9 22                    ."
         clc                                     ; 97DA 18                       .
@@ -3455,15 +3458,16 @@ L9805:  pla                                     ; 9805 68                       
         sec                                     ; 980A 38                       8
         jmp     L9964                           ; 980B 4C 64 99                 Ld.
 ; ----------------------------------------------------------------------------
-        .byte   $90                             ; 980E 90                       .
-L980F:  bmi     L979A                           ; 980F 30 89                    0.
-        bra     L9803                           ; 9811 80 F0                    ..
-        rol     a                               ; 9813 2A                       *
+L980F := *+1
+L980E_V1541_R_RENAME:
+        bcc     L9840
+        bit     #$80
+        beq     L983E
         and     #$40                            ; 9814 29 40                    )@
         ora     $03A0                           ; 9816 0D A0 03                 ...
         ora     $03A3                           ; 9819 0D A3 03                 ...
-        .byte   $0D                             ; 981C 0D                       .
-L981D:  ldy     $03                             ; 981D A4 03                    ..
+L981D := *+1
+        ORA     $03a4
         bne     L983E                           ; 981F D0 1D                    ..
         jsr     L8D9F                           ; 9821 20 9F 8D                  ..
         lda     #$3F                            ; 9824 A9 3F                    .?
@@ -3481,7 +3485,8 @@ L983E:  lda     #$21                            ; 983E A9 21                    
 L9840:  clc                                     ; 9840 18                       .
         rts                                     ; 9841 60                       `
 ; ----------------------------------------------------------------------------
-        jsr     L8C6F                           ; 9842 20 6F 8C                  o.
+L9842_V1541_V_VALIDATE:
+        jsr     L8C6F_V1541_I_INITIALIZE        ; 9842 20 6F 8C                  o.
         jsr     KL_RAMTAS                       ; 9845 20 A8 86                  ..
         cpx     $0209                           ; 9848 EC 09 02                 ...
         beq     L985B                           ; 984B F0 0E                    ..
@@ -3622,6 +3627,7 @@ L9962:  clc                                     ; 9962 18                       
 ; ----------------------------------------------------------------------------
 L9964:  stx     $0210                           ; 9964 8E 10 02                 ...
         sta     $0211                           ; 9967 8D 11 02                 ...
+L96A9 := *-1
         sty     $0212                           ; 996A 8C 12 02                 ...
         stz     $0217
         rts                                     ; 9970 60                       `
@@ -12374,7 +12380,7 @@ LD598:  iny                                     ; D598 C8                       
         sta     LFF04                           ; D5A4 8D 04 FF                 ...
 LD5A7:  lda     stack,y                         ; D5A7 B9 00 01                 ...
         beq     LD5B1                           ; D5AA F0 05                    ..
-        sta     ($64),y                         ; D5AC 91 64                    .d
+LD5AC:  sta     ($64),y                         ; D5AC 91 64                    .d
         iny                                     ; D5AE C8                       .
         bne     LD5A7                           ; D5AF D0 F6                    ..
 LD5B1:  jsr     L86DF                           ; D5B1 20 DF 86                  ..

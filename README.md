@@ -180,9 +180,20 @@ The monitor commands have been extended to support the MMU.  The MMU mode is sho
 
 The `MODE` may be one of three values: 0 (`MMU_MODE_RAM`), 1 (`MMU_MODE_APPL`), or 2 (`MMU_MODE_KERN`).  The mode can be changed by cursoring up and editing the `;` line.  Any value other than 0, 1, or 2 will leave the mode unchanged.  After changing the mode, any monitor command will operate in that mode.
 
+### Virtual 1541
+
+Virtual 1541 is not a complete CBM DOS implementation.  The command channel only seems to support:
+
+- `I` Initialize ($8C6F)
+- `R` Rename ($980E)
+- `S` Scratch ($97D6)
+- `V` Validate ($9842)
+
+Strangely, format (`N`) is missing and validate (`V`) seems to format.  This can be observed in BASIC by saving a file to the Virtual 1541 and then validating with `COLLECT U1`.  
+
 ## License
 
-The KERNAL disassembly started with a [disassembly](https://web.archive.org/web/20170419205827/http://commodore-lcd.lgb.hu/sk/) published by Gábor Lénárt.  The [first commit](1ed4364725671934c2e71e171b92fc4db92292dc) in this repository was that disassembly.  It first was changed from a webpage to a source file that could be reassembled to the original `kizapr-u102.bin`.  Over time, many more comments and symbols were added.
+The KERNAL disassembly started with a [disassembly](https://web.archive.org/web/20170419205827/http://commodore-lcd.lgb.hu/sk/) published by Gábor Lénárt.  The [first commit](https://github.com/mnaberez/clcd/commit/1ed4364725671934c2e71e171b92fc4db92292dc) in this repository was that disassembly.  It first was changed from a webpage to a source file that could be reassembled to the original `kizapr-u102.bin`.  Over time, many more comments and symbols were added.
 
 No rights are claimed on the original Commodore LCD ROMs or the initial KERNAL disassembly work done by Gábor Lénárt.  All other work in this repository is made available under the [3-Clause BSD License](./LICENSE.txt).
 
