@@ -110,6 +110,7 @@ FA              := $00C5
 LA              := $00C6
 LENGTH          := $00CF
 V1541_FNADR     := $00E2  ;2 bytes
+V1541_CHAN      =: $00E6
 BLNCT           := $00EF  ;Counter for cursor blink
 stack           := $0100
 V1541_CMD_BUF   := $0295
@@ -1809,8 +1810,8 @@ L8B3F := *+2
         jmp     V1541_KERNAL_CALL_DONE
 
 L8B40_V1541_INTERNAL_CHRIN:
-        jsr     L8C36 ;channel related; maybe returns a cbm dos error code                           ; 8B40 20 36 8C                  6.
-        bcs     L8B46                           ; 8B43 B0 01                    ..
+        jsr     L8C36_CHAN_FROM_SA ;channel related; maybe returns a cbm dos error code                           ; 8B40 20 36 8C                  6.
+        bcs     L8B46 ;branch if no error        ; 8B43 B0 01                    ..
         rts                                     ; 8B45 60                       `
 ; ----------------------------------------------------------------------------
 L8B46:  lda     $E7                             ; 8B46 A5 E7                    ..
@@ -1820,7 +1821,7 @@ L8B46:  lda     $E7                             ; 8B46 A5 E7                    
         clc                                     ; 8B4E 18                       .
         rts                                     ; 8B4F 60                       `
 ; ----------------------------------------------------------------------------
-L8B50:  lda     $E6                             ; 8B50 A5 E6                    ..
+L8B50:  lda     V1541_CHAN                      ; 8B50 A5 E6                    ..
         cmp     #$0F ;command channel?          ; 8B52 C9 0F                    ..
         bne     L8B59                           ; 8B54 D0 03                    ..
         jmp     L9AA5_V1541_CHRIN_CMD_CHAN      ; 8B56 4C A5 9A                 L..
@@ -1876,8 +1877,8 @@ V1541_CHROUT:
 ; ----------------------------------------------------------------------------
 L8BB0_V1541_INTERNAL_CHROUT:
         sta     $039E                           ; 8BB0 8D 9E 03                 ...
-        jsr     L8C36 ;channel related                          ; 8BB3 20 36 8C                  6.
-        bcs     L8BB9 ;branch if no error                          ; 8BB6 B0 01                    ..
+        jsr     L8C36_CHAN_FROM_SA ;channel related  ; 8BB3 20 36 8C                  6.
+        bcs     L8BB9 ;branch if no error          ; 8BB6 B0 01                    ..
         rts                                     ; 8BB8 60                       `
 
 L8BB9:  lda     $E7                             ; 8BB9 A5 E7                    ..
@@ -1894,9 +1895,9 @@ L8BC7_73_DOS_MISMATCH:
         lda     #doserr_73_dos_mismatch         ; 8BC7 A9 49                    .I
         bra     L8BC1_CLC_RTS                   ; 8BC9 80 F6                    ..
 
-L8BCB:  lda     $E6                             ; 8BCB A5 E6                    ..
-        cmp     #$0F ;command channel?                           ; 8BCD C9 0F                    ..
-        bne     L8BD7_V1541_CHROUT_NOT_CMD_CHAN                           ; 8BCF D0 06                    ..
+L8BCB:  lda     V1541_CHAN                      ; 8BCB A5 E6                    ..
+        cmp     #$0F ;command channel?          ; 8BCD C9 0F                    ..
+        bne     L8BD7_V1541_CHROUT_NOT_CMD_CHAN ; 8BCF D0 06                    ..
         jmp     L975D_V1541_CHROUT_CMD_CHAN     ; 8BD1 4C 5D 97                 L].
 ; ----------------------------------------------------------------------------
 L8BD4:  sta     $039E                           ; 8BD4 8D 9E 03                 ...
@@ -1953,26 +1954,30 @@ L8C27_71_DIR_ERROR:
 
 ; ----------------------------------------------------------------------------
 L8C2B := *+1
-L8C2A:  jsr     L8C3B ;maybe returns a cbm dos error code
+L8C2A:  jsr     L8C3B_CHAN_HEX_11 ;maybe returns a cbm dos error code
         jmp     L8C89
 
-L8C30:  jsr     L8C3E                           ; 8C30 20 3E 8C                  >.
+L8C30:  jsr     L8C3E_CHAN_HEX_10                           ; 8C30 20 3E 8C                  >.
         jmp     L8C89                           ; 8C33 4C 89 8C                 L..
 ; ----------------------------------------------------------------------------
-L8C36:  lda     SA                              ; 8C36 A5 C4                    ..
+L8C36_CHAN_FROM_SA:
+        ;SA high nib is command, low nib is channel
+        lda     SA                              ; 8C36 A5 C4                    ..
         and     #$0F                            ; 8C38 29 0F                    ).
-L8C3A:  .byte   $2C                             ; 8C3A 2C                       ,
-;maybe returns a cbm dos error code
-L8C3B:  lda     #$11                            ; 8C3B A9 11                    ..
-        .byte   $2C                             ; 8C3D 2C                       ,
-L8C3E:  lda     #$10                            ; 8C3E A9 10                    ..
-L8C40:  cmp     $E6                             ; 8C40 C5 E6                    ..
+L8C3A:  .byte   $2C ;skip next 2 bytes          ; 8C3A 2C                       ,
+L8C3B_CHAN_HEX_11:
+        lda     #$11                            ; 8C3B A9 11                    ..
+        .byte   $2C ;skip next 2 bytes          ; 8C3D 2C                       ,
+L8C3E_CHAN_HEX_10:
+        lda     #$10                            ; 8C3E A9 10                    ..
+L8C40_CHAN_A:
+        cmp     V1541_CHAN                      ; 8C40 C5 E6                    ..
         beq     L8C66_70_NO_CHANNEL             ; 8C42 F0 22                    ."
         pha                                     ; 8C44 48                       H
-        lda     $E6                             ; 8C45 A5 E6                    ..
+        lda     V1541_CHAN                      ; 8C45 A5 E6                    ..
         jsr     L8C4D                           ; 8C47 20 4D 8C                  M.
 L8C4A:  pla                                     ; 8C4A 68                       h
-        sta     $E6                             ; 8C4B 85 E6                    ..
+        sta     V1541_CHAN                      ; 8C4B 85 E6                    ..
 L8C4D:  inc     a                               ; 8C4D 1A                       .
         asl     a                               ; 8C4E 0A                       .
         asl     a                               ; 8C4F 0A                       .
@@ -1999,7 +2004,7 @@ L8C6E_RTS:
 ; ----------------------------------------------------------------------------
 L8C6F_V1541_I_INITIALIZE:
         lda     #$0E                            ; 8C6F A9 0E                    ..
-        jsr     L8C40                           ; 8C71 20 40 8C                  @.
+        jsr     L8C40_CHAN_A                    ; 8C71 20 40 8C                  @.
         ldx     #$47                            ; 8C74 A2 47                    .G
 L8C77 := *+1
 L8C76:  STZ     $024D,X                         ; 8C76 9E                       .
@@ -2012,7 +2017,7 @@ L8C7A:  bpl     L8C76                           ; 8C7A 10 FA                    
         sec                                     ; 8C82 38                       8
         jmp     L9964_STORE_XAYZ                ; 8C83 4C 64 99                 Ld.
 ; ----------------------------------------------------------------------------
-L8C86:  jsr     L8C36 ;channel related          ; 8C86 20 36 8C                  6.
+L8C86:  jsr     L8C36_CHAN_FROM_SA ;channel related          ; 8C86 20 36 8C                  6.
 L8C89:  ldx     #$03                            ; 8C89 A2 03                    ..
 L8C8B:  stz     $E7,x                           ; 8C8B 74 E7                    t.
         dex                                     ; 8C8D CA                       .
@@ -2032,7 +2037,7 @@ L8C9F:  tay                                     ; 8C9F A8                       
 L8CA2:  phy                                     ; 8CA2 5A                       Z
         phx                                     ; 8CA3 DA                       .
         txa                                     ; 8CA4 8A                       .
-        jsr     L8C40                           ; 8CA5 20 40 8C                  @.
+        jsr     L8C40_CHAN_A                    ; 8CA5 20 40 8C                  @.
         plx                                     ; 8CA8 FA                       .
         ply                                     ; 8CA9 7A                       z
         lda     $E7                             ; 8CAA A5 E7                    ..
@@ -2101,7 +2106,7 @@ L8D15_CLC_RTS:
 ; ----------------------------------------------------------------------------
 ;maybe returns cbm dos error in a
 L8D17:  jsr     L8C92                           ; 8D17 20 92 8C                  ..
-        jsr     L8C3E                           ; 8D1A 20 3E 8C                  >.
+        jsr     L8C3E_CHAN_HEX_10                           ; 8D1A 20 3E 8C                  >.
         jsr     L8CE6                           ; 8D1D 20 E6 8C                  ..
         bcc     L8D3C                           ; 8D20 90 1A                    ..
 L8D22:  bit     SXREG                           ; 8D22 2C 9D 03                 ,..
@@ -2168,15 +2173,15 @@ L8D9F:  jsr     L8C30                           ; 8D9F 20 30 8C                 
         jsr     L8CBB                           ; 8DA2 20 BB 8C                  ..
         bra     L8DAA                           ; 8DA5 80 03                    ..
 L8DA7:  jsr     L8CC3                           ; 8DA7 20 C3 8C                  ..
-L8DAA:  bcc     L8DBA                           ; 8DAA 90 0E                    ..
-        jsr     L8FC3                           ; 8DAC 20 C3 8F                  ..
-        bcc     L8DB5                           ; 8DAF 90 04                    ..
+L8DAA:  bcc     L8DBA_62_FILE_NOT_FOUND                           ; 8DAA 90 0E                    ..
+        jsr     L8FC3_COMPARE_FILENAME_INCL_WILDCARDS ; 8DAC 20 C3 8F                  ..
+        bcc     L8DB5_NO_MATCH ;filename does not match         ; 8DAF 90 04                    ..
         lda     $0218                           ; 8DB1 AD 18 02                 ...
         rts                                     ; 8DB4 60                       `
-; ----------------------------------------------------------------------------
-L8DB5:  bit     SXREG                           ; 8DB5 2C 9D 03                 ,..
+L8DB5_NO_MATCH:
+        bit     SXREG                           ; 8DB5 2C 9D 03                 ,..
         bpl     L8DA7                           ; 8DB8 10 ED                    ..
-L8DBA:  clc                                     ; 8DBA 18                       .
+L8DBA_62_FILE_NOT_FOUND:  clc                   ; 8DBA 18                       .
         lda     #doserr_62_file_not_found ;File not found            ; 8DBB A9 3E                    .>
         rts                                     ; 8DBD 60                       `
 ; ----------------------------------------------------------------------------
@@ -2326,7 +2331,7 @@ L8EBD_SETUP_FOR_FILE_ACCESS_AND_DO_DIR_SEARCH_STUFF:
         stz     V1541_FILE_TYPE
         stz     $03A0
         lda     #V1541_FNADR ;ZP-address
-        sta     SINNER
+        sta     SINNER ;Y-index for (ZP),Y
         lda     V1541_FNLEN
         bne     L8ED7
 
@@ -2336,7 +2341,7 @@ L8ED3_33_SYNTAX_ERROR:
         rts
 
 L8ED7:  ldy     #$00
-        jsr     L8FAD
+        jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
         dey
         bcc     L8ED3_33_SYNTAX_ERROR
         cmp     #'$'
@@ -2348,19 +2353,21 @@ L8EE7_GOT_DOLLAR:
         sta     $03A0
 L8EEB_GOT_AT:
         sty     MON_MMU_MODE
-L8EEE:  sty     $03A2
+
+L8EEE_NEXT_CHAR:
+        sty     $03A2
         cpy     V1541_FNLEN
         bne     L8EF9
         jmp     L8F86
 
 ;Looks like filename parsing for directory listing LOAD"$0:*=P"
-L8EF9:  jsr     L8FAD
+L8EF9:  jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
         bcc     L8ED3_33_SYNTAX_ERROR
         tax
         cpx     #' '
-        beq     L8EEE
+        beq     L8EEE_NEXT_CHAR
         cpx     #'0'
-        beq     L8EEE
+        beq     L8EEE_NEXT_CHAR
         cpx     #'9'+1
         bne     L8F14
         lda     #$03
@@ -2370,31 +2377,33 @@ L8EF9:  jsr     L8FAD
 L8F14:  lda     #$02
         tsb     $03A5
         cpx     #'='
-        beq     L8F81
+        beq     L8F81_GOT_EQUALS
         cpx     #'?'
-        beq     L8F25
+        beq     L8F25_GOT_QUESTION_OR_STAR
         cpx     #'*'
         bne     L8F2A
-L8F25:  lda     #$40
+L8F25_GOT_QUESTION_OR_STAR:
+        lda     #$40
         tsb     $03A5
 L8F2A:  cpx     #','
-        bne     L8EEE
+        bne     L8EEE_NEXT_CHAR
         dey
-L8F2F:  cpy     V1541_FNLEN
+L8F2F_NEXT_CHAR:
+        cpy     V1541_FNLEN
         beq     L8F86
-        jsr     L8FAD
+        jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
         bcc     L8F5F_33_SYNTAX_ERROR
         cmp     #'='
-        beq     L8F81
+        beq     L8F81_GOT_EQUALS
         cmp     #' '
-        beq     L8F2F
+        beq     L8F2F_NEXT_CHAR
         cmp     #','
         bne     L8F5F_33_SYNTAX_ERROR
 
 L8F45_LOOP:
         cpy     V1541_FNLEN
         bcs     L8F5F_33_SYNTAX_ERROR
-        jsr     L8FAD
+        jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
         bcc     L8F5F_33_SYNTAX_ERROR
         cmp     #' '
         beq     L8F45_LOOP
@@ -2419,19 +2428,20 @@ L8F63_FOUND_IN_SPRWAM:
         ldx     V1541_FILE_TYPE
         bne     L8F5F_33_SYNTAX_ERROR
         sta     V1541_FILE_TYPE
-        bra     L8F2F
+        bra     L8F2F_NEXT_CHAR
 L8F71_RWAM:
         ;RWAM
         ldx     V1541_FILE_MODE
         bne     L8F5F_33_SYNTAX_ERROR
         sta     V1541_FILE_MODE
-        bra     L8F2F
+        bra     L8F2F_NEXT_CHAR
 
 L8F7B_SPRWAM:
         .byte ftype_s_seq, ftype_p_prg
         .byte fmode_r_read, fmode_w_write, fmode_a_append, fmode_m_modify
 
-L8F81:  lda     #$20
+L8F81_GOT_EQUALS:
+        lda     #$20
         tsb     $03A5
 L8F86:  lda     MON_MMU_MODE
         cmp     $03A2
@@ -2452,14 +2462,19 @@ L8FAA := *+1
         lda     $03a5
 L8FAC_RTS:  rts
 ; ----------------------------------------------------------------------------
-L8FAD:  jsr     GO_RAM_LOAD_GO_KERN
+;Get the next character from the filename and check
+;if it contains a disallowed character.
+;
+;Returns A=char, carry=clear on error
+L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME:
+        jsr     GO_RAM_LOAD_GO_KERN  ;get the char
         iny
 L8FB1:  ldx     #$03
 L8FB4 := *+1
 L8FB3_LOOP:
-        cmp L8FBF,X
+        cmp L8FBF_DIASLLOWED_FNAME_CHARS,X
         bne L8FBA_NOT_EQU
-        clc
+        clc ;Found a bad character
         rts
 L8FBA_NOT_EQU:
         dex
@@ -2467,33 +2482,43 @@ L8FBA_NOT_EQU:
         sec
         rts
 
-L8FBF: .byte $00, $0d, $22, $8d
+L8FBF_DIASLLOWED_FNAME_CHARS:
+       .byte $00 ;null
+       .byte $0d ;return
+       .byte $22 ;quote
+       .byte $8d ;shift-return
 ; ----------------------------------------------------------------------------
-L8FC3:  ldx     #$00
+;Compare filename at $021D with indirect filename
+;carry set = filename matches
+L8FC3_COMPARE_FILENAME_INCL_WILDCARDS:
+        ldx     #$00
         ldy     MON_MMU_MODE
         lda     #V1541_FNADR ;ZP-address
         sta     SINNER
-L8FCD:  jsr     GO_RAM_LOAD_GO_KERN
+L8FCD_LOOP:
+        jsr     GO_RAM_LOAD_GO_KERN ;get char from filename
 L8FD0:  cmp     #'*'
-        beq     L8FE9
+        beq     L8FE9_SUCCESS_FILENAME_MATCHES
         cmp     #'?'
-        beq     L8FDD
+        beq     L8FDD_ANY_ONE_CHAR
         cmp     $021D,x
-        bne     L8FF1
-L8FDD:  iny
+        bne     L8FF1_FAIL_FILENAME_DOES_NOT_MATCH
+L8FDD_ANY_ONE_CHAR:
+        iny
         cpy     $03A2
         bne     L8FEB
         inx
         lda     $021D,x
-        bne     L8FF1
-L8FE9:  sec
+        bne     L8FF1_FAIL_FILENAME_DOES_NOT_MATCH
+L8FE9_SUCCESS_FILENAME_MATCHES:
+        sec
         rts
-; ----------------------------------------------------------------------------
 L8FED := *+2
 L8FEB:  inx
         lda     $021D,X
-        bne     L8FCD
-L8FF1:  clc
+        bne     L8FCD_LOOP
+L8FF1_FAIL_FILENAME_DOES_NOT_MATCH:
+        clc
         rts
 ; ----------------------------------------------------------------------------
 L8FF3:  stz     $02D8
@@ -2501,12 +2526,13 @@ L8FF3:  stz     $02D8
         sta     SINNER
         ldx     #$00
         ldy     MON_MMU_MODE
-L9000:  jsr     GO_RAM_LOAD_GO_KERN
+L9000_LOOP:
+        jsr     GO_RAM_LOAD_GO_KERN
         sta     $021D,x
         inx
         iny
         cpy     $03A2
-        bne     L9000
+        bne     L9000_LOOP
         stz     $021D,x
         rts
 ; ----------------------------------------------------------------------------
@@ -2628,7 +2654,7 @@ L90DD_25_WRITE_ERROR:
 L90DF_ERROR:
         clc
         rts
-; ----------------------------------------------------------------------------
+
 L90E1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE ;maybe returns cbm dos error code in A
         bcc     L90DF_ERROR ;branch if error
         jsr     L8DE0
@@ -2791,13 +2817,13 @@ V1541_CLOSE:
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L921A_V1541_INTERNAL_CLOSE:
-        jsr     L8C36 ;channel related
+        jsr     L8C36_CHAN_FROM_SA ;channel related
         bcs     L9221 ;branch if no error
         sec
         rts
 ; ----------------------------------------------------------------------------
-L9221:  lda     $E6
-        cmp     #$0F
+L9221:  lda     V1541_CHAN
+        cmp     #$0F ;command channel?
         beq     L9240
         lda     $E7
         bit     #$20
@@ -2808,7 +2834,7 @@ L9221:  lda     $E6
         beq     L9240
 L9236 := *+1
         jsr     L8DBE
-        BCC     L9240
+        bcc     L9240
         jsr     L8D17
         jsr     L8D5B_UNKNOWN_DIR_RELATED
 L9240:  jmp     L8C86
@@ -2820,8 +2846,8 @@ L9243_OPEN_V1541:
 ; ----------------------------------------------------------------------------
 L924A := *+1
 L9249_V1541_INTERNAL_OPEN:
-        jsr     L8C36 ;channel related
-        lda     $E6
+        jsr     L8C36_CHAN_FROM_SA ;channel related
+        lda     V1541_CHAN
         cmp     #$0F ;command channel
 L9250:  bne     L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN
         jmp     L9737_V1541_INTERNAL_OPEN_CMD_CHAN
@@ -2844,7 +2870,7 @@ L9268:  bne     L927B_NOT_DOLLAR
         ldx     V1541_FILE_MODE
 L926E := *+1
         BNE     L9287_ERROR
-        jsr     L8C36 ;channel related
+        jsr     L8C36_CHAN_FROM_SA ;channel related
 L2973 := *+1
 L9274 := *+2
         jsr     L9041
@@ -2964,7 +2990,7 @@ L9353:  jsr     L8E91
 L9358:  clc
         rts
 ; ----------------------------------------------------------------------------
-L935A:  jsr     L8C36 ;channel related
+L935A:  jsr     L8C36_CHAN_FROM_SA ;channel related
         jsr     L902D
 L9361 := *+1
         lda     #$10
@@ -2974,7 +3000,7 @@ L9367:  cpy     #fmode_m_modify
         beq     L9378
         cpy     #fmode_r_read
         bne     L937A
-        lda     $E6
+        lda     V1541_CHAN
         cmp     #$0E
         bne     L9378
         dec     LDTND
@@ -2989,7 +3015,7 @@ L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN
         bcc     L9358
         bit     SXREG
         bpl     L9381
-L938D:  jsr     L8C36 ;channel related
+L938D:  jsr     L8C36_CHAN_FROM_SA ;channel related
         lda     #$20
         tsb     $E7
         tsb     $0218
@@ -3018,7 +3044,7 @@ L93C0:  ldx     V1541_02D6
         jmp     (L93C6,x)
 L93C6:  .addr   L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
         .addr   L93E4
-        .addr   L93E9
+        .addr   L93E9_LOOP
         .addr   L93D0
         .addr   L93D6
 
@@ -3036,7 +3062,9 @@ L93DA:  stx     V1541_02D6
 ; ----------------------------------------------------------------------------
 L93E4:  jsr     L8CBB
         bra     L93EC
-L93E9:  jsr     L8CC3
+
+L93E9_LOOP:
+        jsr     L8CC3
 L93EC:  ldx     #$04
         stx     V1541_02D6
         bcc     L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
@@ -3053,8 +3081,8 @@ L9403:  beq     L940A
         cpx     #$14
         bne     L9400
 L940A:  stx     $03A2
-        jsr     L8FC3
-        bcc     L93E9
+        jsr     L8FC3_COMPARE_FILENAME_INCL_WILDCARDS
+        bcc     L93E9_LOOP ;filename does not match
         bra     L941A_STA_1_02D7_GET_DIRPART
 
 L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART:
@@ -3452,7 +3480,7 @@ L971F:  jsr     L9725 ;maybe returns a cbm dos error code
 L9724 := *+2
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L9725:  jsr     L8C3B ;maybe returns a cbm dos error code
+L9725:  jsr     L8C3B_CHAN_HEX_11 ;maybe returns a cbm dos error code
         bcc     L972D_RTS ;branch if error
         jsr     L8B46 ;maybe returns a cbm dos error code
 L972D_RTS:  rts
@@ -3469,7 +3497,7 @@ L9732:  rol     a
         rts
 ; ----------------------------------------------------------------------------
 L9737_V1541_INTERNAL_OPEN_CMD_CHAN:
-        jsr     L8C36 ;channel related
+        jsr     L8C36_CHAN_FROM_SA ;channel related
         lda     #$10
         tsb     $E7
         ldy     FNLEN
@@ -7861,7 +7889,7 @@ LB688_GET_KEY_NONBLOCKING:
         jsr     GET_KEY_FROM_KEYD_BUFFER        ; B69A 20 6C B6                  l.
         bcc     LB6C7                           ; B69D 90 28                    .(
         lda     #$0E                            ; B69F A9 0E                    ..
-LB6A1:  jsr     L8C40                           ; B6A1 20 40 8C                  @.
+LB6A1:  jsr     L8C40_CHAN_A                    ; B6A1 20 40 8C                  @.
         bcc     LB6C0                           ; B6A4 90 1A                    ..
         rol     $03FA                           ; B6A6 2E FA 03                 ...
         lda     MODKEY                          ; B6A9 A5 AD                    ..
