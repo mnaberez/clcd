@@ -114,6 +114,7 @@ V1541_CHAN      := $00E6
 V1541_FLAGS     := $00E7
 BLNCT           := $00EF  ;Counter for cursor blink
 stack           := $0100
+V1541_DATA_BUF  := $0218
 V1541_CMD_BUF   := $0295
 V1541_CMD_LEN   := $02d5
 V1541_02D6      := $02d6
@@ -1611,7 +1612,7 @@ L89E1:  rts                                     ; 89E1 60                       
 ; ----------------------------------------------------------------------------
 L89E2:  jsr     L8A81                           ; 89E2 20 81 8A                  ..
 L89E5:  lda     $020E                           ; 89E5 AD 0E 02                 ...
-        cmp     $0219                           ; 89E8 CD 19 02                 ...
+        cmp     V1541_DATA_BUF+1                ; 89E8 CD 19 02                 ...
         bne     L89F2                           ; 89EB D0 05                    ..
         jsr     L89FF                           ; 89ED 20 FF 89                  ..
         bra     L89E2                           ; 89F0 80 F0                    ..
@@ -1800,7 +1801,7 @@ L8B2B:  cmp     $0207
         clc
 L8B31_STORE_0207_0219_THEN_72_DISK_FULL:
         sta     $0207
-        sta     $0219
+        sta     V1541_DATA_BUF+1
         lda     #doserr_72_disk_full ;72 disk full
         rts
 ; ----------------------------------------------------------------------------
@@ -2092,7 +2093,7 @@ L8CF5_LOOP:
         jsr     L8B66
         plx
         bcc     L8D15_CLC_RTS ;branch if error
-        sta     $0218,x
+        sta     V1541_DATA_BUF,x
         cpx     #$05
         bit     SXREG
         bmi     L8D12_RTS
@@ -2143,7 +2144,7 @@ L8D5A_RTS:
 L8D5B_UNKNOWN_DIR_RELATED:
         jsr     L8E10
         lda     #$30
-        trb     $0218
+        trb     V1541_DATA_BUF
 L8D63:  jsr     L8E91
         bcc     L8D9E
         jsr     L8C92
@@ -2162,12 +2163,12 @@ L8D7A:  lda     SXREG
         ldx     #$FF
 L8D85:  inx
         phx
-        lda     $0218,x
+        lda     V1541_DATA_BUF,x
         jsr     L8BD4
         plx
         cpx     #$05
         bcc     L8D85
-        lda     $0218,x
+        lda     V1541_DATA_BUF,x
         bne     L8D85
         jsr     L8C30
         jsr     L8E39
@@ -2186,7 +2187,7 @@ L8DA7:  jsr     L8CC3
 L8DAA:  bcc     L8DBA_62_FILE_NOT_FOUND ;branch if error from L8CBB or L8CC3
         jsr     L8FC3_COMPARE_FILENAME_INCL_WILDCARDS
         bcc     L8DB5_NO_MATCH ;filename does not match
-        lda     $0218
+        lda     V1541_DATA_BUF
         rts
 
 L8DB5_NO_MATCH:
@@ -2205,11 +2206,11 @@ L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR:
         bra     L8DCA
 L8DC7:  jsr     L8CC3
 L8DCA:  bcc     L8DDC_62_FILE_NOT_FOUND ;branch if error
-        lda     $0218
+        lda     V1541_DATA_BUF
         bit     #$80
         bne     L8DC7
         tsx
-        lda     $0219
+        lda     V1541_DATA_BUF+1
         cmp     stack+1,x
         bne     L8DC7
 L8DDC_62_FILE_NOT_FOUND:
@@ -2217,48 +2218,50 @@ L8DDC_62_FILE_NOT_FOUND:
         lda     #doserr_62_file_not_found
         rts
 ; ----------------------------------------------------------------------------
-L8DE0:  lda     $0219                           ; 8DE0 AD 19 02                 ...
-        .byte   $2C                             ; 8DE3 2C                       ,
-L8DE4:  lda     #$00                            ; 8DE4 A9 00                    ..
-        ldx     #$00                            ; 8DE6 A2 00                    ..
-        phx                                     ; 8DE8 DA                       .
-        phx                                     ; 8DE9 DA                       .
-        pha                                     ; 8DEA 48                       H
-        jsr     L8A81                           ; 8DEB 20 81 8A                  ..
-        beq     L8E0A                           ; 8DEE F0 1A                    ..
-L8DF0:  tsx                                     ; 8DF0 BA                       .
-        lda     $020E                           ; 8DF1 AD 0E 02                 ...
-        cmp     stack+1,x                       ; 8DF4 DD 01 01                 ...
-        bne     L8E05                           ; 8DF7 D0 0C                    ..
-        inc     stack+2,x                       ; 8DF9 FE 02 01                 ...
-        ldy     #$02                            ; 8DFC A0 02                    ..
-        lda     ($E4),y                         ; 8DFE B1 E4                    ..
-        beq     L8E05                           ; 8E00 F0 03                    ..
-        sta     stack+3,x                       ; 8E02 9D 03 01                 ...
-L8E05:  jsr     L8A61                           ; 8E05 20 61 8A                  a.
-        bcs     L8DF0                           ; 8E08 B0 E6                    ..
-L8E0A:  pla                                     ; 8E0A 68                       h
-        pla                                     ; 8E0B 68                       h
-        ply                                     ; 8E0C 7A                       z
-        cmp     #$00                            ; 8E0D C9 00                    ..
-        rts                                     ; 8E0F 60                       `
+L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1:
+        lda     V1541_DATA_BUF+1
+        .byte   $2C
+L8DE4_SOMEHOW_GETS_FILE_BLOCKS_USED_2:
+        lda     #$00
+        ldx     #$00
+        phx
+        phx
+        pha
+        jsr     L8A81
+        beq     L8E0A
+L8DF0:  tsx
+        lda     $020E
+        cmp     stack+1,x
+        bne     L8E05
+        inc     stack+2,x
+        ldy     #$02
+        lda     ($E4),y
+        beq     L8E05
+        sta     stack+3,x
+L8E05:  jsr     L8A61
+        bcs     L8DF0
+L8E0A:  pla
+        pla
+        ply
+        cmp     #$00
+        rts
 ; ----------------------------------------------------------------------------
-L8E10:  lda     $0219
+L8E10:  lda     V1541_DATA_BUF+1
         jsr     L8E5E
-        sta     $021A
-        stx     $021B
-        sty     $021C
+        sta     V1541_DATA_BUF+2
+        stx     V1541_DATA_BUF+3
+        sty     V1541_DATA_BUF+4
         rts
 ; ----------------------------------------------------------------------------
 L8E20_MAYBE_CHECKS_HEADER:
-        lda     $0219
+        lda     V1541_DATA_BUF+1
 L8E25 := *+2
         jsr     L8E5E
-        cmp     $021a
+        cmp     V1541_DATA_BUF+2
         bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER
-        cpx     $021B
+        cpx     V1541_DATA_BUF+3
         bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER
-        cpy     $021C
+        cpy     V1541_DATA_BUF+4
         beq     L8E36
 L8E35_27_CHECKSUM_ERROR_IN_HEADER:
         clc
@@ -2313,7 +2316,7 @@ L8E8D:  plx                                     ; 8E8D FA                       
         ply                                     ; 8E8F 7A                       z
         rts                                     ; 8E90 60                       `
 ; ----------------------------------------------------------------------------
-L8E91:  jsr     L8DE4
+L8E91:  jsr     L8DE4_SOMEHOW_GETS_FILE_BLOCKS_USED_2
         beq     L8EA7
         tya
         ldx     #$FF
@@ -2322,14 +2325,15 @@ L8E99:  inc     a
         inx
         cpx     #$05
         bcc     L8E99
-        lda     $021D,x
+        lda     V1541_DATA_BUF+5,x
         bne     L8E99
         rts
-; ----------------------------------------------------------------------------
+
 L8EA7:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
         bcc     L8EAE_RTS ;branch if error
         lda     #$01
-L8EAE_RTS:  rts
+L8EAE_RTS:
+        rts
 ; ----------------------------------------------------------------------------
 L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS:
         lda     FNADR
@@ -2503,7 +2507,7 @@ L8FBF_DIASLLOWED_FNAME_CHARS:
        .byte $22 ;quote
        .byte $8d ;shift-return
 ; ----------------------------------------------------------------------------
-;Compare filename at $021D with indirect filename
+;Compare filename at V1541_DATA_BUF+5 with indirect filename
 ;carry set = filename matches
 L8FC3_COMPARE_FILENAME_INCL_WILDCARDS:
         ldx     #$00
@@ -2516,21 +2520,21 @@ L8FD0:  cmp     #'*'
         beq     L8FE9_SUCCESS_FILENAME_MATCHES
         cmp     #'?'
         beq     L8FDD_ANY_ONE_CHAR
-        cmp     $021D,x
+        cmp     V1541_DATA_BUF+5,x
         bne     L8FF1_FAIL_FILENAME_DOES_NOT_MATCH
 L8FDD_ANY_ONE_CHAR:
         iny
         cpy     $03A2
         bne     L8FEB
         inx
-        lda     $021D,x
+        lda     V1541_DATA_BUF+5,x
         bne     L8FF1_FAIL_FILENAME_DOES_NOT_MATCH
 L8FE9_SUCCESS_FILENAME_MATCHES:
         sec
         rts
 L8FED := *+2
 L8FEB:  inx
-        lda     $021D,X
+        lda     V1541_DATA_BUF+5,X
         bne     L8FCD_LOOP
 L8FF1_FAIL_FILENAME_DOES_NOT_MATCH:
         clc
@@ -2543,18 +2547,18 @@ L8FF3:  stz     $02D8
         ldy     MON_MMU_MODE
 L9000_LOOP:
         jsr     GO_RAM_LOAD_GO_KERN
-        sta     $021D,x
+        sta     V1541_DATA_BUF+5,x
         inx
         iny
         cpy     $03A2
         bne     L9000_LOOP
-        stz     $021D,x
+        stz     V1541_DATA_BUF+5,x
         rts
 ; ----------------------------------------------------------------------------
 ;maybe returns cbm dos error code in A
 L9011_TEST_0218_AND_STORE_FILE_TYPE:
         ldx     #ftype_s_seq
-        lda     $0218
+        lda     V1541_DATA_BUF
         bit     #$40
         beq     L901C_GOT_SEQ
         ldx     #ftype_p_prg
@@ -2571,11 +2575,11 @@ L9029_STORE_TYPE_AND_RTS:
         rts
 ; ----------------------------------------------------------------------------
 L902D:  ldx     #$04
-        lda     $0218
+        lda     V1541_DATA_BUF
         bit     #$80
         bne     L9038
         ldx     #$01
-L9038:  lda     $0218,x
+L9038:  lda     V1541_DATA_BUF,x
         sta     V1541_FLAGS,x
         dex
         bpl     L9038
@@ -2658,7 +2662,7 @@ L90CB := *+1
         bra     L90DF_ERROR
 
 L90D2 := *+2
-L90D0:  LDA $0218
+L90D0:  lda     V1541_DATA_BUF
         and     #$80
         beq     L90E1
         lda     #doserr_26_write_prot_on ;#26 write protect on
@@ -2674,7 +2678,7 @@ L90DF_ERROR:
 
 L90E1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE ;maybe returns cbm dos error code in A
         bcc     L90DF_ERROR ;branch if error
-        jsr     L8DE0
+        jsr     L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1
         inc     a
         bra     L910D
 
@@ -2683,20 +2687,20 @@ L90EC_ERROR:
         jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL ;maybe returns cbm dos error code in A                               ; 90EF 20 13 8B                  ..
 L90F2:  bcc     L90DF_ERROR ;branch if error
         jsr     L8FF3
-        stz     $0218
+        stz     V1541_DATA_BUF
         lda     V1541_FILE_TYPE
         cmp     #ftype_s_seq
         beq     L9106
         lda     #$40
-        sta     $0218
+        sta     V1541_DATA_BUF
 L9108:=*+2
 L9106:  jsr     L8E91
         bcc     L90DF_ERROR
         eor     #$01
 L910D:  pha
 L9110:=*+2
-        jsr L91A4
-        sty $021a
+        jsr     L91A4
+        sty     V1541_DATA_BUF+2
         pla
         clc
         adc     $020A
@@ -2704,7 +2708,7 @@ L9110:=*+2
         bcc     L911F
         inx
 L911F:  clc
-        sbc     $021A
+        sbc     V1541_DATA_BUF+2
         bcs     L9126
         dex
 L9126:  tay
@@ -2732,8 +2736,8 @@ L9150:  jsr     L91A4
         beq     L91A1
         dey
 L915A := *+2
-        sty     $021a
-        sta     $021B
+        sty     V1541_DATA_BUF+2
+        sta     V1541_DATA_BUF+3
         lda     #$E0 ;ZP-address
         sta     SINNER
 L9163:  jsr     L89AF
@@ -2743,7 +2747,7 @@ L9168:  jsr     GO_RAM_LOAD_GO_KERN
         dey
         bne     L9168
         ldy     #$02
-L9172:  lda     $0219,y
+L9172:  lda     V1541_DATA_BUF+1,y
         sta     ($E4),y
         dey
         bpl     L9172
@@ -2753,12 +2757,12 @@ L9172:  lda     $0219,y
         bcs     L9183
         dec     $E1
 L9183:  sta     $E0
-        stz     $021B
-        ldy     $021A
-        dec     $021A
+        stz     V1541_DATA_BUF+3
+        ldy     V1541_DATA_BUF+2
+        dec     V1541_DATA_BUF+2
         tya
         bne     L9163
-        bit     $0218
+        bit     V1541_DATA_BUF
         bvc     L91A1
         ldy     #$04
         lda     SAH
@@ -2770,7 +2774,7 @@ L91A1:  jmp     L8D5B_UNKNOWN_DIR_RELATED
 ; ----------------------------------------------------------------------------
 L91A4:  ldx     STAH
         lda     STAL
-        bit     $0218
+        bit     V1541_DATA_BUF
         bvc     L91B3
         sec
         sbc     #$02
@@ -2931,7 +2935,7 @@ L92A3:  jsr     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND
         lda     #doserr_63_file_exists ;63 file exists
         cpy     #fmode_w_write
         beq     L92C7_ERROR
-        lda     $0218
+        lda     V1541_DATA_BUF
         bit     #$80
         beq     L92C9
         lda     #doserr_26_write_prot_on ;26 write protect on
@@ -2943,7 +2947,7 @@ L92C7_ERROR:
         clc
         rts
 ; ----------------------------------------------------------------------------
-L92C9:  lda     $0219
+L92C9:  lda     V1541_DATA_BUF+1
         jsr     L8C9F
         bcc     L92E6
         lda     V1541_FLAGS
@@ -2957,7 +2961,7 @@ L92DB:  ldy     V1541_FILE_MODE
         beq     L92F8
 L92E2:  lda     #doserr_60_write_file_open ;60 write file open
         bra     L92C7_ERROR
-L92E6:  lda     $0218
+L92E6:  lda     V1541_DATA_BUF
         bit     #$20
         beq     L92F8
         ldy     V1541_FILE_MODE
@@ -3002,12 +3006,12 @@ L9335:  ldy     V1541_FILE_MODE
         jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL
         bcc     L9358 ;branch on error
         jsr     L8FF3
-        stz     $0218
+        stz     V1541_DATA_BUF
         lda     V1541_FILE_TYPE
         cmp     #ftype_p_prg
         bne     L9353
         lda     #$40
-        sta     $0218
+        sta     V1541_DATA_BUF
 L9353:  jsr     L8E91
         bcs     L935A
 L9358:  clc
@@ -3041,7 +3045,7 @@ L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN
 L938D:  jsr     L8C36_CHAN_FROM_SA ;channel related
         lda     #$20
         tsb     V1541_FLAGS
-        tsb     $0218
+        tsb     V1541_DATA_BUF
         jmp     L8D63
 ; ----------------------------------------------------------------------------
 L939A:  lda     V1541_02D6
@@ -3062,7 +3066,7 @@ L93B8:  stx     V1541_02D7
         stz     SXREG
         sec
         rts
-; ----------------------------------------------------------------------------
+
 L93C0:  ldx     V1541_02D6
         jmp     (L93C6,x)
 L93C6:  .addr   L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
@@ -3082,7 +3086,7 @@ L93DA:  stx     V1541_02D6
         lda     #$00
         sec
         rts
-; ----------------------------------------------------------------------------
+
 L93E4:  jsr     L8CBB
         bra     L93EC
 
@@ -3122,9 +3126,6 @@ L941F_GET_DIRPART_ONLY:
         dec     $02D8
         jmp     L939A
 
-; ----------------------------------------------------------------------------
-; Jumps (by a jump table) to the right routine to dump the "virtual 1541"
-; directory listing tail/head or the content itself, IMHO.
 L942B_GET_V1541_DIR_PART:
         ldx     V1541_02D6
 L942F           := * + 1
@@ -3132,75 +3133,84 @@ L942F           := * + 1
         .addr   L9457_GET_V1541_HEADER
         .addr   L94A8_GET_V1541_FILE
         .addr   L9488_GET_V1541_BLOCKS_USED
-; ----------------------------------------------------------------------------
-; This (and other part later) fragment seems to be the usual directory
-; listing produced by an 1541 and compatible drives. The text says "virtual
-; 1541" thus it seems CLCD handles something (possible programs in ROM and/or
-; RAM disk) as it would be a "real" 1541 drive for the user.
+
 L9437_V1541_HEADER:
-        .byte   $01,$10,$01,$10,$00,$00,$12,$22
-L944C := * + 13
-        .byte   "VIRTUAL 1541    ",$22," ID 00",0
-; ----------------------------------------------------------------------------
-; This dumps the directory listing head, with the "virtual 1541" text.
+        .word $1001   ;load address
+        .word $1001   ;pointer to next basic line
+        .word 0       ;basic line number
+L944C := * + 15
+        .byte $12,$22,"VIRTUAL 1541    ",$22," ID 00" ;basic line text
+        .byte 0       ;end of basic line
+
+;Put the start of the BASIC program and the first BASIC line
+;with the disk header in the buffer
 L9457_GET_V1541_HEADER:
         ldx     #$1F
-L9459:  lda     L9437_V1541_HEADER,x
-        sta     $0218,x
+L9459_LOOP:
+        lda     L9437_V1541_HEADER,x
+        sta     V1541_DATA_BUF,x
         dex
-        bpl     L9459
-        jsr     L8DE4
-        sta     $021C
+        bpl     L9459_LOOP
+        jsr     L8DE4_SOMEHOW_GETS_FILE_BLOCKS_USED_2
+        sta     V1541_DATA_BUF+4  ;basic line number low byte
         rts
-; ----------------------------------------------------------------------------
+
 L9469_BLOCKS_USED:
-        .byte   $01,$10,$00,$00,"BLOCKS USED.            ",0,0,0
-; ----------------------------------------------------------------------------
-; This dumps the directory listing tail, with the "block used" text.
+        .word $1001   ;pointer to next basic line
+        .word 0       ;basic line number
+        .byte "BLOCKS USED.            "  ;basic line text
+        .byte 0       ;end of basic line
+        .byte 0,0     ;end of basic program
+
+;Put a BASIC line with the "BLOCKS USED" in the buffer
 L9488_GET_V1541_BLOCKS_USED:
         ldx     #$1E
-L948A:  lda     L9469_BLOCKS_USED,x
-        sta     $0218,x
+L948A_LOOP:
+        lda     L9469_BLOCKS_USED,x
+        sta     V1541_DATA_BUF,x
         dex
-        bpl     L948A
+        bpl     L948A_LOOP
         cld
         sec
         lda     $0208
         sbc     $020A
-        sta     $021A
+        sta     V1541_DATA_BUF+2  ;basic line number low byte
         lda     $0209
         sbc     $020B
 L94A6           := * + 2
-        sta     $021B
+        sta     V1541_DATA_BUF+3  ;basic line number high byte
         rts
-; ----------------------------------------------------------------------------
-; Afaik this dumps a row of the directory listing, about a file, you can even
-; see the "PRG", "SEQ" stuffs appended.
+
+;Put a BASIC line with a file in the buffer
 L94A8_GET_V1541_FILE:
         ldx     #$04
-L94AA:  inx
-        lda     $0218,x
+L94AA_LOOP:
+        inx
+        lda     V1541_DATA_BUF,x
         beq     L94B4
         cpx     #$15
-        bne     L94AA
+        bne     L94AA_LOOP
 L94B4:  lda     #'"'
-L94B6:  sta     $0218,x
+L94B6:  sta     V1541_DATA_BUF,x
         lda     #' '
         inx
         cpx     #' '
         bne     L94B6
-        lda     $0218
+
+        lda     V1541_DATA_BUF
         bit     #$30
         beq     L94CC
-        ldx     #'*'
-        stx     $022E
+        ldx     #'*' ;splat file like "*PRG"
+        stx     V1541_DATA_BUF+22
+
 L94CC:  bit     #$80
         bne     L94D5
-        jsr     L8DE0
+        jsr     L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1
         bra     L94D8
-L94D5:  lda     $021B
-L94D8:  sta     $021A
-        lda     $0218
+L94D5:  lda     V1541_DATA_BUF+3
+L94D8:  sta     V1541_DATA_BUF+2
+
+        lda     V1541_DATA_BUF
         and     #$40
         beq     L94EA
         lda     #'P' ;ftype_p_prg
@@ -3210,21 +3220,24 @@ L94D8:  sta     $021A
 L94EA:  lda     #'S' ;ftype_s_seq
         ldx     #'E'
         ldy     #'Q'
-L94F0:  sta     $022F ;P    S
-        stx     $0230 ;R or E
-        sty     $0231 ;G    Q
+L94F0:  sta     V1541_DATA_BUF+23   ;P    S
+        stx     V1541_DATA_BUF+24   ;R or E
+        sty     V1541_DATA_BUF+25   ;G    Q
+
         lda     #$01
-        sta     $0218
+        sta     V1541_DATA_BUF      ;pointer to next basic line (low byte)
         lda     #$10
-        sta     $0219
-        stz     $021B
+        sta     V1541_DATA_BUF+1    ;pointer to next basic line (high byte)
+        stz     V1541_DATA_BUF+3
+
         lda     #'"'
-        sta     $021C
-        lda     $021A
+        sta     V1541_DATA_BUF+4    ;first byte of bysic line (quote before filename)
+
+        lda     V1541_DATA_BUF+2
         cmp     #$64
         bcs     L9515
         jsr     L9522
-L9515:  lda     $021A
+L9515:  lda     V1541_DATA_BUF+2
         cmp     #$0A
         bcc     L951F
         jsr     L9522
@@ -3233,15 +3246,15 @@ L951F:  jsr     L9522
 L9522:  lda     #' '
         ldx     #$04
 L9526_LOOP:
-        ldy     $0218,x
-        sta     $0218,x
+        ldy     V1541_DATA_BUF,x
+        sta     V1541_DATA_BUF,x
         tya
         inx
         cpx     #$1F
         bne     L9526_LOOP
 
         lda     #0
-        sta     $0237
+        sta     V1541_DATA_BUF+31   ;end of basic line
         rts
 ; ----------------------------------------------------------------------------
 LOAD__: sta     VERCHK
@@ -3434,7 +3447,7 @@ L969C_03A0_NOT_DOLLAR:
         jsr     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR
         bcc     L969A_ERROR ;branch if error (file not found)
 
-        lda     $0218
+        lda     V1541_DATA_BUF
 L96A5 := *+1
         bit     #$20
         bne     L9695_ERROR_60_WRITE_FILE_OPEN
@@ -3645,7 +3658,7 @@ L97F2:  tsx
 L97F5           := * + 2
         inc     stack+1,x
         jsr     L8D17  ;maybe returns cbm dos error in a
-        lda     $0218
+        lda     V1541_DATA_BUF
         and     #$80
         bne     L97ED
         jsr     L89E2
@@ -3737,10 +3750,10 @@ L989B :=*+1
         BCC     L98D0 ;branch if error
 L989E := *+2
         jsr     L8C2A
-        LDA     $0218
+        LDA     V1541_DATA_BUF
         bit     #$80
         bne     L98B4
-        lda     $0219
+        lda     V1541_DATA_BUF+1
         sta     $E8
 L98AB:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         bcs     L98B9 ;branch if no error
@@ -3756,7 +3769,7 @@ L98B9:  inc     $E9
         beq     L98AB
         lda     $E9
         pha
-        jsr     L8DE0
+        jsr     L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1
         sta     $E9
         pla
         cmp     $E9
@@ -3783,9 +3796,9 @@ L98ED:  bcc     L9917 ;branch if error
         ora     V1541_CMD_BUF,y
         sta     V1541_CMD_BUF,y
         lda     #$30
-        trb     $0218
+        trb     V1541_DATA_BUF
         bne     L990F
-        lda     $0219
+        lda     V1541_DATA_BUF+1
         jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A
         bcs     L98EA ;branch if no error
         ;error occurred
