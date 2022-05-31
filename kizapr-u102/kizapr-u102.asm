@@ -109,6 +109,7 @@ SA              := $00C4
 FA              := $00C5
 LA              := $00C6
 LENGTH          := $00CF
+V1541_FNADR     := $00E2  ;2 bytes
 BLNCT           := $00EF  ;Counter for cursor blink
 stack           := $0100
 V1541_CMD_BUF   := $0295
@@ -171,6 +172,7 @@ MemBotLoByte    := $0398
 MemBotHiByte    := $0399
 MemTopLoByte    := $039A
 MemTopHiByte    := $039B
+V1541_FNLEN     := $039F
 MON_MMU_MODE    := $03A1  ;0=MMU_MODE_RAM, 1=MMU_MODE_APPL, 2=MMU_MODE_KERN
 V1541_FILE_MODE := $03A3
 V1541_FILE_TYPE := $03A4
@@ -2309,44 +2311,48 @@ L8EA7:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
         lda     #$01
 L8EAE_RTS:  rts
 ; ----------------------------------------------------------------------------
-L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP:
+L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS:
         lda     FNADR
         ldx     FNADR+1
         ldy     FNLEN
-L8EB6:  sta     $E2
-        stx     $E3
-        sty     $039F
+L8EB6:  sta     V1541_FNADR
+        stx     V1541_FNADR+1
+        sty     V1541_FNLEN
         ;Fall through
 ; ----------------------------------------------------------------------------
-L8EBD:  stz     $03A5
+L8EBD_SETUP_FOR_FILE_ACCESS_AND_DO_DIR_SEARCH_STUFF:
+        stz     $03A5
         stz     V1541_FILE_MODE
         stz     V1541_FILE_TYPE
         stz     $03A0
-        lda     #$E2 ;ZP-address
+        lda     #V1541_FNADR ;ZP-address
         sta     SINNER
-        lda     $039F
+        lda     V1541_FNLEN
         bne     L8ED7
+
 L8ED3_33_SYNTAX_ERROR:
         lda     #$21 ;33 invalid filename
         clc
         rts
-; ----------------------------------------------------------------------------
+
 L8ED7:  ldy     #$00
         jsr     L8FAD
         dey
         bcc     L8ED3_33_SYNTAX_ERROR
         cmp     #'$'
-        beq     L8EE7
+        beq     L8EE7_GOT_DOLLAR
         cmp     #'@'
-        bne     L8EEB
-L8EE7:  iny
+        bne     L8EEB_GOT_AT
+L8EE7_GOT_DOLLAR:
+        iny
         sta     $03A0
-L8EEB:  sty     MON_MMU_MODE
+L8EEB_GOT_AT:
+        sty     MON_MMU_MODE
 L8EEE:  sty     $03A2
-        cpy     $039F
+        cpy     V1541_FNLEN
         bne     L8EF9
         jmp     L8F86
-; ----------------------------------------------------------------------------
+
 ;Looks like filename parsing for directory listing LOAD"$0:*=P"
 L8EF9:  jsr     L8FAD
         bcc     L8ED3_33_SYNTAX_ERROR
@@ -2360,7 +2366,7 @@ L8EF9:  jsr     L8FAD
         lda     #$03
         tsb     $03A5
         bne     L8ED3_33_SYNTAX_ERROR
-        bra     L8EEB
+        bra     L8EEB_GOT_AT
 L8F14:  lda     #$02
         tsb     $03A5
         cpx     #'='
@@ -2374,7 +2380,7 @@ L8F25:  lda     #$40
 L8F2A:  cpx     #','
         bne     L8EEE
         dey
-L8F2F:  cpy     $039F
+L8F2F:  cpy     V1541_FNLEN
         beq     L8F86
         jsr     L8FAD
         bcc     L8F5F_33_SYNTAX_ERROR
@@ -2386,7 +2392,7 @@ L8F2F:  cpy     $039F
         bne     L8F5F_33_SYNTAX_ERROR
 
 L8F45_LOOP:
-        cpy     $039F
+        cpy     V1541_FNLEN
         bcs     L8F5F_33_SYNTAX_ERROR
         jsr     L8FAD
         bcc     L8F5F_33_SYNTAX_ERROR
@@ -2465,7 +2471,7 @@ L8FBF: .byte $00, $0d, $22, $8d
 ; ----------------------------------------------------------------------------
 L8FC3:  ldx     #$00
         ldy     MON_MMU_MODE
-        lda     #$E2 ;ZP-address
+        lda     #V1541_FNADR ;ZP-address
         sta     SINNER
 L8FCD:  jsr     GO_RAM_LOAD_GO_KERN
 L8FD0:  cmp     #'*'
@@ -2491,7 +2497,7 @@ L8FF1:  clc
         rts
 ; ----------------------------------------------------------------------------
 L8FF3:  stz     $02D8
-        lda     #$E2 ;ZP-address
+        lda     #V1541_FNADR ;ZP-address
         sta     SINNER
         ldx     #$00
         ldy     MON_MMU_MODE
@@ -2505,19 +2511,22 @@ L9000:  jsr     GO_RAM_LOAD_GO_KERN
         rts
 ; ----------------------------------------------------------------------------
 ;maybe returns cbm dos error code in A
-L9011_MAYBE_CHECKS_FILE_TYPE_S:
+L9011_TEST_0218_AND_STORE_FILE_TYPE:
         ldx     #ftype_s_seq
         lda     $0218
         bit     #$40
-        beq     L901C
+        beq     L901C_GOT_SEQ
         ldx     #ftype_p_prg
-L901C:  lda     #doserr_64_file_type_mism ;64 file type mismatch
+L901C_GOT_SEQ:
+        lda     #'@'
         cpx     V1541_FILE_TYPE
-        beq     L9029
+        beq     L9029_STORE_TYPE_AND_RTS
         ldy     V1541_FILE_TYPE
-L9026:  beq     L9029
+L9026:
+        beq     L9029_STORE_TYPE_AND_RTS
         clc
-L9029:  stx     V1541_FILE_TYPE
+L9029_STORE_TYPE_AND_RTS:
+        stx     V1541_FILE_TYPE
         rts
 ; ----------------------------------------------------------------------------
 L902D:  ldx     #$04
@@ -2542,7 +2551,7 @@ L9055:  bit     #$80
         beq     L907D_SEC_RTS
         ldx     #$00
         ldy     MON_MMU_MODE
-L905E:  lda     #$E2 ;ZP-address
+L905E:  lda     #V1541_FNADR ;ZP-address
         sta     SINNER
         jsr     GO_RAM_LOAD_GO_KERN
         sta     $0238,x
@@ -2584,7 +2593,7 @@ L908B_V1541_INTERNAL_SAVE:
         bne     L90DD_25_WRITE_ERROR
         lda     EAL
         bne     L90DD_25_WRITE_ERROR
-L90A7:  jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP
+L90A7:  jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
         bcc     L90DA_33_SYNTAX_ERROR
         bit     #$80
         beq     L90DA_33_SYNTAX_ERROR
@@ -2620,7 +2629,7 @@ L90DF_ERROR:
         clc
         rts
 ; ----------------------------------------------------------------------------
-L90E1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;maybe returns cbm dos error code in A
+L90E1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE ;maybe returns cbm dos error code in A
         bcc     L90DF_ERROR ;branch if error
         jsr     L8DE0
         inc     a
@@ -2822,7 +2831,7 @@ L9250:  bne     L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN
 L9256 := *+1
 L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN:
         jsr     L8C89
-        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP
+        jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
 L925C := *+1
         BCC     L9287_ERROR
         bit     #$20
@@ -2868,7 +2877,7 @@ L929A:  bit     #$40
         bne     L9285
 L92A3:  jsr     L8D9F
         bcc     L9317
-        jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S
+        jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
         bcc     L92C7_ERROR
         ldy     V1541_FILE_MODE
 
@@ -3032,11 +3041,11 @@ L93EC:  ldx     #$04
         stx     V1541_02D6
         bcc     L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
 
-        lda     #$38
-        sta     $E2
-        lda     #$02
+        lda     #<$0238
+        sta     V1541_FNADR
+        lda     #>$0238
         stz     MON_MMU_MODE
-L93FC:  sta     $E3
+L93FC:  sta     V1541_FNADR+1
         ldx     #$00
 L9400:  lda     $0238,x
 L9403:  beq     L940A
@@ -3169,14 +3178,17 @@ L9515:  lda     $021A
         bcc     L951F
         jsr     L9522
 L951F:  jsr     L9522
+
 L9522:  lda     #' '
         ldx     #$04
-L9526:  ldy     $0218,x
+L9526_LOOP:
+        ldy     $0218,x
         sta     $0218,x
         tya
         inx
         cpx     #$1F
-        bne     L9526
+        bne     L9526_LOOP
+
         lda     #0
         sta     $0237
         rts
@@ -3337,7 +3349,7 @@ V1541_OPEN:
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L9671_V1541_INTERNAL_OPEN:
-        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP
+        jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
 L9675 := *+1
         BCC     L969A_ERROR ;branch if error
         BIT     #$20
@@ -3375,7 +3387,7 @@ L96A5 := *+1
         bne     L96B1
         jsr     L8E20_MAYBE_CHECKS_HEADER
         bcc     L969A_ERROR ;branch if error
-L96B1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S
+L96B1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
         bcc     L969A_ERROR
         cpx     #ftype_s_seq
         beq     L9692_ERROR_64_FILE_TYPE_MISMATCH
@@ -3531,15 +3543,15 @@ L97A7 := *+1
 ;Called twice from rename, not used anywhere else
 L97A9_USED_BY_RENAME:
         jsr     L979E
-L97AC:  lda     ($E2)
-        inc     $E2
+L97AC:  lda     (V1541_FNADR)
+        inc     V1541_FNADR
         bne     L97B4
-        inc     $E3
-L97B4:  dec     $039F
+        inc     V1541_FNADR+1
+L97B4:  dec     V1541_FNLEN
         beq     L97D2_33_SYNTAX_ERROR
         cmp     #'='
         bne     L97AC
-        jsr     L8EBD
+        jsr     L8EBD_SETUP_FOR_FILE_ACCESS_AND_DO_DIR_SEARCH_STUFF
         bcc     L97D4_CLC_RTS
         and     #$40
         ora     V1541_FILE_TYPE
@@ -3874,7 +3886,7 @@ L9AD6:  lda     $020F,x
 L9AE5 := *+1
 L9AE4:  ora #$30
         sec
-        rts                                     
+        rts
 ; ----------------------------------------------------------------------------
 L9AE8_NOT_FOUND_IN_L9A8E:
         dec     a
@@ -6004,7 +6016,7 @@ LA9E6:  php                                     ; A9E6 08                       
         sty     $03A0                           ; A9E7 8C A0 03                 ...
         cpx     #$50                            ; A9EA E0 50                    .P
         bcs     LAA17                           ; A9EC B0 29                    .)
-        stx     $039F                           ; A9EE 8E 9F 03                 ...
+        stx     V1541_FNLEN                           ; A9EE 8E 9F 03                 ...
 LA9F1:  tax                                     ; A9F1 AA                       .
         and     #$0F                            ; A9F2 29 0F                    ).
         sta     SXREG                           ; A9F4 8D 9D 03                 ...
@@ -6034,7 +6046,7 @@ LAA19:  stz     $EB                             ; AA19 64 EB                    
         ror     $EB                             ; AA1C 66 EB                    f.
         adc     VidMemHi                        ; AA1E 65 A0                    e.
         sta     $EC                             ; AA20 85 EC                    ..
-        ldy     $039F                           ; AA22 AC 9F 03                 ...
+        ldy     V1541_FNLEN                           ; AA22 AC 9F 03                 ...
 LAA25:  plp                                     ; AA25 28                       (
         php                                     ; AA26 08                       .
         lda     ($ED)                           ; AA27 B2 ED                    ..
@@ -10621,7 +10633,7 @@ LC794:  cpx     #$0E
         lda     MON_CMD_ENTRIES,x
         pha
         jmp     MON_PARSE_HEX_WORD
-LC7A6:  sta     $039F
+LC7A6:  sta     V1541_FNLEN
         jsr     PrintNewLine
         jmp     MON_CMD_LOAD_SAVE_VERIFY
 ; ----------------------------------------------------------------------------
@@ -10887,7 +10899,7 @@ LC97B:  lda     $C7
         bcs     LC98A
         cpy     #$20
         bne     LC97B
-LC98A:  sty     $039F
+LC98A:  sty     V1541_FNLEN
         jsr     PrintNewLine
 LC990:  ldx     #$00
         ldy     #$00
@@ -10896,7 +10908,7 @@ LC994:  jsr     LCC67
         bne     LC9AB
         iny
         inx
-        cpx     $039F
+        cpx     V1541_FNLEN
         bne     LC994
         jsr     LFDB9_STOP
         beq     LC9B3_HUNT_DONE
@@ -10961,7 +10973,7 @@ LC9F8_TRY_SAVE:
         jsr     PrintNewLine
         ldx     $C7
         ldy     $C8
-        lda     $039F
+        lda     V1541_FNLEN
         cmp     #'S' ;SAVE
         bne     LC9F5_LSV_BAD_ARG
         lda     #$00
@@ -10972,7 +10984,7 @@ LCA30_LSV_DONE:
         jmp     MON_MAIN_INPUT
 
 LCA33_TRY_LOAD_OR_VERIFY:
-        lda     $039F
+        lda     V1541_FNLEN
         cmp     #'V' ;VERIFY
         beq     LCA40
         cmp     #'L' ;LOAD
