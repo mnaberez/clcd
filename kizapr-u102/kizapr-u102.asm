@@ -952,56 +952,55 @@ L8482:  sta     $0201                           ; 8482 8D 01 02                 
 L8495:  jsr     L8420                           ; 8495 20 20 84                   .
         jmp     L8426                           ; 8498 4C 26 84                 L&.
 ; ----------------------------------------------------------------------------
-L849B:  stx     $0202                           ; 849B 8E 02 02                 ...
-        php                                     ; 849E 08                       .
-        sei                                     ; 849F 78                       x
-        jsr     LC6CB                           ; 84A0 20 CB C6                  ..
-        jsr     KL_RESTOR                       ; 84A3 20 96 C6                  ..
-        ldx     #$08                            ; 84A6 A2 08                    ..
-        jsr     L8420                           ; 84A8 20 20 84                   .
-        sei                                     ; 84AB 78                       x
-        jsr     LC6CB                           ; 84AC 20 CB C6                  ..
-        .byte   $9C                             ; 84AF 9C                       .
-L84B0:  .byte   $02                             ; 84B0 02                       .
-        .byte   $02                             ; 84B1 02                       .
-        ldx     $0200                           ; 84B2 AE 00 02                 ...
-        jsr     L840F                           ; 84B5 20 0F 84                  ..
-        beq     L84C0                           ; 84B8 F0 06                    ..
-        jsr     L8277                           ; 84BA 20 77 82                  w.
-        plp                                     ; 84BD 28                       (
-        sec                                     ; 84BE 38                       8
-        rts                                     ; 84BF 60                       `
+L849B:  stx     $0202
+        php
+        sei
+        jsr     LC6CB
+        jsr     KL_RESTOR
+        ldx     #$08
+        jsr     L8420
+        sei
+        jsr     LC6CB
+L84B0 := *+1
+        stz     $0202
+        ldx     $0200
+        jsr     L840F
+        beq     L84C0
+        jsr     L8277
+        plp
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-L84C0:  jmp     L8426                           ; 84C0 4C 26 84                 L&.
+L84C0:  jmp     L8426
 ; ----------------------------------------------------------------------------
-L84C3:  clc                                     ; 84C3 18                       .
-        rts                                     ; 84C4 60                       `
+L84C3:  clc
+        rts
 ; ----------------------------------------------------------------------------
-L84C5:  php                                     ; 84C5 08                       .
-        sei                                     ; 84C6 78                       x
-        ldx     $0202                           ; 84C7 AE 02 02                 ...
-        beq     L84DA                           ; 84CA F0 0E                    ..
-        jsr     LC6CB                           ; 84CC 20 CB C6                  ..
+L84C5:  php
+        sei
+        ldx     $0202
+        beq     L84DA
+        jsr     LC6CB
 L84D0 := * +1
         jsr     L84ED
         jsr     LC6CB
         ldx     $0202
-        bra     L84E0                           ; 84D8 80 06                    ..
-L84DA:  jsr     L84ED                           ; 84DA 20 ED 84                  ..
-        ldx     $0200                           ; 84DD AE 00 02                 ...
-L84E0:  jsr     L840F                           ; 84E0 20 0F 84                  ..
-        beq     L84EA                           ; 84E3 F0 05                    ..
-        jsr     L8277                           ; 84E5 20 77 82                  w.
-        plp                                     ; 84E8 28                       (
-        rts                                     ; 84E9 60                       `
+        bra     L84E0
+L84DA:  jsr     L84ED
+        ldx     $0200
+L84E0:  jsr     L840F
+        beq     L84EA
+        jsr     L8277
+        plp
+        rts
 ; ----------------------------------------------------------------------------
-L84EA:  jmp     L843F                           ; 84EA 4C 3F 84                 L?.
+L84EA:  jmp     L843F
 ; ----------------------------------------------------------------------------
-L84ED:  ldx     $0200                           ; 84ED AE 00 02                 ...
-        jsr     L840F                           ; 84F0 20 0F 84                  ..
-        beq     L84FA_MAYBE_SHUTDOWN            ; 84F3 F0 05                    ..
-        ldx     #$0E                            ; 84F5 A2 0E                    ..
-        jmp     L8420                           ; 84F7 4C 20 84                 L .
+L84ED:  ldx     $0200
+        jsr     L840F
+        beq     L84FA_MAYBE_SHUTDOWN
+        ldx     #$0E
+        jmp     L8420
 ; ----------------------------------------------------------------------------
 ; This seems to be the "shutdown" function or part of it: "state" should be
 ; saved (which is checked on next reset to see it was a clean shutdown) and
@@ -2788,23 +2787,22 @@ L921A_V1541_INTERNAL_CLOSE:
         sec
         rts
 ; ----------------------------------------------------------------------------
-L9221:  lda     $E6                             ; 9221 A5 E6                    ..
-        cmp     #$0F                            ; 9223 C9 0F                    ..
-        beq     L9240                           ; 9225 F0 19                    ..
-        lda     $E7                             ; 9227 A5 E7                    ..
-        bit     #$20                            ; 9229 89 20                    .
-        beq     L9240                           ; 922B F0 13                    ..
-        bit     #$80                            ; 922D 89 80                    ..
-        bne     L9240                           ; 922F D0 0F                    ..
-        lda     $E8                             ; 9231 A5 E8                    ..
-        beq     L9240                           ; 9233 F0 0B                    ..
-;TODO probably jsr
-        .byte   $20                             ; 9235 20
-L9236:  ldx     $908D,y                         ; 9236 BE 8D 90                 ...
-        asl     $20                             ; 9239 06 20                    .
-        rmb1    $8D                             ; 923B 17 8D                    ..
-        jsr     L8D5B_UNKNOWN_DIR_RELATED       ; 923D 20 5B 8D                  [.
-L9240:  jmp     L8C86                           ; 9240 4C 86 8C                 L..
+L9221:  lda     $E6
+        cmp     #$0F
+        beq     L9240
+        lda     $E7
+        bit     #$20
+        beq     L9240
+        bit     #$80
+        bne     L9240
+        lda     $E8
+        beq     L9240
+L9236 := *+1
+        jsr     L8DBE
+        BCC     L9240
+        jsr     L8D17
+        jsr     L8D5B_UNKNOWN_DIR_RELATED
+L9240:  jmp     L8C86
 ; ----------------------------------------------------------------------------
 L9244 := *+1
 L9243_OPEN_V1541:
@@ -3628,161 +3626,158 @@ L9840_RENAME_ERROR:
 
 ; ----------------------------------------------------------------------------
 L9842_V1541_V_VALIDATE:
-        jsr     L8C6F_V1541_I_INITIALIZE        ; 9842 20 6F 8C                  o.
-        jsr     KL_RAMTAS                       ; 9845 20 A8 86                  ..
-        cpx     $0209                           ; 9848 EC 09 02                 ...
-        beq     L985B                           ; 984B F0 0E                    ..
+        jsr     L8C6F_V1541_I_INITIALIZE
+        jsr     KL_RAMTAS
+        cpx     $0209
+        beq     L985B
 
-L984D:  stx     $0209                           ; 984D 8E 09 02                 ...
-        sta     $0208                           ; 9850 8D 08 02                 ...
-        stx     $020B                           ; 9853 8E 0B 02                 ...
-        sta     $020A                           ; 9856 8D 0A 02                 ...
-        sec                                     ; 9859 38                       8
-        rts                                     ; 985A 60                       `
+L984D:  stx     $0209
+        sta     $0208
+        stx     $020B
+        sta     $020A
+        sec
+        rts
 
-L985B:  cmp     $0208                           ; 985B CD 08 02                 ...
-        bne     L984D                           ; 985E D0 ED                    ..
-        cpx     $020A                           ; 9860 EC 0A 02                 ...
-        bcc     L984D                           ; 9863 90 E8                    ..
-        bne     L986C                           ; 9865 D0 05                    ..
-        cmp     $020A                           ; 9867 CD 0A 02                 ...
-        bcc     L984D                           ; 986A 90 E1                    ..
-L986C:  jsr     L8CBB                           ; 986C 20 BB 8C                  ..
-        bne     L9890                           ; 986F D0 1F                    ..
-L9871:  jsr     L8CC3                           ; 9871 20 C3 8C                  ..
-        bcc     L988B                           ; 9874 90 15                    ..
-        jsr     L8CD1                           ; 9876 20 D1 8C                  ..
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 9879 20 D5 8A                  ..
-        ldy     #$02                            ; 987C A0 02                    ..
-        lda     $EA                             ; 987E A5 EA                    ..
-        sta     ($E4),y                         ; 9880 91 E4                    ..
-L9882:  inc     $E9                             ; 9882 E6 E9                    ..
-        beq     L9890                           ; 9884 F0 0A                    ..
-        jsr     L89F9                           ; 9886 20 F9 89                  ..
-        bra     L9882                           ; 9889 80 F7                    ..
-L988B:  bit     SXREG                           ; 988B 2C 9D 03                 ,..
-        bpl     L9871                           ; 988E 10 E1                    ..
-L9890:  jsr     L8CBB                           ; 9890 20 BB 8C                  ..
-;TODO probably code
-        .byte   $90                             ; 9893 90                       .
-L9894:  .byte   $3B                             ; 9894 3B                       ;
-        bra     L98AB                           ; 9895 80 14                    ..
-L9897:  jsr     L8CC3                           ; 9897 20 C3 8C                  ..
-;TODO probably code
-        .byte   $90                             ; 989A 90                       .
-L989B:  bit     $20,x                           ; 989B 34 20                    4
-        rol     a                               ; 989D 2A                       *
-L989E:  sty     $18AD                           ; 989E 8C AD 18                 ...
-        .byte   $02                             ; 98A1 02                       .
-        bit     #$80                            ; 98A2 89 80                    ..
-        bne     L98B4                           ; 98A4 D0 0E                    ..
-        lda     $0219                           ; 98A6 AD 19 02                 ...
-        sta     $E8                             ; 98A9 85 E8                    ..
-L98AB:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER   ; 98AB 20 D5 8A                  ..
-        bcs     L98B9 ;branch if no error        ; 98AE B0 09                    ..
+L985B:  cmp     $0208
+        bne     L984D
+        cpx     $020A
+        bcc     L984D
+        bne     L986C
+        cmp     $020A
+        bcc     L984D
+L986C:  jsr     L8CBB
+        bne     L9890
+L9871:  jsr     L8CC3
+        bcc     L988B
+        jsr     L8CD1
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        ldy     #$02
+        lda     $EA
+        sta     ($E4),y
+L9882:  inc     $E9
+        beq     L9890
+        jsr     L89F9
+        bra     L9882
+L988B:  bit     SXREG
+        bpl     L9871
+L9890:  jsr     L8CBB
+L9894 := *+1
+        bcc     L98D0
+        bra     L98AB
+L9897:  jsr     L8CC3
+L989B :=*+1
+        BCC $98d0
+L989E := *+2
+        jsr     L8C2A
+        LDA     $0218
+        bit     #$80
+        bne     L98B4
+        lda     $0219
+        sta     $E8
+L98AB:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        bcs     L98B9 ;branch if no error
         ;error
-        lda     $E9                             ; 98B0 A5 E9                    ..
-        beq     L9897                           ; 98B2 F0 E3                    ..
-L98B4:  jsr     L8D17 ;maybe returns cbm dos error in a                          ; 98B4 20 17 8D                  ..
-        bra     L9890                           ; 98B7 80 D7                    ..
+        lda     $E9
+        beq     L9897
+L98B4:  jsr     L8D17 ;maybe returns cbm dos error in a
+        bra     L9890
 
-L98B9:  inc     $E9                             ; 98B9 E6 E9                    ..
-        ldy     #$02                            ; 98BB A0 02                    ..
-        lda     ($E4),y                         ; 98BD B1 E4                    ..
-        beq     L98AB                           ; 98BF F0 EA                    ..
-        lda     $E9                             ; 98C1 A5 E9                    ..
-        pha                                     ; 98C3 48                       H
-        jsr     L8DE0                           ; 98C4 20 E0 8D                  ..
-        sta     $E9                             ; 98C7 85 E9                    ..
-        pla                                     ; 98C9 68                       h
-        cmp     $E9                             ; 98CA C5 E9                    ..
-;TODO probably code
-        .byte   $D0                             ; 98CC D0                       .
-L98CD:  inc     $80                             ; 98CD E6 80                    ..
-        .byte   $C7                             ; 98CF C7                       .
-L98D0:  ldx     #$3F                            ; 98D0 A2 3F                    .?
-L98D2:  stz     V1541_CMD_BUF,x                         ; 98D2 9E 95 02                 ...
-        dex                                     ; 98D5 CA                       .
-        bpl     L98D2                           ; 98D6 10 FA                    ..
-        inc     V1541_CMD_BUF                           ; 98D8 EE 95 02                 ...
-        jsr     L8CBB                           ; 98DB 20 BB 8C                  ..
-L98DE:  bcc     L9917                           ; 98DE 90 37                    .7
-        bra     L98E5                           ; 98E0 80 03                    ..
-L98E2:  jsr     L8D17 ;maybe returns cbm dos error in a                          ; 98E2 20 17 8D                  ..
-L98E5:  jsr     L8CBB                           ; 98E5 20 BB 8C                  ..
-L98E8:  bra     L98ED                           ; 98E8 80 03                    ..
-L98EA:  jsr     L8CC3                           ; 98EA 20 C3 8C                  ..
-L98ED:  bcc     L9917                           ; 98ED 90 28                    .(
-        jsr     L9932                           ; 98EF 20 32 99                  2.
-        and     V1541_CMD_BUF,y                         ; 98F2 39 95 02                 9..
-        bne     L98E2                           ; 98F5 D0 EB                    ..
-        lda     PowersOfTwo,x                   ; 98F7 BD 41 B0                 .A.
-        ora     V1541_CMD_BUF,y                         ; 98FA 19 95 02                 ...
-        sta     V1541_CMD_BUF,y                         ; 98FD 99 95 02                 ...
-        lda     #$30                            ; 9900 A9 30                    .0
-        trb     $0218                           ; 9902 1C 18 02                 ...
-        bne     L990F                           ; 9905 D0 08                    ..
-        lda     $0219                           ; 9907 AD 19 02                 ...
-        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A                          ; 990A 20 20 8E                   .
-        bcs     L98EA ;branch if no error       ; 990D B0 DB                    ..
+L98B9:  inc     $E9
+        ldy     #$02
+        lda     ($E4),y
+        beq     L98AB
+        lda     $E9
+        pha
+        jsr     L8DE0
+        sta     $E9
+        pla
+        cmp     $E9
+L98CD := *+1
+        BNE     L98B4
+        BRA     L9897
+L98D0:  ldx     #$3F
+L98D2:  stz     V1541_CMD_BUF,x
+        dex
+        bpl     L98D2
+        inc     V1541_CMD_BUF
+        jsr     L8CBB
+L98DE:  bcc     L9917
+        bra     L98E5
+L98E2:  jsr     L8D17 ;maybe returns cbm dos error in a
+L98E5:  jsr     L8CBB
+L98E8:  bra     L98ED
+L98EA:  jsr     L8CC3
+L98ED:  bcc     L9917
+        jsr     L9932
+        and     V1541_CMD_BUF,y
+        bne     L98E2
+        lda     PowersOfTwo,x
+        ora     V1541_CMD_BUF,y
+        sta     V1541_CMD_BUF,y
+        lda     #$30
+        trb     $0218
+        bne     L990F
+        lda     $0219
+        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A
+        bcs     L98EA ;branch if no error
         ;error occurred
-L990F:  jsr     L8D17 ;maybe returns cbm dos error in a                          ; 990F 20 17 8D                  ..
-        jsr     L8D5B_UNKNOWN_DIR_RELATED                           ; 9912 20 5B 8D                  [.
-        bra     L98D0                           ; 9915 80 B9                    ..
-L9917:  jsr     L8A81                           ; 9917 20 81 8A                  ..
-L991A:  beq     L9930                           ; 991A F0 14                    ..
-L991C:  lda     ($E4)                           ; 991C B2 E4                    ..
-        jsr     L9932                           ; 991E 20 32 99                  2.
-        and     V1541_CMD_BUF,y                         ; 9921 39 95 02                 9..
-        bne     L992B                           ; 9924 D0 05                    ..
-        jsr     L89FF                           ; 9926 20 FF 89                  ..
-        bra     L9917                           ; 9929 80 EC                    ..
-L992B:  jsr     L8A61                           ; 992B 20 61 8A                  a.
-        bcs     L991C                           ; 992E B0 EC                    ..
-L9930:  sec                                     ; 9930 38                       8
-        rts                                     ; 9931 60                       `
+L990F:  jsr     L8D17 ;maybe returns cbm dos error in a
+        jsr     L8D5B_UNKNOWN_DIR_RELATED
+        bra     L98D0
+L9917:  jsr     L8A81
+L991A:  beq     L9930
+L991C:  lda     ($E4)
+        jsr     L9932
+        and     V1541_CMD_BUF,y
+        bne     L992B
+        jsr     L89FF
+        bra     L9917
+L992B:  jsr     L8A61
+        bcs     L991C
+L9930:  sec
+        rts
 ; ----------------------------------------------------------------------------
-L9932:  pha                                     ; 9932 48                       H
-        lsr     a                               ; 9933 4A                       J
-        lsr     a                               ; 9934 4A                       J
-        lsr     a                               ; 9935 4A                       J
-        tay                                     ; 9936 A8                       .
-        pla                                     ; 9937 68                       h
-        and     #$07                            ; 9938 29 07                    ).
-        tax                                     ; 993A AA                       .
-        lda     PowersOfTwo,x                   ; 993B BD 41 B0                 .A.
-L993E:  rts                                     ; 993E 60                       `
+L9932:  pha
+        lsr     a
+        lsr     a
+        lsr     a
+        tay
+        pla
+        and     #$07
+        tax
+        lda     PowersOfTwo,x
+L993E:  rts
 ; ----------------------------------------------------------------------------
 V1541_KERNAL_CALL_DONE:
-        tax ;Save error code in X               ; 993F AA                       .
-        lda     #$00                            ; 9940 A9 00                    ..
-        bcs     L9955 ;branch if no error       ; 9942 B0 11                    ..
+        tax ;Save error code in X
+        lda     #$00
+        bcs     L9955 ;branch if no error
 
         ;error occurred
-        lda     $E8                             ; 9944 A5 E8                    ..
-        ldy     $E9                             ; 9946 A4 E9                    ..
-        jsr     L9964_STORE_XAYZ                ; 9948 20 64 99                  d.
-        lda     #$04                            ; 994B A9 04                    ..
-        cpx     #doserr_25_write_err ;25 write-verify error     ; 994D E0 19                    ..
-        bne     L9953                           ; 994F D0 02                    ..
-        ora     #$08                            ; 9951 09 08                    ..
-L9953:  ldx     #$0D                            ; 9953 A2 0D                    ..
-L9955:  bit     SXREG                           ; 9955 2C 9D 03                 ,..
-        bpl     L995C                           ; 9958 10 02                    ..
-        ora     #$40 ;EOF                       ; 995A 09 40                    .@
-L995C:  sta     SATUS                           ; 995C 85 BA                    ..
-        stz     SXREG                           ; 995E 9C 9D 03                 ...
-        txa                                     ; 9961 8A                       .
-L9962:  clc                                     ; 9962 18                       .
-        rts                                     ; 9963 60                       `
+        lda     $E8
+        ldy     $E9
+        jsr     L9964_STORE_XAYZ
+        lda     #$04
+        cpx     #doserr_25_write_err ;25 write-verify error
+        bne     L9953
+        ora     #$08
+L9953:  ldx     #$0D
+L9955:  bit     SXREG
+        bpl     L995C
+        ora     #$40 ;EOF
+L995C:  sta     SATUS
+        stz     SXREG
+        txa
+L9962:  clc
+        rts
 ; ----------------------------------------------------------------------------
 L9964_STORE_XAYZ:
-        stx     $0210                           ; 9964 8E 10 02                 ...
-        sta     $0211                           ; 9967 8D 11 02                 ...
+        stx     $0210
+        sta     $0211
 L96A9 := *-1
-        sty     $0212                           ; 996A 8C 12 02                 ...
+        sty     $0212
         stz     $0217
-        rts                                     ; 9970 60                       `
+        rts
 ; ----------------------------------------------------------------------------
 L9971:  .byte   "CHANNEL",0
         .byte   "COMMAND",0
@@ -3864,22 +3859,22 @@ L9AC9:  lda     #$2C ;,
         sec
         rts
 ; ----------------------------------------------------------------------------
-L9ACD:  bit     #$10                            ; 9ACD 89 10                    ..
-        bne     L9AC9                           ; 9ACF D0 F8                    ..
-        sta     $E0                             ; 9AD1 85 E0                    ..
-        and     #$03                            ; 9AD3 29 03                    ).
-L9AD5:  tax                                     ; 9AD5 AA                       .
-L9AD6:  lda     $020F,x                         ; 9AD6 BD 0F 02                 ...
-        jsr     L886A                           ; 9AD9 20 6A 88                  j.
-        bit     $E0                             ; 9ADC 24 E0                    $.
-        bmi     L9AE4                           ; 9ADE 30 04                    0.
-        txa                                     ; 9AE0 8A                       .
-        bvs     L9AE4                           ; 9AE1 70 01                    p.
-        tya                                     ; 9AE3 98                       .
-;TODO probably code
-L9AE4:  .byte   $09                             ; 9AE4 09                       .
-L9AE5:  bmi     L9B1F                           ; 9AE5 30 38                    08
-        rts                                     ; 9AE7 60                       `
+L9ACD:  bit     #$10
+        bne     L9AC9
+        sta     $E0
+        and     #$03
+L9AD5:  tax
+L9AD6:  lda     $020F,x
+        jsr     L886A
+        bit     $E0
+        bmi     L9AE4
+        txa
+        bvs     L9AE4
+        tya
+L9AE5 := *+1
+L9AE4:  ora #$30
+        sec
+        rts                                     
 ; ----------------------------------------------------------------------------
 L9AE8_NOT_FOUND_IN_L9A8E:
         dec     a
