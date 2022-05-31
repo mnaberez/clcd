@@ -24,54 +24,54 @@
 ; The four Application Windows can contain ROM or RAM from any location in
 ; the extended address space.
 
-; ADDRESS	SIZE	TYPE			CONTENTS
-; -------	----	----			--------
-; 30000-3FFFF	64K	ROM			KERNAL, Character Set, Monitor
-; 20000-2FFFF	64K	ROM			Applications
-; 10000-1FFFF	64K	Expansion RAM
-; 00000-0FFFF	64K	Built-in RAM
+; ADDRESS       SIZE    TYPE                    CONTENTS
+; -------       ----    ----                    --------
+; 30000-3FFFF   64K     ROM                     KERNAL, Character Set, Monitor
+; 20000-2FFFF   64K     ROM                     Applications
+; 10000-1FFFF   64K     Expansion RAM
+; 00000-0FFFF   64K     Built-in RAM
 
 ; The CPU Address Space:
 ;                               /------------------------- MODES ------------------------\
-; ADDRESS	SIZE	TYPE	RAM		APPL		KERN		TEST			NOTES
-; -------	----	----	---		----		----		----			-----
-; 0FA00-0FFFF	1.5K 	Fixed	3FA00-3FFFF	3FA00-3FFFF	3FA00-3FFFF	3FA00-3FFFF		Top of KERNAL. Read from ROM, Write to LCD or MMU
-; 0F800-0F9FF 	0.5K 	I/O	0F800-0F9FF	0F800-0F9FF	0F800-0F9FF	0F800-0F9FF		Fixed I/O (VIAs, ACIA, EXP)
-; 0C000-0F7FF 	14K 	Banked	0C000-0F7FF	Appl Window#4	3C000-3F7FF	Offset 4/5		Configured via MMU
-; 08000-0BFFF	16K	Banked 	08000-0BFFF	Appl Window#3	38000-3BFFF	Offset 3		Configured via MMU
-; 04000-07FFF	16K	Banked	04000-07FFF	Appl Window#2	Kernal Window 	Offset 2		Configured via MMU
-; 01000-03FFF	12K	Banked	01000-03FFF	Appl window#1	01000-03FFF 	Offset 1		Configured via MMU
-; 00000-00FFF	4K	Fixed	00000-00FFF	00000-00FFF	00000-00FFF	00000-00FFF		Always fixed
+; ADDRESS       SIZE    TYPE    RAM             APPL            KERN            TEST           NOTES
+; -------       ----    ----    ---             ----            ----            ----           -----
+; 0FA00-0FFFF   1.5K    Fixed   3FA00-3FFFF     3FA00-3FFFF     3FA00-3FFFF     3FA00-3FFFF    Top of KERNAL. Read from ROM, Write to LCD or MMU
+; 0F800-0F9FF   0.5K    I/O     0F800-0F9FF     0F800-0F9FF     0F800-0F9FF     0F800-0F9FF    Fixed I/O (VIAs, ACIA, EXP)
+; 0C000-0F7FF   14K     Banked  0C000-0F7FF     Appl Window#4   3C000-3F7FF     Offset 4/5     Configured via MMU
+; 08000-0BFFF   16K     Banked  08000-0BFFF     Appl Window#3   38000-3BFFF     Offset 3       Configured via MMU
+; 04000-07FFF   16K     Banked  04000-07FFF     Appl Window#2   Kernal Window   Offset 2       Configured via MMU
+; 01000-03FFF   12K     Banked  01000-03FFF     Appl window#1   01000-03FFF     Offset 1       Configured via MMU
+; 00000-00FFF   4K      Fixed   00000-00FFF     00000-00FFF     00000-00FFF     00000-00FFF    Always fixed
 
 ; LCD, MMU, IO Address:
 
-; ADDRESS RANGE	TYPE	ADDRESS	DESCRIPTION				NOTES
-; -------------	----	-------	-----------				-----
-; 0FF80-0FFFF 	LCD	Custom Gate Array
-;			FF80	[0-6] X-Scroll
-;			FF81	[0-7] Y-Scroll
-;			FF82	[1] Graphics Enable, [0] Chararcter Select
-;			FF83    [5] Test Mode, [4] SS40, [3] CS80, [2] Chr Width
+; ADDRESS RANGE TYPE    ADDRESS DESCRIPTION                             NOTES
+; ------------- ----    ------- -----------                             -----
+; 0FF80-0FFFF   LCD     Custom Gate Array
+;                       FF80    [0-6] X-Scroll
+;                       FF81    [0-7] Y-Scroll
+;                       FF82    [1] Graphics Enable, [0] Chararcter Select
+;                       FF83    [5] Test Mode, [4] SS40, [3] CS80, [2] Chr Width
 
-; 0FA00-0FFFF	MMU	Custom Gate Array
-;			FF00	KERN window offset	(write only)	* Sets a pointer to any 1K boundary in the extended address range.
-;			FE80 	APPL window#4 offset	(write only)	  The top 8 bits (A10-A17) of the extended address are written to
-;			FE00 	APPL window#3 offset	(write only)	  any of the 5 offset registers (KERNAL or Applcation window).
-;			FD80	APPL window#2 offset	(write only)
-;			FD00 	APPL window#1 offset	(write only)
+; 0FA00-0FFFF   MMU     Custom Gate Array
+;                       FF00    KERN window offset      (write only)    * Sets a pointer to any 1K boundary in the extended address range.
+;                       FE80    APPL window#4 offset    (write only)      The top 8 bits (A10-A17) of the extended address are written to
+;                       FE00    APPL window#3 offset    (write only)      any of the 5 offset registers (KERNAL or Applcation window).
+;                       FD80    APPL window#2 offset    (write only)
+;                       FD00    APPL window#1 offset    (write only)
 
-;			FC80	Select TEST mode	(dummywrite	* Writing ANYTHING to these registers triggers the selected MODE
-;			FC00	Save current mode	(dummywrite)	  (see above) or does a SAVE or RECALL operation.
-;			FB80	Recall saved mode	(dummywrite)
-;			FB00	Select RAM mode		(dummywrite)
-;			FA80	Select APPL mode	(dummywrite)
-;			FA00	Select KERN mode	(dummywrite)
+;                       FC80    Select TEST mode        (dummywrite     * Writing ANYTHING to these registers triggers the selected MODE
+;                       FC00    Save current mode       (dummywrite)      (see above) or does a SAVE or RECALL operation.
+;                       FB80    Recall saved mode       (dummywrite)
+;                       FB00    Select RAM mode         (dummywrite)
+;                       FA80    Select APPL mode        (dummywrite)
+;                       FA00    Select KERN mode        (dummywrite)
 
-; 0F800-0F9FF	I/O	IO Chips and Expansion via rear connector
-; 			F980	I/O#4	ACIA		RS-232, Modem
-; 			F900	I/O#3	External Expansion
-;			F880	I/O#2	VIA#2 		Centronics, RTC, RS-232, Modem, Beeper, Barcode Reader
-;			F800	I/O#1	VIA#1 		Keyboard, Battery Level, Alarm, RTC Enable, Power, IEC
+; 0F800-0F9FF   I/O     IO Chips and Expansion via rear connector
+;                       F980    I/O#4   ACIA            RS-232, Modem
+;                       F900    I/O#3   External Expansion
+;                       F880    I/O#2   VIA#2           Centronics, RTC, RS-232, Modem, Beeper, Barcode Reader
+;                       F800    I/O#1   VIA#1           Keyboard, Battery Level, Alarm, RTC Enable, Power, IEC
 
 ; ----------------------------------------------------------------------------
 
@@ -110,7 +110,8 @@ FA              := $00C5
 LA              := $00C6
 LENGTH          := $00CF
 V1541_FNADR     := $00E2  ;2 bytes
-V1541_CHAN      =: $00E6
+V1541_CHAN      := $00E6
+V1541_FLAGS     := $00E7
 BLNCT           := $00EF  ;Counter for cursor blink
 stack           := $0100
 V1541_CMD_BUF   := $0295
@@ -1778,29 +1779,30 @@ L8B0B:  stz     $020E                           ; 8B0B 9C 0E 02                 
 ; ----------------------------------------------------------------------------
 ;maybe returns cbm dos error code in a
 L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL:
-        lda     $0207                           ; 8B13 AD 07 02                 ...
-        bne     L8B1D                           ; 8B16 D0 05                    ..
-        inc     $0207                           ; 8B18 EE 07 02                 ...
-        bra     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL  ; 8B1B 80 F6                    ..
+        lda     $0207
+        bne     L8B1D_LOOP
+        inc     $0207
+        bra     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL
 
-L8B1D:  pha                                     ; 8B1D 48                       H
-        jsr     L8DBE                           ; 8B1E 20 BE 8D                  ..
-        pla                                     ; 8B21 68                       h
-        bcs     L8B27                           ; 8B22 B0 03                    ..
-        sec                                     ; 8B24 38                       8
-        bra     L8B31_STORE_STUFF_THEN_72_DISK_FULL ; 8B25 80 0A                    ..
+L8B1D_LOOP:
+        pha
+        jsr     L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR
+        pla
+        bcs     L8B27 ;branch if no error
+        sec
+        bra     L8B31_STORE_0207_0219_THEN_72_DISK_FULL
 
-L8B27:  inc     a                               ; 8B27 1A                       .
-        bne     L8B2B                           ; 8B28 D0 01                    ..
-        inc     a                               ; 8B2A 1A                       .
-L8B2B:  cmp     $0207                           ; 8B2B CD 07 02                 ...
-        bne     L8B1D                           ; 8B2E D0 ED                    ..
-        clc                                     ; 8B30 18                       .
-L8B31_STORE_STUFF_THEN_72_DISK_FULL:
-        sta     $0207                           ; 8B31 8D 07 02                 ...
-        sta     $0219                           ; 8B34 8D 19 02                 ...
-        lda     #doserr_72_disk_full ;72 disk full              ; 8B37 A9 48                    .H
-        rts                                     ; 8B39 60                       `
+L8B27:  inc     a
+        bne     L8B2B
+        inc     a
+L8B2B:  cmp     $0207
+        bne     L8B1D_LOOP
+        clc
+L8B31_STORE_0207_0219_THEN_72_DISK_FULL:
+        sta     $0207
+        sta     $0219
+        lda     #doserr_72_disk_full ;72 disk full
+        rts
 ; ----------------------------------------------------------------------------
 ;CHRIN to Virtual 1541
 L8B3C := *+2
@@ -1810,397 +1812,410 @@ L8B3F := *+2
         jmp     V1541_KERNAL_CALL_DONE
 
 L8B40_V1541_INTERNAL_CHRIN:
-        jsr     L8C36_CHAN_FROM_SA ;channel related; maybe returns a cbm dos error code                           ; 8B40 20 36 8C                  6.
-        bcs     L8B46 ;branch if no error        ; 8B43 B0 01                    ..
-        rts                                     ; 8B45 60                       `
+        jsr     L8C36_CHAN_FROM_SA ;channel related; maybe returns a cbm dos error code
+        bcs     L8B46 ;branch if no error
+        rts
 ; ----------------------------------------------------------------------------
-L8B46:  lda     $E7                             ; 8B46 A5 E7                    ..
-        bit     #$10                            ; 8B48 89 10                    ..
-        bne     L8B50                           ; 8B4A D0 04                    ..
-        lda     #doserr_61_file_not_open        ;File not open             ; 8B4C A9 3D                    .=
-        clc                                     ; 8B4E 18                       .
-        rts                                     ; 8B4F 60                       `
+L8B46:  lda     V1541_FLAGS
+        bit     #$10
+        bne     L8B50
+        lda     #doserr_61_file_not_open
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L8B50:  lda     V1541_CHAN                      ; 8B50 A5 E6                    ..
-        cmp     #$0F ;command channel?          ; 8B52 C9 0F                    ..
-        bne     L8B59                           ; 8B54 D0 03                    ..
-        jmp     L9AA5_V1541_CHRIN_CMD_CHAN      ; 8B56 4C A5 9A                 L..
+L8B50:  lda     V1541_CHAN
+        cmp     #$0F ;command channel?
+        bne     L8B59
+        jmp     L9AA5_V1541_CHRIN_CMD_CHAN
 ; ----------------------------------------------------------------------------
-L8B59:  lda     $E7                             ; 8B59 A5 E7                    ..
-        bit     #$80                            ; 8B5B 89 80                    ..
-        bne     L8BA0                           ; 8B5D D0 41                    .A
-        lda     $E8                             ; 8B5F A5 E8                    ..
-        bne     L8B66                           ; 8B61 D0 03                    ..
-        jmp     L939A                           ; 8B63 4C 9A 93                 L..
+L8B59:  lda     V1541_FLAGS
+        bit     #$80 ;maybe eof?
+        bne     L8BA0
+        lda     $E8
+        bne     L8B66
+        jmp     L939A
 ; ----------------------------------------------------------------------------
-L8B66:  stz     SXREG                           ; 8B66 9C 9D 03                 ...
-        lda     $EA                             ; 8B69 A5 EA                    ..
-        bne     L8B7F                           ; 8B6B D0 12                    ..
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8B6D 20 D5 8A                  ..
-        bcs     L8B7B ;branch if no error       ; 8B70 B0 09                    ..
-        dec     SXREG                           ; 8B72 CE 9D 03                 ...
-        lda     #$0D                            ; 8B75 A9 0D                    ..
-        sec                                     ; 8B77 38                       8
-        rts                                     ; 8B78 60                       `
+L8B66:  stz     SXREG
+        lda     $EA
+        bne     L8B7F
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        bcs     L8B7B ;branch if no error
+        dec     SXREG
+        lda     #$0D
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-L8B79:  inc     $E9                             ; 8B79 E6 E9                    ..
-L8B7B:  lda     #$02                            ; 8B7B A9 02                    ..
-        sta     $EA                             ; 8B7D 85 EA                    ..
-L8B7F:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8B7F 20 D5 8A                  ..
-        bcc     L8B9F_RTS ;branch if error      ; 8B82 90 1B                    ..
-        ldy     #$02                            ; 8B84 A0 02                    ..
-        lda     ($E4),y                         ; 8B86 B1 E4                    ..
-        beq     L8B8E                           ; 8B88 F0 04                    ..
-        cmp     $EA                             ; 8B8A C5 EA                    ..
-        beq     L8B92                           ; 8B8C F0 04                    ..
-L8B8E:  inc     $EA                             ; 8B8E E6 EA                    ..
-        beq     L8B79                           ; 8B90 F0 E7                    ..
-L8B92:  lda     $EA                             ; 8B92 A5 EA                    ..
-        cmp     ($E4),y                         ; 8B94 D1 E4                    ..
-        bne     L8B9B                           ; 8B96 D0 03                    ..
-        ror     SXREG                           ; 8B98 6E 9D 03                 n..
-L8B9B:  tay                                     ; 8B9B A8                       .
-        lda     ($E4),y                         ; 8B9C B1 E4                    ..
-        sec                                     ; 8B9E 38                       8
-L8B9F_RTS:  rts                                     ; 8B9F 60                       `
+L8B79:  inc     $E9
+L8B7B:  lda     #$02
+        sta     $EA
+L8B7F:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        bcc     L8B9F_RTS ;branch if error
+        ldy     #$02
+        lda     ($E4),y
+        beq     L8B8E
+        cmp     $EA
+        beq     L8B92
+L8B8E:  inc     $EA
+        beq     L8B79
+L8B92:  lda     $EA
+        cmp     ($E4),y
+        bne     L8B9B
+        ror     SXREG
+L8B9B:  tay
+        lda     ($E4),y
+        sec
+L8B9F_RTS:  rts
 ; ----------------------------------------------------------------------------
-L8BA0:  lda     #$0D                            ; 8BA0 A9 0D                    ..
-        stz     SXREG                           ; 8BA2 9C 9D 03                 ...
-        dec     SXREG                           ; 8BA5 CE 9D 03                 ...
-        sec                                     ; 8BA8 38                       8
-        rts                                     ; 8BA9 60                       `
+L8BA0:  lda     #$0D
+        stz     SXREG
+        dec     SXREG
+        sec
+        rts
 ; ----------------------------------------------------------------------------
 ;CHROUT to Virtual 1541
 V1541_CHROUT:
-        jsr     L8BB0_V1541_INTERNAL_CHROUT     ; 8BAA 20 B0 8B                  ..
-        jmp     V1541_KERNAL_CALL_DONE          ; 8BAD 4C 3F 99                 L?.
+        jsr     L8BB0_V1541_INTERNAL_CHROUT
+        jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L8BB0_V1541_INTERNAL_CHROUT:
-        sta     $039E                           ; 8BB0 8D 9E 03                 ...
-        jsr     L8C36_CHAN_FROM_SA ;channel related  ; 8BB3 20 36 8C                  6.
-        bcs     L8BB9 ;branch if no error          ; 8BB6 B0 01                    ..
-        rts                                     ; 8BB8 60                       `
+        sta     $039E
+        jsr     L8C36_CHAN_FROM_SA ;channel related
+        bcs     L8BB9 ;branch if no error
+        rts
 
-L8BB9:  lda     $E7                             ; 8BB9 A5 E7                    ..
-        bit     #$20                            ; 8BBB 89 20                    .
-        bne     L8BC3                           ; 8BBD D0 04                    ..
-        lda     #doserr_61_file_not_open        ; 8BBF A9 3D                    .=
+L8BB9:  lda     V1541_FLAGS
+        bit     #$20
+        bne     L8BC3
+        lda     #doserr_61_file_not_open
 L8BC1_CLC_RTS:
-        clc                                     ; 8BC1 18                       .
-        rts                                     ; 8BC2 60                       `
+        clc
+        rts
 
-L8BC3:  bit     #$80                            ; 8BC3 89 80                    ..
-        beq     L8BCB                           ; 8BC5 F0 04                    ..
+L8BC3:  bit     #$80
+        beq     L8BCB
 L8BC7_73_DOS_MISMATCH:
-        lda     #doserr_73_dos_mismatch         ; 8BC7 A9 49                    .I
-        bra     L8BC1_CLC_RTS                   ; 8BC9 80 F6                    ..
+        lda     #doserr_73_dos_mismatch
+        bra     L8BC1_CLC_RTS
 
-L8BCB:  lda     V1541_CHAN                      ; 8BCB A5 E6                    ..
-        cmp     #$0F ;command channel?          ; 8BCD C9 0F                    ..
-        bne     L8BD7_V1541_CHROUT_NOT_CMD_CHAN ; 8BCF D0 06                    ..
-        jmp     L975D_V1541_CHROUT_CMD_CHAN     ; 8BD1 4C 5D 97                 L].
+L8BCB:  lda     V1541_CHAN
+        cmp     #$0F ;command channel?
+        bne     L8BD7_V1541_CHROUT_NOT_CMD_CHAN
+        jmp     L975D_V1541_CHROUT_CMD_CHAN
 ; ----------------------------------------------------------------------------
-L8BD4:  sta     $039E                           ; 8BD4 8D 9E 03                 ...
+L8BD4:  sta     $039E
         ;Fall through
 
 L8BD7_V1541_CHROUT_NOT_CMD_CHAN:
-        lda     $EA                             ; 8BD7 A5 EA                    ..
-        bne     L8BE1                           ; 8BD9 D0 06                    ..
-        jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR  ; 8BDB 20 39 8A                  9.
-        bcs     L8BF7 ;branch if no error       ; 8BDE B0 17                    ..
-        rts                                     ; 8BE0 60                       `
+        lda     $EA
+        bne     L8BE1
+        jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
+        bcs     L8BF7 ;branch if no error
+        rts
 ; ----------------------------------------------------------------------------
-L8BE1:  inc     $EA                             ; 8BE1 E6 EA                    ..
-        bne     L8BFE                           ; 8BE3 D0 19                    ..
-        jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR  ; 8BE5 20 39 8A                  9.
-        bcc     L8C0E_RTS ;branch if error      ; 8BE8 90 24                    .$
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8BEA 20 D5 8A                  ..
-        bcc     L8C0E_RTS ;branch if error      ; 8BED 90 1F                    ..
-        ldy     #$02                            ; 8BEF A0 02                    ..
-        lda     #$00                            ; 8BF1 A9 00                    ..
-L8BF3:  sta     ($E4),y                         ; 8BF3 91 E4                    ..
-        inc     $E9                             ; 8BF5 E6 E9                    ..
-L8BF7:  ldy     #$03                            ; 8BF7 A0 03                    ..
-        sty     $EA                             ; 8BF9 84 EA                    ..
-        jsr     L89C6                           ; 8BFB 20 C6 89                  ..
-L8BFE:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8BFE 20 D5 8A                  ..
-        ldy     #$02                            ; 8C01 A0 02                    ..
-        lda     $EA                             ; 8C03 A5 EA                    ..
-        sta     ($E4),y                         ; 8C05 91 E4                    ..
-        tay                                     ; 8C07 A8                       .
-        lda     $039E                           ; 8C08 AD 9E 03                 ...
-        sta     ($E4),y                         ; 8C0B 91 E4                    ..
-        sec                                     ; 8C0D 38                       8
+L8BE1:  inc     $EA
+        bne     L8BFE
+        jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
+        bcc     L8C0E_RTS ;branch if error
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        bcc     L8C0E_RTS ;branch if error
+        ldy     #$02
+        lda     #$00
+L8BF3:  sta     ($E4),y
+        inc     $E9
+L8BF7:  ldy     #$03
+        sty     $EA
+        jsr     L89C6
+L8BFE:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        ldy     #$02
+        lda     $EA
+        sta     ($E4),y
+        tay
+        lda     $039E
+        sta     ($E4),y
+        sec
 L8C0E_RTS:
-        rts                                     ; 8C0E 60                       `
+        rts
 ; ----------------------------------------------------------------------------
 L8C0F_DIR_RELATED:
-        pha                                     ; 8C0F 48                       H
-        lda     $EA                             ; 8C10 A5 EA                    ..
-L8C12:  inc     a                               ; 8C12 1A                       .
-        bne     L8C17                           ; 8C13 D0 02                    ..
-        inc     $E9                             ; 8C15 E6 E9                    ..
-L8C17:  cmp     #$03                            ; 8C17 C9 03                    ..
-        bcc     L8C12                           ; 8C19 90 F7                    ..
-L8C1B:  sta     $EA                             ; 8C1B 85 EA                    ..
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8C1D 20 D5 8A                  ..
-        pla                                     ; 8C20 68                       h
-        bcc     L8C27_71_DIR_ERROR ;branch if error                          ; 8C21 90 04                    ..
-        ldy     $EA                             ; 8C23 A4 EA                    ..
-        sta     ($E4),y                         ; 8C25 91 E4                    ..
+        pha
+        lda     $EA
+L8C12:  inc     a
+        bne     L8C17
+        inc     $E9
+L8C17:  cmp     #$03
+        bcc     L8C12
+L8C1B:  sta     $EA
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        pla
+        bcc     L8C27_71_DIR_ERROR ;branch if error
+        ldy     $EA
+        sta     ($E4),y
 L8C27_71_DIR_ERROR:
-        lda     #doserr_71_dir_error ;71 directory error        ; 8C27 A9 47                    .G
-        rts                                     ; 8C29 60                       `
+        lda     #doserr_71_dir_error ;71 directory error
+        rts
 
 ; ----------------------------------------------------------------------------
 L8C2B := *+1
 L8C2A:  jsr     L8C3B_CHAN_HEX_11 ;maybe returns a cbm dos error code
         jmp     L8C89
 
-L8C30:  jsr     L8C3E_CHAN_HEX_10                           ; 8C30 20 3E 8C                  >.
-        jmp     L8C89                           ; 8C33 4C 89 8C                 L..
+L8C30:  jsr     L8C3E_CHAN_HEX_10
+        jmp     L8C89
 ; ----------------------------------------------------------------------------
 L8C36_CHAN_FROM_SA:
         ;SA high nib is command, low nib is channel
-        lda     SA                              ; 8C36 A5 C4                    ..
-        and     #$0F                            ; 8C38 29 0F                    ).
-L8C3A:  .byte   $2C ;skip next 2 bytes          ; 8C3A 2C                       ,
+        lda     SA
+        and     #$0F
+L8C3A:  .byte   $2C ;skip next 2 bytes
 L8C3B_CHAN_HEX_11:
-        lda     #$11                            ; 8C3B A9 11                    ..
-        .byte   $2C ;skip next 2 bytes          ; 8C3D 2C                       ,
+        lda     #$11
+        .byte   $2C ;skip next 2 bytes
 L8C3E_CHAN_HEX_10:
-        lda     #$10                            ; 8C3E A9 10                    ..
+        lda     #$10
 L8C40_CHAN_A:
-        cmp     V1541_CHAN                      ; 8C40 C5 E6                    ..
-        beq     L8C66_70_NO_CHANNEL             ; 8C42 F0 22                    ."
-        pha                                     ; 8C44 48                       H
-        lda     V1541_CHAN                      ; 8C45 A5 E6                    ..
-        jsr     L8C4D                           ; 8C47 20 4D 8C                  M.
-L8C4A:  pla                                     ; 8C4A 68                       h
-        sta     V1541_CHAN                      ; 8C4B 85 E6                    ..
-L8C4D:  inc     a                               ; 8C4D 1A                       .
-        asl     a                               ; 8C4E 0A                       .
-        asl     a                               ; 8C4F 0A                       .
-        dec     a                               ; 8C50 3A                       :
-        tax                                     ; 8C51 AA                       .
-        ldy     #$03                            ; 8C52 A0 03                    ..
-L8C54:  lda     $E7,y                           ; 8C54 B9 E7 00                 ...
-        pha                                     ; 8C57 48                       H
-        lda     $024D,x                         ; 8C58 BD 4D 02                 .M.
-        sta     $E7,y                           ; 8C5B 99 E7 00                 ...
-        pla                                     ; 8C5E 68                       h
-        sta     $024D,x                         ; 8C5F 9D 4D 02                 .M.
-        dex                                     ; 8C62 CA                       .
-        dey                                     ; 8C63 88                       .
-        bpl     L8C54                           ; 8C64 10 EE                    ..
+        cmp     V1541_CHAN
+        beq     L8C66_70_NO_CHANNEL
+        pha
+        lda     V1541_CHAN
+        jsr     L8C4D
+L8C4A:  pla
+        sta     V1541_CHAN
+L8C4D:  inc     a
+        asl     a
+        asl     a
+        dec     a
+        tax
+        ldy     #$03
+L8C54:  lda     V1541_FLAGS,y
+        pha
+        lda     $024D,x
+        sta     V1541_FLAGS,y
+        pla
+        sta     $024D,x
+        dex
+        dey
+        bpl     L8C54
 L8C66_70_NO_CHANNEL:
-        lda     #doserr_70_no_channel           ; 8C66 A9 46                    .F
-L8C68:  clc                                     ; 8C68 18                       .
-        ldx     $E7                             ; 8C69 A6 E7                    ..
-        beq     L8C6E_RTS                       ; 8C6B F0 01                    ..
-        sec                                     ; 8C6D 38                       8
+        lda     #doserr_70_no_channel
+L8C68:  clc
+        ldx     V1541_FLAGS
+        beq     L8C6E_RTS
+        sec
 L8C6E_RTS:
-        rts                                     ; 8C6E 60                       `
+        rts
 ; ----------------------------------------------------------------------------
 L8C6F_V1541_I_INITIALIZE:
-        lda     #$0E                            ; 8C6F A9 0E                    ..
-        jsr     L8C40_CHAN_A                    ; 8C71 20 40 8C                  @.
-        ldx     #$47                            ; 8C74 A2 47                    .G
+        lda     #$0E
+        jsr     L8C40_CHAN_A
+        ldx     #$47
 L8C77 := *+1
-L8C76:  STZ     $024D,X                         ; 8C76 9E                       .
+L8C76:  STZ     $024D,X
         dex
-L8C7A:  bpl     L8C76                           ; 8C7A 10 FA                    ..
-        stz     V1541_CMD_LEN                   ; 8C7C 9C D5 02                 ...
-        inx                                     ; 8C7F E8                       .
-        txa                                     ; 8C80 8A                       .
-        tay                                     ; 8C81 A8                       .
-        sec                                     ; 8C82 38                       8
-        jmp     L9964_STORE_XAYZ                ; 8C83 4C 64 99                 Ld.
+L8C7A:  bpl     L8C76
+        stz     V1541_CMD_LEN
+        inx
+        txa
+        tay
+        sec
+        jmp     L9964_STORE_XAYZ
 ; ----------------------------------------------------------------------------
-L8C86:  jsr     L8C36_CHAN_FROM_SA ;channel related          ; 8C86 20 36 8C                  6.
-L8C89:  ldx     #$03                            ; 8C89 A2 03                    ..
-L8C8B:  stz     $E7,x                           ; 8C8B 74 E7                    t.
-        dex                                     ; 8C8D CA                       .
-        bpl     L8C8B                           ; 8C8E 10 FB                    ..
-        sec                                     ; 8C90 38                       8
-        rts                                     ; 8C91 60                       `
+L8C86:  jsr     L8C36_CHAN_FROM_SA ;channel related
+L8C89:  ldx     #$03
+L8C8B:  stz     V1541_FLAGS,x
+        dex
+        bpl     L8C8B
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-L8C92:  lda     #$00                            ; 8C92 A9 00                    ..
-        jsr     L8C9F                           ; 8C94 20 9F 8C                  ..
-        bcc     L8C9E                           ; 8C97 90 05                    ..
-        jsr     L8C89                           ; 8C99 20 89 8C                  ..
-        bra     L8C92                           ; 8C9C 80 F4                    ..
-L8C9E:  rts                                     ; 8C9E 60                       `
+L8C92:  lda     #$00
+        jsr     L8C9F
+        bcc     L8C9E
+        jsr     L8C89
+        bra     L8C92
+L8C9E:  rts
 ; ----------------------------------------------------------------------------
-L8C9F:  tay                                     ; 8C9F A8                       .
-        ldx     #$0F                            ; 8CA0 A2 0F                    ..
-L8CA2:  phy                                     ; 8CA2 5A                       Z
-        phx                                     ; 8CA3 DA                       .
-        txa                                     ; 8CA4 8A                       .
-        jsr     L8C40_CHAN_A                    ; 8CA5 20 40 8C                  @.
-        plx                                     ; 8CA8 FA                       .
-        ply                                     ; 8CA9 7A                       z
-        lda     $E7                             ; 8CAA A5 E7                    ..
-        beq     L8CB6                           ; 8CAC F0 08                    ..
-        bit     #$80                            ; 8CAE 89 80                    ..
-        bne     L8CB6                           ; 8CB0 D0 04                    ..
-        cpy     $E8                             ; 8CB2 C4 E8                    ..
-        beq     L8CBA                           ; 8CB4 F0 04                    ..
-L8CB6:  dex                                     ; 8CB6 CA                       .
-        bpl     L8CA2                           ; 8CB7 10 E9                    ..
-        clc                                     ; 8CB9 18                       .
-L8CBA:  rts                                     ; 8CBA 60                       `
+L8C9F:  tay
+        ldx     #$0F
+L8CA2:  phy
+        phx
+        txa
+        jsr     L8C40_CHAN_A
+        plx
+        ply
+        lda     V1541_FLAGS
+        beq     L8CB6
+        bit     #$80
+        bne     L8CB6
+        cpy     $E8
+        beq     L8CBA
+L8CB6:  dex
+        bpl     L8CA2
+        clc
+L8CBA:  rts
 ; ----------------------------------------------------------------------------
-L8CBB:  stz     $E9                             ; 8CBB 64 E9                    d.
-        stz     $EA                             ; 8CBD 64 EA                    d.
-        stz     $E8                             ; 8CBF 64 E8                    d.
-        bra     L8CCE                           ; 8CC1 80 0B                    ..
-L8CC3:  jsr     L8CE6                           ; 8CC3 20 E6 8C                  ..
-        bcc     L8CD1                           ; 8CC6 90 09                    ..
-        clc                                     ; 8CC8 18                       .
-        bit     SXREG                           ; 8CC9 2C 9D 03                 ,..
-        bmi     L8CD1                           ; 8CCC 30 03                    0.
+L8CBB:  stz     $E9
+        stz     $EA
+        stz     $E8
+        bra     L8CCE
+; ----------------------------------------------------------------------------
+;returns cbm dos error code in A
+L8CC3:  jsr     L8CE6
+        bcc     L8CD1 ;branch if error
+        clc
+        bit     SXREG
+        bmi     L8CD1
 
-L8CCE:  jsr     L8CE6                           ; 8CCE 20 E6 8C                  ..
-L8CD1:  ldx     $EA                             ; 8CD1 A6 EA                    ..
-        ldy     $03A7                           ; 8CD3 AC A7 03                 ...
-        stx     $03A7                           ; 8CD6 8E A7 03                 ...
-        sty     $EA                             ; 8CD9 84 EA                    ..
-        ldx     $E9                             ; 8CDB A6 E9                    ..
-        ldy     $03A6                           ; 8CDD AC A6 03                 ...
-        stx     $03A6                           ; 8CE0 8E A6 03                 ...
-        sty     $E9                             ; 8CE3 84 E9                    ..
-        rts                                     ; 8CE5 60                       `
+L8CCE:  jsr     L8CE6
+L8CD1:  ldx     $EA
+        ldy     $03A7
+        stx     $03A7
+        sty     $EA
+        ldx     $E9
+        ldy     $03A6
+        stx     $03A6
+        sty     $E9
+        rts
 ; ----------------------------------------------------------------------------
-L8CE6:  ldx     $EA                             ; 8CE6 A6 EA                    ..
-        ldy     $E9                             ; 8CE8 A4 E9                    ..
-        stx     $03A7                           ; 8CEA 8E A7 03                 ...
+;returns cbm dos error code in A
+L8CE6:  ldx     $EA
+        ldy     $E9
+        stx     $03A7
 L8CEE := *+1
         sty     $03a6
-        stz     $02D8                           ; 8CF0 9C D8 02                 ...
-        ldx     #$FF                            ; 8CF3 A2 FF                    ..
+        stz     $02D8
+        ldx     #$FF
 L8CF5_LOOP:
-        inx                                     ; 8CF5 E8                       .
-        cpx     #$19                            ; 8CF6 E0 19                    ..
-        beq     L8D13_67_ILLEGAL_SYS_TS         ; 8CF8 F0 19                    ..
-        phx                                     ; 8CFA DA                       .
-        jsr     L8B66                           ; 8CFB 20 66 8B                  f.
-        plx                                     ; 8CFE FA                       .
-        bcc     L8D15_CLC_RTS ;branch if error                          ; 8CFF 90 14                    ..
-        sta     $0218,x                         ; 8D01 9D 18 02                 ...
-        cpx     #$05                            ; 8D04 E0 05                    ..
-        bit     SXREG                           ; 8D06 2C 9D 03                 ,..
-        bmi     L8D12_RTS                       ; 8D09 30 07                    0.
-        bcc     L8CF5_LOOP                      ; 8D0B 90 E8                    ..
-        cmp     #$00                            ; 8D0D C9 00                    ..
-        bne     L8CF5_LOOP                      ; 8D0F D0 E4                    ..
-        sec                                     ; 8D11 38                       8
+        inx
+        cpx     #$19
+        beq     L8D13_67_ILLEGAL_SYS_TS
+        phx
+        jsr     L8B66
+        plx
+        bcc     L8D15_CLC_RTS ;branch if error
+        sta     $0218,x
+        cpx     #$05
+        bit     SXREG
+        bmi     L8D12_RTS
+        bcc     L8CF5_LOOP
+        cmp     #$00
+        bne     L8CF5_LOOP
+        sec
 L8D12_RTS:
-        rts                                     ; 8D12 60                       `
+        rts
 ; ----------------------------------------------------------------------------
 L8D13_67_ILLEGAL_SYS_TS:
-        lda     #doserr_67_illegal_sys_ts ;67 illegal system t or s  ; 8D13 A9 43                    .C
+        lda     #doserr_67_illegal_sys_ts ;67 illegal system t or s
 L8D15_CLC_RTS:
-        clc                                     ; 8D15 18                       .
-        rts                                     ; 8D16 60                       `
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 ;maybe returns cbm dos error in a
-L8D17:  jsr     L8C92                           ; 8D17 20 92 8C                  ..
-        jsr     L8C3E_CHAN_HEX_10                           ; 8D1A 20 3E 8C                  >.
-        jsr     L8CE6                           ; 8D1D 20 E6 8C                  ..
-        bcc     L8D3C                           ; 8D20 90 1A                    ..
-L8D22:  bit     SXREG                           ; 8D22 2C 9D 03                 ,..
-        bmi     L8D3C                           ; 8D25 30 15                    0.
-L8D27:  jsr     L8B66 ;maybe returns cbm dos error in a                          ; 8D27 20 66 8B                  f.
-        bcc     L8D5A_RTS ;branch if error                      ; 8D2A 90 2E                    ..
-        jsr     L8CD1                           ; 8D2C 20 D1 8C                  ..
-        jsr     L8C0F_DIR_RELATED ;maybe returns cbm dos error in a                          ; 8D2F 20 0F 8C                  ..
-        bcc     L8D5A_RTS                       ; 8D32 90 26                    .&
-        jsr     L8CD1                           ; 8D34 20 D1 8C                  ..
-        bit     SXREG                           ; 8D37 2C 9D 03                 ,..
-        bpl     L8D27                           ; 8D3A 10 EB                    ..
-L8D3C:  jsr     L8CD1                           ; 8D3C 20 D1 8C                  ..
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 8D3F 20 D5 8A                  ..
-        lda     #doserr_71_dir_error ;71 directory error        ; 8D42 A9 47                    .G
-        bcc     L8D5A_RTS ;branch if error      ; 8D44 90 14                    ..
-        lda     $EA                             ; 8D46 A5 EA                    ..
-        beq     L8D50                           ; 8D48 F0 06                    ..
-        ldy     #$02                            ; 8D4A A0 02                    ..
-        sta     ($E4),y                         ; 8D4C 91 E4                    ..
-        inc     $E9                             ; 8D4E E6 E9                    ..
-L8D50:  jsr     L89F9                           ; 8D50 20 F9 89                  ..
-        jsr     L8C30                           ; 8D53 20 30 8C                  0.
-        jsr     L8E39                           ; 8D56 20 39 8E                  9.
-        sec                                     ; 8D59 38                       8
+L8D17:  jsr     L8C92
+        jsr     L8C3E_CHAN_HEX_10
+        jsr     L8CE6
+        bcc     L8D3C ;branch if error
+L8D22:  bit     SXREG
+        bmi     L8D3C
+L8D27:  jsr     L8B66 ;maybe returns cbm dos error in a
+        bcc     L8D5A_RTS ;branch if error
+        jsr     L8CD1
+        jsr     L8C0F_DIR_RELATED ;maybe returns cbm dos error in a
+        bcc     L8D5A_RTS
+        jsr     L8CD1
+        bit     SXREG
+        bpl     L8D27
+L8D3C:  jsr     L8CD1
+        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        lda     #doserr_71_dir_error ;71 directory error
+        bcc     L8D5A_RTS ;branch if error
+        lda     $EA
+        beq     L8D50
+        ldy     #$02
+        sta     ($E4),y
+        inc     $E9
+L8D50:  jsr     L89F9
+        jsr     L8C30
+        jsr     L8E39
+        sec
 L8D5A_RTS:
-        rts                                 ; 8D5A 60                       `
+        rts
 ; ----------------------------------------------------------------------------
 L8D5B_UNKNOWN_DIR_RELATED:
-        jsr     L8E10                           ; 8D5B 20 10 8E                  ..
-        lda     #$30                            ; 8D5E A9 30                    .0
-        trb     $0218                           ; 8D60 1C 18 02                 ...
-L8D63:  jsr     L8E91                           ; 8D63 20 91 8E                  ..
-        bcc     L8D9E                           ; 8D66 90 36                    .6
-        jsr     L8C92                           ; 8D68 20 92 8C                  ..
-        jsr     L8C30                           ; 8D6B 20 30 8C                  0.
-        lda     #$10                            ; 8D6E A9 10                    ..
-        sta     $E7                             ; 8D70 85 E7                    ..
-L8D72:  jsr     L8B66                           ; 8D72 20 66 8B                  f.
-        bcs     L8D7A ;branch if no error                          ; 8D75 B0 03                    ..
-        lda     #doserr_71_dir_error ;maybe: 71 directory error ; 8D77 A9 47                    .G
-        rts                                     ; 8D79 60                       `
+        jsr     L8E10
+        lda     #$30
+        trb     $0218
+L8D63:  jsr     L8E91
+        bcc     L8D9E
+        jsr     L8C92
+        jsr     L8C30
+        lda     #$10 ;file is open for reading?
+        sta     V1541_FLAGS
+L8D72:  jsr     L8B66
+        bcs     L8D7A ;branch if no error
+        lda     #doserr_71_dir_error ;maybe: 71 directory error
+        rts
 ; ----------------------------------------------------------------------------
-L8D7A:  lda     SXREG                           ; 8D7A AD 9D 03                 ...
-        bpl     L8D72                           ; 8D7D 10 F3                    ..
-        lda     #$20                            ; 8D7F A9 20                    .
-        tsb     $E7                             ; 8D81 04 E7                    ..
-        ldx     #$FF                            ; 8D83 A2 FF                    ..
-L8D85:  inx                                     ; 8D85 E8                       .
-        phx                                     ; 8D86 DA                       .
-        lda     $0218,x                         ; 8D87 BD 18 02                 ...
-        jsr     L8BD4                           ; 8D8A 20 D4 8B                  ..
-        plx                                     ; 8D8D FA                       .
-        cpx     #$05                            ; 8D8E E0 05                    ..
-        bcc     L8D85                           ; 8D90 90 F3                    ..
-        lda     $0218,x                         ; 8D92 BD 18 02                 ...
-        bne     L8D85                           ; 8D95 D0 EE                    ..
-        jsr     L8C30                           ; 8D97 20 30 8C                  0.
-        jsr     L8E39                           ; 8D9A 20 39 8E                  9.
-        sec                                     ; 8D9D 38                       8
-L8D9E:  rts                                     ; 8D9E 60                       `
+L8D7A:  lda     SXREG
+        bpl     L8D72
+        lda     #$20 ;file open for writing?
+        tsb     V1541_FLAGS
+        ldx     #$FF
+L8D85:  inx
+        phx
+        lda     $0218,x
+        jsr     L8BD4
+        plx
+        cpx     #$05
+        bcc     L8D85
+        lda     $0218,x
+        bne     L8D85
+        jsr     L8C30
+        jsr     L8E39
+        sec
+L8D9E:  rts
 ; ----------------------------------------------------------------------------
-L8D9F:  jsr     L8C30                           ; 8D9F 20 30 8C                  0.
-        jsr     L8CBB                           ; 8DA2 20 BB 8C                  ..
-        bra     L8DAA                           ; 8DA5 80 03                    ..
-L8DA7:  jsr     L8CC3                           ; 8DA7 20 C3 8C                  ..
-L8DAA:  bcc     L8DBA_62_FILE_NOT_FOUND                           ; 8DAA 90 0E                    ..
-        jsr     L8FC3_COMPARE_FILENAME_INCL_WILDCARDS ; 8DAC 20 C3 8F                  ..
-        bcc     L8DB5_NO_MATCH ;filename does not match         ; 8DAF 90 04                    ..
-        lda     $0218                           ; 8DB1 AD 18 02                 ...
-        rts                                     ; 8DB4 60                       `
+;returns cbm dos error code in a
+;carry clear = file exists, carry set = not found
+L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR:
+        jsr     L8C30
+        jsr     L8CBB
+        bra     L8DAA
+
+L8DA7:  jsr     L8CC3
+
+L8DAA:  bcc     L8DBA_62_FILE_NOT_FOUND ;branch if error from L8CBB or L8CC3
+        jsr     L8FC3_COMPARE_FILENAME_INCL_WILDCARDS
+        bcc     L8DB5_NO_MATCH ;filename does not match
+        lda     $0218
+        rts
+
 L8DB5_NO_MATCH:
-        bit     SXREG                           ; 8DB5 2C 9D 03                 ,..
-        bpl     L8DA7                           ; 8DB8 10 ED                    ..
-L8DBA_62_FILE_NOT_FOUND:  clc                   ; 8DBA 18                       .
-        lda     #doserr_62_file_not_found ;File not found            ; 8DBB A9 3E                    .>
-        rts                                     ; 8DBD 60                       `
+        bit     SXREG
+        bpl     L8DA7
+L8DBA_62_FILE_NOT_FOUND:
+        clc
+        lda     #doserr_62_file_not_found
+        rts
 ; ----------------------------------------------------------------------------
-L8DBE:  pha                                     ; 8DBE 48                       H
-        jsr     L8C30                           ; 8DBF 20 30 8C                  0.
-        jsr     L8CBB                           ; 8DC2 20 BB 8C                  ..
-        bra     L8DCA                           ; 8DC5 80 03                    ..
-L8DC7:  jsr     L8CC3                           ; 8DC7 20 C3 8C                  ..
-L8DCA:  bcc     L8DDC                           ; 8DCA 90 10                    ..
-        lda     $0218                           ; 8DCC AD 18 02                 ...
-        bit     #$80                            ; 8DCF 89 80                    ..
-        bne     L8DC7                           ; 8DD1 D0 F4                    ..
-        tsx                                     ; 8DD3 BA                       .
-        lda     $0219                           ; 8DD4 AD 19 02                 ...
-        cmp     stack+1,x                       ; 8DD7 DD 01 01                 ...
-        bne     L8DC7                           ; 8DDA D0 EB                    ..
-L8DDC:  pla                                     ; 8DDC 68                       h
-        lda     #doserr_62_file_not_found ;File not found            ; 8DDD A9 3E                    .>
-        rts                                     ; 8DDF 60                       `
+;returns cbm dos error code in a
+L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR:
+        pha
+        jsr     L8C30
+        jsr     L8CBB
+        bra     L8DCA
+L8DC7:  jsr     L8CC3
+L8DCA:  bcc     L8DDC_62_FILE_NOT_FOUND ;branch if error
+        lda     $0218
+        bit     #$80
+        bne     L8DC7
+        tsx
+        lda     $0219
+        cmp     stack+1,x
+        bne     L8DC7
+L8DDC_62_FILE_NOT_FOUND:
+        pla
+        lda     #doserr_62_file_not_found
+        rts
 ; ----------------------------------------------------------------------------
 L8DE0:  lda     $0219                           ; 8DE0 AD 19 02                 ...
         .byte   $2C                             ; 8DE3 2C                       ,
@@ -2228,44 +2243,44 @@ L8E0A:  pla                                     ; 8E0A 68                       
         cmp     #$00                            ; 8E0D C9 00                    ..
         rts                                     ; 8E0F 60                       `
 ; ----------------------------------------------------------------------------
-L8E10:  lda     $0219                           ; 8E10 AD 19 02                 ...
-        jsr     L8E5E                           ; 8E13 20 5E 8E                  ^.
-        sta     $021A                           ; 8E16 8D 1A 02                 ...
-        stx     $021B                           ; 8E19 8E 1B 02                 ...
-        sty     $021C                           ; 8E1C 8C 1C 02                 ...
-        rts                                     ; 8E1F 60                       `
+L8E10:  lda     $0219
+        jsr     L8E5E
+        sta     $021A
+        stx     $021B
+        sty     $021C
+        rts
 ; ----------------------------------------------------------------------------
 L8E20_MAYBE_CHECKS_HEADER:
-        lda     $0219                           ; 8E20 AD 19 02                 ...
+        lda     $0219
 L8E25 := *+2
         jsr     L8E5E
         cmp     $021a
-        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER  ; 8E29 D0 0A                    ..
-        cpx     $021B                           ; 8E2B EC 1B 02                 ...
-        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER  ; 8E2E D0 05                    ..
-        cpy     $021C                           ; 8E30 CC 1C 02                 ...
-        beq     L8E36                           ; 8E33 F0 01                    ..
+        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER
+        cpx     $021B
+        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER
+        cpy     $021C
+        beq     L8E36
 L8E35_27_CHECKSUM_ERROR_IN_HEADER:
         clc
-L8E36:  lda     #doserr_27_read_error ;27 read error (checksum error in header)  ; 8E36 A9 1B                    ..
-        rts                                     ; 8E38 60                       `
+L8E36:  lda     #doserr_27_read_error ;27 read error (checksum error in header)
+        rts
 ; ----------------------------------------------------------------------------
-L8E39:  jsr     L8E5C                           ; 8E39 20 5C 8E                  \.
-        sta     $0213                           ; 8E3C 8D 13 02                 ...
-        stx     $0214                           ; 8E3F 8E 14 02                 ...
-        sty     $0215                           ; 8E42 8C 15 02                 ...
-        rts                                     ; 8E45 60                       `
+L8E39:  jsr     L8E5C
+        sta     $0213
+        stx     $0214
+        sty     $0215
+        rts
 ; ----------------------------------------------------------------------------
-L8E46:  jsr     L8E5C                           ; 8E46 20 5C 8E                  \.
-        cmp     $0213                           ; 8E49 CD 13 02                 ...
-        bne     L8E58                           ; 8E4C D0 0A                    ..
-        cpx     $0214                           ; 8E4E EC 14 02                 ...
-        bne     L8E58                           ; 8E51 D0 05                    ..
-        cpy     $0215                           ; 8E53 CC 15 02                 ...
-        beq     L8E59                           ; 8E56 F0 01                    ..
-L8E58:  clc                                     ; 8E58 18                       .
-L8E59:  lda     #$1B                            ; 8E59 A9 1B                    ..
-        rts                                     ; 8E5B 60                       `
+L8E46:  jsr     L8E5C
+        cmp     $0213
+        bne     L8E58
+        cpx     $0214
+        bne     L8E58
+        cpy     $0215
+        beq     L8E59
+L8E58:  clc
+L8E59:  lda     #$1B
+        rts
 ; ----------------------------------------------------------------------------
 L8E5C:  lda     #$00                            ; 8E5C A9 00                    ..
 L8E5E:  ldx     #$00                            ; 8E5E A2 00                    ..
@@ -2298,18 +2313,18 @@ L8E8D:  plx                                     ; 8E8D FA                       
         ply                                     ; 8E8F 7A                       z
         rts                                     ; 8E90 60                       `
 ; ----------------------------------------------------------------------------
-L8E91:  jsr     L8DE4                           ; 8E91 20 E4 8D                  ..
-        beq     L8EA7                           ; 8E94 F0 11                    ..
-        tya                                     ; 8E96 98                       .
-        ldx     #$FF                            ; 8E97 A2 FF                    ..
-L8E99:  inc     a                               ; 8E99 1A                       .
-        beq     L8EA7                           ; 8E9A F0 0B                    ..
-        inx                                     ; 8E9C E8                       .
-        cpx     #$05                            ; 8E9D E0 05                    ..
-        bcc     L8E99                           ; 8E9F 90 F8                    ..
-        lda     $021D,x                         ; 8EA1 BD 1D 02                 ...
-        bne     L8E99                           ; 8EA4 D0 F3                    ..
-        rts                                     ; 8EA6 60                       `
+L8E91:  jsr     L8DE4
+        beq     L8EA7
+        tya
+        ldx     #$FF
+L8E99:  inc     a
+        beq     L8EA7
+        inx
+        cpx     #$05
+        bcc     L8E99
+        lda     $021D,x
+        bne     L8E99
+        rts
 ; ----------------------------------------------------------------------------
 L8EA7:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
         bcc     L8EAE_RTS ;branch if error
@@ -2561,7 +2576,7 @@ L902D:  ldx     #$04
         bne     L9038
         ldx     #$01
 L9038:  lda     $0218,x
-        sta     $E7,x
+        sta     V1541_FLAGS,x
         dex
         bpl     L9038
         rts
@@ -2629,11 +2644,13 @@ L90A7:  jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
         bne     L90DA_33_SYNTAX_ERROR
         lda     $03A0
         beq     L90C2
-        cmp     #$40
+        cmp     #$40 ;'@'
         bne     L90DA_33_SYNTAX_ERROR
+
 L90C3 := *+1
-L90C2:  jsr     L8D9F
-        bcc     L90EC
+L90C2:  jsr     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR
+        bcc     L90EC_ERROR ;branch if error (file not found)
+
         lda     $03A0
 L90CB := *+1
         bne     L90D0
@@ -2660,7 +2677,9 @@ L90E1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE ;maybe returns cbm dos error
         jsr     L8DE0
         inc     a
         bra     L910D
-L90EC:  stz     $03A0
+
+L90EC_ERROR:
+        stz     $03A0
         jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL ;maybe returns cbm dos error code in A                               ; 90EF 20 13 8B                  ..
 L90F2:  bcc     L90DF_ERROR ;branch if error
         jsr     L8FF3
@@ -2821,23 +2840,23 @@ L921A_V1541_INTERNAL_CLOSE:
         bcs     L9221 ;branch if no error
         sec
         rts
-; ----------------------------------------------------------------------------
 L9221:  lda     V1541_CHAN
         cmp     #$0F ;command channel?
-        beq     L9240
-        lda     $E7
-        bit     #$20
-        beq     L9240
+        beq     L9240_RTS
+        lda     V1541_FLAGS
+        bit     #$20 ;is file open for writing?
+        beq     L9240_RTS
         bit     #$80
-        bne     L9240
+        bne     L9240_RTS
         lda     $E8
-        beq     L9240
+        beq     L9240_RTS
 L9236 := *+1
-        jsr     L8DBE
-        bcc     L9240
+        jsr     L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR
+        bcc     L9240_RTS ;branch if error
         jsr     L8D17
         jsr     L8D5B_UNKNOWN_DIR_RELATED
-L9240:  jmp     L8C86
+L9240_RTS:
+        jmp     L8C86
 ; ----------------------------------------------------------------------------
 L9244 := *+1
 L9243_OPEN_V1541:
@@ -2875,7 +2894,7 @@ L2973 := *+1
 L9274 := *+2
         jsr     L9041
         lda     #$50
-        sta     $e7
+        sta     V1541_FLAGS
         sec
 L927A:  rts
 ; ----------------------------------------------------------------------------
@@ -2901,12 +2920,14 @@ L929A:  bit     #$40
         beq     L92A3
         cpx     V1541_FILE_MODE
         bne     L9285
-L92A3:  jsr     L8D9F
-        bcc     L9317
+
+L92A3:  jsr     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR
+        bcc     L9317_DO_STUFF_WITH_FILE_TYPE_AND_MODE ;branch if error (file not found)
+
         jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
         bcc     L92C7_ERROR
-        ldy     V1541_FILE_MODE
 
+        ldy     V1541_FILE_MODE
         lda     #doserr_63_file_exists ;63 file exists
         cpy     #fmode_w_write
         beq     L92C7_ERROR
@@ -2925,7 +2946,7 @@ L92C7_ERROR:
 L92C9:  lda     $0219
         jsr     L8C9F
         bcc     L92E6
-        lda     $E7
+        lda     V1541_FLAGS
         and     #$20
         beq     L92DB
         lda     #doserr_60_write_file_open ;60 write file open
@@ -2951,13 +2972,15 @@ L92F8:  ldy     V1541_FILE_MODE
         jsr     L89E2
         lda     #fmode_w_write
         sta     V1541_FILE_MODE
-        bra     L9317
+        bra     L9317_DO_STUFF_WITH_FILE_TYPE_AND_MODE
 L930C:  cpy     #fmode_m_modify
         beq     L9315
         jsr     L8E20_MAYBE_CHECKS_HEADER
         bcc     L92C7_ERROR ;branch if error
 L9315:  bra     L9335
-L9317:  ldy     V1541_FILE_MODE
+
+L9317_DO_STUFF_WITH_FILE_TYPE_AND_MODE:
+        ldy     V1541_FILE_MODE
         cpy     #fmode_r_read
         beq     L9322_ERROR
         cpy     #fmode_m_modify
@@ -2966,7 +2989,7 @@ L9322_ERROR:
         lda     #doserr_62_file_not_found ;62 file not found
         clc
         rts
-; ----------------------------------------------------------------------------
+
 L9326:  lda     #fmode_w_write
         sta     V1541_FILE_MODE
         lda     V1541_FILE_TYPE
@@ -2994,7 +3017,7 @@ L935A:  jsr     L8C36_CHAN_FROM_SA ;channel related
         jsr     L902D
 L9361 := *+1
         lda     #$10
-        tsb     $e7
+        tsb     V1541_FLAGS
         ldy     V1541_FILE_MODE
 L9367:  cpy     #fmode_m_modify
         beq     L9378
@@ -3017,7 +3040,7 @@ L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN
         bpl     L9381
 L938D:  jsr     L8C36_CHAN_FROM_SA ;channel related
         lda     #$20
-        tsb     $E7
+        tsb     V1541_FLAGS
         tsb     $0218
         jmp     L8D63
 ; ----------------------------------------------------------------------------
@@ -3067,7 +3090,7 @@ L93E9_LOOP:
         jsr     L8CC3
 L93EC:  ldx     #$04
         stx     V1541_02D6
-        bcc     L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
+        bcc     L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART ;branch if error from L8CC3
 
         lda     #<$0238
         sta     V1541_FNADR
@@ -3302,7 +3325,7 @@ L95D4:  lda     SA
         bne     L95F0
 L95DA := *+2
         LDA     $03a0
-        cmp     #$40
+        cmp     #$40 ;'@'
         bne     L95F0
         jsr     L96D6_USED_BY_LOAD
         bra     L9651_LOAD_OR_VERIFY_DONE
@@ -3382,15 +3405,17 @@ L9675 := *+1
         BCC     L969A_ERROR ;branch if error
         BIT     #$20
         BNE     L969A_ERROR
+
         ldx     $03A0
         cpx     #'$'
-        bne     L969C
+        bne     L969C_03A0_NOT_DOLLAR
+
         ldx     V1541_FILE_MODE
         bne     L9698_ERROR_34_SYNTAX_ERROR
         jsr     L9041
         jsr     L8C2A
         lda     #$40
-        tsb     $E7
+        tsb     V1541_FLAGS
         bra     L96C0
 ; ----------------------------------------------------------------------------
 L9692_ERROR_64_FILE_TYPE_MISMATCH:
@@ -3405,8 +3430,10 @@ L969A_ERROR:
         clc
         rts
 ; ----------------------------------------------------------------------------
-L969C:  jsr     L8D9F
-        bcc     L969A_ERROR
+L969C_03A0_NOT_DOLLAR:
+        jsr     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR
+        bcc     L969A_ERROR ;branch if error (file not found)
+
         lda     $0218
 L96A5 := *+1
         bit     #$20
@@ -3422,11 +3449,11 @@ L96B1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
         jsr     L8C2A
         jsr     L902D
 L96C0:  lda     #$10
-        tsb     $E7
+        tsb     V1541_FLAGS
         lda     $03A0
-        cmp     #$40
+        cmp     #$40 ;'@'
         bne     L96D1
-        lda     $E7
+        lda     V1541_FLAGS
         and     #$80
         beq     L96D4
 L96D1:  stz     $03A0
@@ -3454,7 +3481,7 @@ L96EA:  dec     a
 L96F5:  sta     $E0
         lda     $E9
         bne     L9703
-L96FB:  lda     $E7
+L96FB:  lda     V1541_FLAGS
         and     #$40
         beq     L9703
         iny
@@ -3499,7 +3526,7 @@ L9732:  rol     a
 L9737_V1541_INTERNAL_OPEN_CMD_CHAN:
         jsr     L8C36_CHAN_FROM_SA ;channel related
         lda     #$10
-        tsb     $E7
+        tsb     V1541_FLAGS
         ldy     FNLEN
         sty     V1541_CMD_LEN
         jsr     L972E_V1541_CHECK_MAX_CMD_LEN
@@ -3586,7 +3613,7 @@ L97B4:  dec     V1541_FNLEN
         ora     V1541_FILE_MODE
         ora     $03A0
         bne     L97D2_33_SYNTAX_ERROR
-        jmp     L8D9F
+        jmp     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR
 ; ----------------------------------------------------------------------------
 
 L97D2_33_SYNTAX_ERROR:
@@ -3612,8 +3639,8 @@ L97DC:  bit     #$80
         pha
 L97ED:
 L97EE           := * + 1
-        jsr     L8D9F
-        bcc     L9805
+        jsr     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR
+        bcc     L9805_ERROR
 L97F2:  tsx
 L97F5           := * + 2
         inc     stack+1,x
@@ -3623,11 +3650,13 @@ L97F5           := * + 2
         bne     L97ED
         jsr     L89E2
 L9803:  bra     L97ED
-L9805:  pla
+
+L9805_ERROR:  pla
         ldx     #$01
         ldy     #$00
         sec
         jmp     L9964_STORE_XAYZ
+
 ; ----------------------------------------------------------------------------
 L980F := *+1
 L980E_V1541_R_RENAME:
@@ -3641,9 +3670,9 @@ L981D := *+1
         ORA     V1541_FILE_TYPE
         bne     L983E_RENAME_INVALID_FILENAME
 
-        jsr     L8D9F
+        jsr     L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR
         lda     #doserr_63_file_exists
-        bcs     L9840_RENAME_ERROR
+        bcs     L9840_RENAME_ERROR ;branch if no error (file exists, which is an error here)
 
         jsr     L97A9_USED_BY_RENAME
         bcc     L9840_RENAME_ERROR
@@ -3657,7 +3686,6 @@ L9833:  jsr     L8D5B_UNKNOWN_DIR_RELATED
         jsr     L97A9_USED_BY_RENAME
         jmp     L8D17 ;maybe returns cbm dos error in a
 
-; ----------------------------------------------------------------------------
 L983E_RENAME_INVALID_FILENAME:
         lda     #doserr_33_syntax_err ;33 Invalid filename
 L9840_RENAME_ERROR:
@@ -3688,7 +3716,7 @@ L985B:  cmp     $0208
 L986C:  jsr     L8CBB
         bne     L9890
 L9871:  jsr     L8CC3
-        bcc     L988B
+        bcc     L988B ;branch if error
         jsr     L8CD1
         jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         ldy     #$02
@@ -3706,7 +3734,7 @@ L9894 := *+1
         bra     L98AB
 L9897:  jsr     L8CC3
 L989B :=*+1
-        BCC $98d0
+        BCC     L98D0 ;branch if error
 L989E := *+2
         jsr     L8C2A
         LDA     $0218
@@ -3747,7 +3775,7 @@ L98E2:  jsr     L8D17 ;maybe returns cbm dos error in a
 L98E5:  jsr     L8CBB
 L98E8:  bra     L98ED
 L98EA:  jsr     L8CC3
-L98ED:  bcc     L9917
+L98ED:  bcc     L9917 ;branch if error
         jsr     L9932
         and     V1541_CMD_BUF,y
         bne     L98E2
@@ -6044,7 +6072,7 @@ LA9E6:  php                                     ; A9E6 08                       
         sty     $03A0                           ; A9E7 8C A0 03                 ...
         cpx     #$50                            ; A9EA E0 50                    .P
         bcs     LAA17                           ; A9EC B0 29                    .)
-        stx     V1541_FNLEN                           ; A9EE 8E 9F 03                 ...
+        stx     V1541_FNLEN                     ; A9EE 8E 9F 03                 ...
 LA9F1:  tax                                     ; A9F1 AA                       .
         and     #$0F                            ; A9F2 29 0F                    ).
         sta     SXREG                           ; A9F4 8D 9D 03                 ...
@@ -12675,7 +12703,7 @@ LD678:  ldy     stack+41                        ; D678 AC 29 01                 
         lda     stack+40                        ; D685 AD 28 01                 .(.
         bpl     LD690                           ; D688 10 06                    ..
         jsr     L971A                           ; D68A 20 1A 97                  ..
-        jmp     L969C                           ; D68D 4C 9C 96                 L..
+        jmp     L969C_03A0_NOT_DOLLAR                           ; D68D 4C 9C 96                 L..
 ; ----------------------------------------------------------------------------
 LD690:  jsr     L96FB                           ; D690 20 FB 96                  ..
 LD693:  ldy     $80                             ; D693 A4 80                    ..
