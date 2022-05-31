@@ -2991,15 +2991,17 @@ L93B8:  stx     $02D7                           ; 93B8 8E D7 02                 
 ; ----------------------------------------------------------------------------
 L93C0:  ldx     $02D6                           ; 93C0 AE D6 02                 ...
         jmp     (L93C6,x)                       ; 93C3 7C C6 93                 |..
-L93C6:  trb     $94                             ; 93C6 14 94                    ..
-        cpx     $93                             ; 93C8 E4 93                    ..
-        sbc     #$93                            ; 93CA E9 93                    ..
-        bne     L9361                           ; 93CC D0 93                    ..
-        dec     $93,x                           ; 93CE D6 93                    ..
-        ldx     #$08                            ; 93D0 A2 08                    ..
+L93C6:  .addr   L9414
+        .addr   L93E4
+        .addr   L93E9
+        .addr   L93D0
+        .addr   L93D6
+
+L93D0:  ldx     #$08                            ; 93D0 A2 08                    ..
         lda     #$00                            ; 93D2 A9 00                    ..
         bra     L93DA                           ; 93D4 80 04                    ..
-        ldx     #$00                            ; 93D6 A2 00                    ..
+
+L93D6:  ldx     #$00                            ; 93D6 A2 00                    ..
         lda     #$FF                            ; 93D8 A9 FF                    ..
 L93DA:  stx     $02D6                           ; 93DA 8E D6 02                 ...
         sta     SXREG                           ; 93DD 8D 9D 03                 ...
@@ -3007,7 +3009,7 @@ L93DA:  stx     $02D6                           ; 93DA 8E D6 02                 
         sec                                     ; 93E2 38                       8
         rts                                     ; 93E3 60                       `
 ; ----------------------------------------------------------------------------
-        jsr     L8CBB                           ; 93E4 20 BB 8C                  ..
+L93E4:  jsr     L8CBB                           ; 93E4 20 BB 8C                  ..
         bra     L93EC                           ; 93E7 80 03                    ..
 L93E9:  jsr     L8CC3                           ; 93E9 20 C3 8C                  ..
 L93EC:  ldx     #$04                            ; 93EC A2 04                    ..
@@ -3490,10 +3492,10 @@ L9792 := *+4
 L978E_V1541_CMDS:
         .byte "Ii", "Rr", "Ss", "Vv"
 L9796_V1541_CMD_HANDLERS:
-        .word L8C6F_V1541_I_INITIALIZE
-        .word L980E_V1541_R_RENAME
-L979A:  .word L97D6_V1541_S_SCRATCH
-        .word L9842_V1541_V_VALIDATE
+        .addr L8C6F_V1541_I_INITIALIZE
+        .addr L980E_V1541_R_RENAME
+L979A:  .addr L97D6_V1541_S_SCRATCH
+        .addr L9842_V1541_V_VALIDATE
 
 L979E:  ldy     V1541_CMD_LEN
         dey
@@ -3887,69 +3889,68 @@ L9B19:  sec                                     ; 9B19 38                       
 ; ----------------------------------------------------------------------------
 L9B1B:  jmp     (L9B1E,x)                       ; 9B1B 7C 1E 9B                 |..
 L9B1F := *+1
-L9B1E:  .word L9BF6
-        .word L9BDA
+L9B1E:  .addr L9BF6
+        .addr L9BDA
 L9B23 := *+1
-        .word LA473
-        .word L9C6B
-        .word L9BE0
-        .word LA2D1
-        .word L9CA4
-        .word L9CA7
-        .word L9CBB
-        .word L9CBE
-        .word L9F60
-        .word L9F63
-        .word LA0F6
-        .word LA0F9
-        .word L9EF0
-        .word LA369
-        .word LA661
-        .word LA6A7
-        .word LA65A
-        .word LA66B
-        .word LA72B
-        .word LA848
-        .word LA84F
-        .word LA898
-        .word LA92D
-        .word LA28A
-        .word LA2D9
-        .word LA29A
-        .word LA2DC_UNKNOWN_INDIRECT_STUFF_LOAD
-        .word LA7DB
-        .word LA02B
-        .word L9FF1_INDIRECT_STUFF
-        .word LA1DB
-        .word LA1DD_INDIRECT_STUFF_LOAD
-        .word LA21A
-        .word LA26B
-        .word LA27B
-        .word LA2AB
-        .word LA2CD
-        .word LA2D5
-        .word LA338
-        .word LA421
-        .word $A396
-        .word LA226
-        .word LA475
-        .word LA2A8
-        .word LA7D8
-        .word L9F4E
-        .word L9F42
-        .word L9F33
-        .word L9F5A
-        .word LA65F
-        .word LA06D
-        .word LA1B7
-        .word L9BCE
-        .word L9B9F
-        .word L9BA2
-        .word L9B98
-        .word L9B9B
-        .word LA9C6
-        .word LA9C9
-
+        .addr LA473
+        .addr L9C6B
+        .addr L9BE0
+        .addr LA2D1
+        .addr L9CA4
+        .addr L9CA7
+        .addr L9CBB
+        .addr L9CBE
+        .addr L9F60
+        .addr L9F63
+        .addr LA0F6
+        .addr LA0F9
+        .addr L9EF0
+        .addr LA369
+        .addr LA661
+        .addr LA6A7
+        .addr LA65A
+        .addr LA66B
+        .addr LA72B
+        .addr LA848
+        .addr LA84F
+        .addr LA898
+        .addr LA92D
+        .addr LA28A
+        .addr LA2D9
+        .addr LA29A
+        .addr LA2DC_UNKNOWN_INDIRECT_STUFF_LOAD
+        .addr LA7DB
+        .addr LA02B
+        .addr L9FF1_INDIRECT_STUFF
+        .addr LA1DB
+        .addr LA1DD_INDIRECT_STUFF_LOAD
+        .addr LA21A
+        .addr LA26B
+        .addr LA27B
+        .addr LA2AB
+        .addr LA2CD
+        .addr LA2D5
+        .addr LA338
+        .addr LA421
+        .addr $A396
+        .addr LA226
+        .addr LA475
+        .addr LA2A8
+        .addr LA7D8
+        .addr L9F4E
+        .addr L9F42
+        .addr L9F33
+        .addr L9F5A
+        .addr LA65F
+        .addr LA06D
+        .addr LA1B7
+        .addr L9BCE
+        .addr L9B9F
+        .addr L9BA2
+        .addr L9B98
+        .addr L9B9B
+        .addr LA9C6
+        .addr LA9C9
 
 L9B98:  jsr     LA02B                           ; 9B98 20 2B A0                  +.
 L9B9B:  ldy     #$FF                            ; 9B9B A0 FF                    ..
@@ -5899,6 +5900,7 @@ LA956:  pla                                     ; A956 68                       
 ; ----------------------------------------------------------------------------
 LA95C:  rts                                     ; A95C 60                       `
 ; ----------------------------------------------------------------------------
+;TODO probably data
 LA95D:  tsb     $6275                           ; A95D 0C 75 62                 .ub
         inc     $07BA,x                         ; A960 FE BA 07                 ...
         trb     $3A                             ; A963 14 3A                    .:
@@ -5933,6 +5935,7 @@ LA97E:  jmp     ($1734,x)                       ; A97E 7C 34 17                 
         eor     LB97D                           ; A995 4D 7D B9                 M}.
         rts                                     ; A998 60                       `
 ; ----------------------------------------------------------------------------
+;TODO probably data
         bbs0    $78,LA9F9                       ; A999 8F 78 5D                 .x]
         .byte   $0B                             ; A99C 0B                       .
         tsx                                     ; A99D BA                       .
@@ -8023,6 +8026,7 @@ LB7FA := *+1
         sta     LB845
         jmp     (L89B8)                         ; B7FC 6C B8 89                 l..
 ; ----------------------------------------------------------------------------
+;TODO probably data
         clv                                     ; B7FF B8                       .
         smb1    SAL                             ; B800 97 B8                    ..
         ldx     #SAL                            ; B802 A2 B8                    ..
