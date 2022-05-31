@@ -2305,298 +2305,298 @@ L8E99:  inc     a                               ; 8E99 1A                       
         bne     L8E99                           ; 8EA4 D0 F3                    ..
         rts                                     ; 8EA6 60                       `
 ; ----------------------------------------------------------------------------
-L8EA7:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR  ; 8EA7 20 39 8A                  9.
-        bcc     L8EAE_RTS ;branch if error      ; 8EAA 90 02                    ..
-        lda     #$01                            ; 8EAC A9 01                    ..
-L8EAE_RTS:  rts                                 ; 8EAE 60                       `
+L8EA7:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
+        bcc     L8EAE_RTS ;branch if error
+        lda     #$01
+L8EAE_RTS:  rts
 ; ----------------------------------------------------------------------------
 L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP:
-        lda     FNADR                           ; 8EAF A5 AE                    ..
-        ldx     FNADR+1                         ; 8EB1 A6 AF                    ..
-        ldy     FNLEN                           ; 8EB3 AC 87 03                 ...
-L8EB6:  sta     $E2                             ; 8EB6 85 E2                    ..
-        stx     $E3                             ; 8EB8 86 E3                    ..
-        sty     $039F                           ; 8EBA 8C 9F 03                 ...
+        lda     FNADR
+        ldx     FNADR+1
+        ldy     FNLEN
+L8EB6:  sta     $E2
+        stx     $E3
+        sty     $039F
         ;Fall through
 ; ----------------------------------------------------------------------------
-L8EBD:  stz     $03A5                           ; 8EBD 9C A5 03                 ...
-        stz     V1541_FILE_MODE                 ; 8EC0 9C A3 03                 ...
-        stz     V1541_FILE_TYPE                 ; 8EC3 9C A4 03                 ...
-        stz     $03A0                           ; 8EC6 9C A0 03                 ...
-        lda     #$E2 ;ZP-address                ; 8EC9 A9 E2                    ..
-        sta     SINNER                          ; 8ECB 8D 4E 03                 .N.
-        lda     $039F                           ; 8ECE AD 9F 03                 ...
-        bne     L8ED7                           ; 8ED1 D0 04                    ..
+L8EBD:  stz     $03A5
+        stz     V1541_FILE_MODE
+        stz     V1541_FILE_TYPE
+        stz     $03A0
+        lda     #$E2 ;ZP-address
+        sta     SINNER
+        lda     $039F
+        bne     L8ED7
 L8ED3_33_SYNTAX_ERROR:
-        lda     #$21 ;33 invalid filename       ; 8ED3 A9 21                    .!
-        clc                                     ; 8ED5 18                       .
-        rts                                     ; 8ED6 60                       `
+        lda     #$21 ;33 invalid filename
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L8ED7:  ldy     #$00                            ; 8ED7 A0 00                    ..
-        jsr     L8FAD                           ; 8ED9 20 AD 8F                  ..
-        dey                                     ; 8EDC 88                       .
-        bcc     L8ED3_33_SYNTAX_ERROR           ; 8EDD 90 F4                    ..
-        cmp     #'$'                            ; 8EDF C9 24                    .$
-        beq     L8EE7                           ; 8EE1 F0 04                    ..
-        cmp     #'@'                            ; 8EE3 C9 40                    .@
-        bne     L8EEB                           ; 8EE5 D0 04                    ..
-L8EE7:  iny                                     ; 8EE7 C8                       .
-        sta     $03A0                           ; 8EE8 8D A0 03                 ...
-L8EEB:  sty     MON_MMU_MODE                    ; 8EEB 8C A1 03                 ...
-L8EEE:  sty     $03A2                           ; 8EEE 8C A2 03                 ...
-        cpy     $039F                           ; 8EF1 CC 9F 03                 ...
-        bne     L8EF9                           ; 8EF4 D0 03                    ..
-        jmp     L8F86                           ; 8EF6 4C 86 8F                 L..
+L8ED7:  ldy     #$00
+        jsr     L8FAD
+        dey
+        bcc     L8ED3_33_SYNTAX_ERROR
+        cmp     #'$'
+        beq     L8EE7
+        cmp     #'@'
+        bne     L8EEB
+L8EE7:  iny
+        sta     $03A0
+L8EEB:  sty     MON_MMU_MODE
+L8EEE:  sty     $03A2
+        cpy     $039F
+        bne     L8EF9
+        jmp     L8F86
 ; ----------------------------------------------------------------------------
 ;Looks like filename parsing for directory listing LOAD"$0:*=P"
-L8EF9:  jsr     L8FAD                           ; 8EF9 20 AD 8F                  ..
-        bcc     L8ED3_33_SYNTAX_ERROR           ; 8EFC 90 D5                    ..
-        tax                                     ; 8EFE AA                       .
-        cpx     #' '                            ; 8EFF E0 20                    .
-        beq     L8EEE                           ; 8F01 F0 EB                    ..
-        cpx     #'0'                            ; 8F03 E0 30                    .0
-        beq     L8EEE                           ; 8F05 F0 E7                    ..
-        cpx     #'9'+1                          ; 8F07 E0 3A                    .:
-        bne     L8F14                           ; 8F09 D0 09                    ..
-        lda     #$03                            ; 8F0B A9 03                    ..
-        tsb     $03A5                           ; 8F0D 0C A5 03                 ...
-        bne     L8ED3_33_SYNTAX_ERROR           ; 8F10 D0 C1                    ..
-        bra     L8EEB                           ; 8F12 80 D7                    ..
-L8F14:  lda     #$02                            ; 8F14 A9 02                    ..
-        tsb     $03A5                           ; 8F16 0C A5 03                 ...
-        cpx     #'='                            ; 8F19 E0 3D                    .=
-        beq     L8F81                           ; 8F1B F0 64                    .d
-        cpx     #'?'                            ; 8F1D E0 3F                    .?
-        beq     L8F25                           ; 8F1F F0 04                    ..
-        cpx     #'*'                            ; 8F21 E0 2A                    .*
-        bne     L8F2A                           ; 8F23 D0 05                    ..
-L8F25:  lda     #$40                            ; 8F25 A9 40                    .@
-        tsb     $03A5                           ; 8F27 0C A5 03                 ...
-L8F2A:  cpx     #','                            ; 8F2A E0 2C                    .,
-        bne     L8EEE                           ; 8F2C D0 C0                    ..
-        dey                                     ; 8F2E 88                       .
-L8F2F:  cpy     $039F                           ; 8F2F CC 9F 03                 ...
-        beq     L8F86                           ; 8F32 F0 52                    .R
-        jsr     L8FAD                           ; 8F34 20 AD 8F                  ..
-        bcc     L8F5F_33_SYNTAX_ERROR           ; 8F37 90 26                    .&
-        cmp     #'='                            ; 8F39 C9 3D                    .=
-        beq     L8F81                           ; 8F3B F0 44                    .D
-        cmp     #' '                            ; 8F3D C9 20                    .
-        beq     L8F2F                           ; 8F3F F0 EE                    ..
-        cmp     #','                            ; 8F41 C9 2C                    .,
-        bne     L8F5F_33_SYNTAX_ERROR           ; 8F43 D0 1A                    ..
+L8EF9:  jsr     L8FAD
+        bcc     L8ED3_33_SYNTAX_ERROR
+        tax
+        cpx     #' '
+        beq     L8EEE
+        cpx     #'0'
+        beq     L8EEE
+        cpx     #'9'+1
+        bne     L8F14
+        lda     #$03
+        tsb     $03A5
+        bne     L8ED3_33_SYNTAX_ERROR
+        bra     L8EEB
+L8F14:  lda     #$02
+        tsb     $03A5
+        cpx     #'='
+        beq     L8F81
+        cpx     #'?'
+        beq     L8F25
+        cpx     #'*'
+        bne     L8F2A
+L8F25:  lda     #$40
+        tsb     $03A5
+L8F2A:  cpx     #','
+        bne     L8EEE
+        dey
+L8F2F:  cpy     $039F
+        beq     L8F86
+        jsr     L8FAD
+        bcc     L8F5F_33_SYNTAX_ERROR
+        cmp     #'='
+        beq     L8F81
+        cmp     #' '
+        beq     L8F2F
+        cmp     #','
+        bne     L8F5F_33_SYNTAX_ERROR
 
 L8F45_LOOP:
-        cpy     $039F                           ; 8F45 CC 9F 03                 ...
-        bcs     L8F5F_33_SYNTAX_ERROR           ; 8F48 B0 15                    ..
-        jsr     L8FAD                           ; 8F4A 20 AD 8F                  ..
-        bcc     L8F5F_33_SYNTAX_ERROR           ; 8F4D 90 10                    ..
-        cmp     #' '                            ; 8F4F C9 20                    .
-        beq     L8F45_LOOP                      ; 8F51 F0 F2                    ..
-        and     #$DF                            ; 8F53 29 DF                    ).
+        cpy     $039F
+        bcs     L8F5F_33_SYNTAX_ERROR
+        jsr     L8FAD
+        bcc     L8F5F_33_SYNTAX_ERROR
+        cmp     #' '
+        beq     L8F45_LOOP
+        and     #$DF
 
-        ldx     #$05                            ; 8F55 A2 05                    ..
+        ldx     #$05
 L8F57_SPRWAM_SEARCH_LOOP:
-        cmp     L8F7B_SPRWAM,x                  ; 8F57 DD 7B 8F                 .{.
-        beq     L8F63_FOUND_IN_SPRWAM           ; 8F5A F0 07                    ..
-        dex                                     ; 8F5C CA                       .
-        bpl     L8F57_SPRWAM_SEARCH_LOOP        ; 8F5D 10 F8                    ..
+        cmp     L8F7B_SPRWAM,x
+        beq     L8F63_FOUND_IN_SPRWAM
+        dex
+        bpl     L8F57_SPRWAM_SEARCH_LOOP
 
 L8F5F_33_SYNTAX_ERROR:
-        lda     #doserr_33_syntax_err ;Invalid filename          ; 8F5F A9 21                    .!
-        clc                                     ; 8F61 18                       .
-        rts                                     ; 8F62 60                       `
+        lda     #doserr_33_syntax_err ;Invalid filename
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 L8F63_FOUND_IN_SPRWAM:
-        cpx     #$02                            ; 8F63 E0 02                    ..
-        bcs     L8F71_RWAM                      ; 8F65 B0 0A                    ..
+        cpx     #$02
+        bcs     L8F71_RWAM
         ;PR
-        ldx     V1541_FILE_TYPE                 ; 8F67 AE A4 03                 ...
-        bne     L8F5F_33_SYNTAX_ERROR           ; 8F6A D0 F3                    ..
-        sta     V1541_FILE_TYPE                 ; 8F6C 8D A4 03                 ...
-        bra     L8F2F                           ; 8F6F 80 BE                    ..
+        ldx     V1541_FILE_TYPE
+        bne     L8F5F_33_SYNTAX_ERROR
+        sta     V1541_FILE_TYPE
+        bra     L8F2F
 L8F71_RWAM:
         ;RWAM
-        ldx     V1541_FILE_MODE                 ; 8F71 AE A3 03                 ...
-        bne     L8F5F_33_SYNTAX_ERROR           ; 8F74 D0 E9                    ..
-        sta     V1541_FILE_MODE                 ; 8F76 8D A3 03                 ...
-        bra     L8F2F                           ; 8F79 80 B4                    ..
+        ldx     V1541_FILE_MODE
+        bne     L8F5F_33_SYNTAX_ERROR
+        sta     V1541_FILE_MODE
+        bra     L8F2F
 
 L8F7B_SPRWAM:
         .byte ftype_s_seq, ftype_p_prg
         .byte fmode_r_read, fmode_w_write, fmode_a_append, fmode_m_modify
 
-L8F81:  lda     #$20                            ; 8F81 A9 20                    .
-        tsb     $03A5                           ; 8F83 0C A5 03                 ...
-L8F86:  lda     MON_MMU_MODE                    ; 8F86 AD A1 03                 ...
-        cmp     $03A2                           ; 8F89 CD A2 03                 ...
-        bcc     L8F96                           ; 8F8C 90 08                    ..
-        stz     $03A2                           ; 8F8E 9C A2 03                 ...
-        stz     MON_MMU_MODE                    ; 8F91 9C A1 03                 ...
-        bcs     L8F9B                           ; 8F94 B0 05                    ..
-L8F96:  lda     #$80                            ; 8F96 A9 80                    ..
-        tsb     $03A5                           ; 8F98 0C A5 03                 ...
-L8F9B:  cld                                     ; 8F9B D8                       .
-        clc                                     ; 8F9C 18                       .
-        lda     #$10                            ; 8F9D A9 10                    ..
-        adc     MON_MMU_MODE                    ; 8F9F 6D A1 03                 m..
-        cmp     $03A2                           ; 8FA2 CD A2 03                 ...
-        lda     #doserr_33_syntax_err ;33 syntax error           ; 8FA5 A9 21                    .!
-        bcc     L8FAC_RTS                       ; 8FA7 90 03                    ..
+L8F81:  lda     #$20
+        tsb     $03A5
+L8F86:  lda     MON_MMU_MODE
+        cmp     $03A2
+        bcc     L8F96
+        stz     $03A2
+        stz     MON_MMU_MODE
+        bcs     L8F9B
+L8F96:  lda     #$80
+        tsb     $03A5
+L8F9B:  cld
+        clc
+        lda     #$10
+        adc     MON_MMU_MODE
+        cmp     $03A2
+        lda     #doserr_33_syntax_err ;33 syntax error
+        bcc     L8FAC_RTS
 L8FAA := *+1
         lda     $03a5
-L8FAC_RTS:  rts                                 ; 8FAC 60                       `
+L8FAC_RTS:  rts
 ; ----------------------------------------------------------------------------
-L8FAD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FAD 20 4A 03                  J.
-        iny                                     ; 8FB0 C8                       .
-L8FB1:  ldx     #$03                            ; 8FB1 A2 03                    ..
+L8FAD:  jsr     GO_RAM_LOAD_GO_KERN
+        iny
+L8FB1:  ldx     #$03
 L8FB4 := *+1
 L8FB3_LOOP:
         cmp L8FBF,X
         bne L8FBA_NOT_EQU
-        clc                                     ; 8FB8 18                       .
-        rts                                     ; 8FB9 60                       `
+        clc
+        rts
 L8FBA_NOT_EQU:
-        dex                                     ; 8FBA CA                       .
-        bpl     L8FB3_LOOP                           ; 8FBB 10 F6                    ..
-        sec                                     ; 8FBD 38                       8
-        rts                                     ; 8FBE 60                       `
+        dex
+        bpl     L8FB3_LOOP
+        sec
+        rts
 
 L8FBF: .byte $00, $0d, $22, $8d
 ; ----------------------------------------------------------------------------
-L8FC3:  ldx     #$00                            ; 8FC3 A2 00                    ..
-        ldy     MON_MMU_MODE                    ; 8FC5 AC A1 03                 ...
-        lda     #$E2 ;ZP-address                ; 8FC8 A9 E2                    ..
-        sta     SINNER                          ; 8FCA 8D 4E 03                 .N.
-L8FCD:  jsr     GO_RAM_LOAD_GO_KERN             ; 8FCD 20 4A 03                  J.
-L8FD0:  cmp     #'*'                            ; 8FD0 C9 2A                    .*
-        beq     L8FE9                           ; 8FD2 F0 15                    ..
-        cmp     #'?'                            ; 8FD4 C9 3F                    .?
-        beq     L8FDD                           ; 8FD6 F0 05                    ..
-        cmp     $021D,x                         ; 8FD8 DD 1D 02                 ...
-        bne     L8FF1                           ; 8FDB D0 14                    ..
-L8FDD:  iny                                     ; 8FDD C8                       .
-        cpy     $03A2                           ; 8FDE CC A2 03                 ...
-        bne     L8FEB                           ; 8FE1 D0 08                    ..
-        inx                                     ; 8FE3 E8                       .
-        lda     $021D,x                         ; 8FE4 BD 1D 02                 ...
-        bne     L8FF1                           ; 8FE7 D0 08                    ..
-L8FE9:  sec                                     ; 8FE9 38                       8
-        rts                                     ; 8FEA 60                       `
+L8FC3:  ldx     #$00
+        ldy     MON_MMU_MODE
+        lda     #$E2 ;ZP-address
+        sta     SINNER
+L8FCD:  jsr     GO_RAM_LOAD_GO_KERN
+L8FD0:  cmp     #'*'
+        beq     L8FE9
+        cmp     #'?'
+        beq     L8FDD
+        cmp     $021D,x
+        bne     L8FF1
+L8FDD:  iny
+        cpy     $03A2
+        bne     L8FEB
+        inx
+        lda     $021D,x
+        bne     L8FF1
+L8FE9:  sec
+        rts
 ; ----------------------------------------------------------------------------
 L8FED := *+2
-L8FEB:  inx                                     ; 8FEB E8                       .
+L8FEB:  inx
         lda     $021D,X
         bne     L8FCD
-L8FF1:  clc                                     ; 8FF1 18                       .
-        rts                                     ; 8FF2 60                       `
+L8FF1:  clc
+        rts
 ; ----------------------------------------------------------------------------
-L8FF3:  stz     $02D8                           ; 8FF3 9C D8 02                 ...
-        lda     #$E2 ;ZP-address                ; 8FF6 A9 E2                    ..
-        sta     SINNER                          ; 8FF8 8D 4E 03                 .N.
-        ldx     #$00                            ; 8FFB A2 00                    ..
-        ldy     MON_MMU_MODE                    ; 8FFD AC A1 03                 ...
-L9000:  jsr     GO_RAM_LOAD_GO_KERN             ; 9000 20 4A 03                  J.
-        sta     $021D,x                         ; 9003 9D 1D 02                 ...
-        inx                                     ; 9006 E8                       .
-        iny                                     ; 9007 C8                       .
-        cpy     $03A2                           ; 9008 CC A2 03                 ...
-        bne     L9000                           ; 900B D0 F3                    ..
-        stz     $021D,x                         ; 900D 9E 1D 02                 ...
-        rts                                     ; 9010 60                       `
+L8FF3:  stz     $02D8
+        lda     #$E2 ;ZP-address
+        sta     SINNER
+        ldx     #$00
+        ldy     MON_MMU_MODE
+L9000:  jsr     GO_RAM_LOAD_GO_KERN
+        sta     $021D,x
+        inx
+        iny
+        cpy     $03A2
+        bne     L9000
+        stz     $021D,x
+        rts
 ; ----------------------------------------------------------------------------
 ;maybe returns cbm dos error code in A
 L9011_MAYBE_CHECKS_FILE_TYPE_S:
-        ldx     #ftype_s_seq                            ; 9011 A2 53                    .S
-        lda     $0218                           ; 9013 AD 18 02                 ...
-        bit     #$40                            ; 9016 89 40                    .@
-        beq     L901C                           ; 9018 F0 02                    ..
-        ldx     #ftype_p_prg                            ; 901A A2 50                    .P
-L901C:  lda     #doserr_64_file_type_mism ;64 file type mismatch                            ; 901C A9 40                    .@
-        cpx     V1541_FILE_TYPE                           ; 901E EC A4 03                 ...
-        beq     L9029                           ; 9021 F0 06                    ..
-        ldy     V1541_FILE_TYPE                           ; 9023 AC A4 03                 ...
-L9026:  beq     L9029                           ; 9026 F0 01                    ..
-        clc                                     ; 9028 18                       .
-L9029:  stx     V1541_FILE_TYPE                           ; 9029 8E A4 03                 ...
-        rts                                     ; 902C 60                       `
+        ldx     #ftype_s_seq
+        lda     $0218
+        bit     #$40
+        beq     L901C
+        ldx     #ftype_p_prg
+L901C:  lda     #doserr_64_file_type_mism ;64 file type mismatch
+        cpx     V1541_FILE_TYPE
+        beq     L9029
+        ldy     V1541_FILE_TYPE
+L9026:  beq     L9029
+        clc
+L9029:  stx     V1541_FILE_TYPE
+        rts
 ; ----------------------------------------------------------------------------
-L902D:  ldx     #$04                            ; 902D A2 04                    ..
-        lda     $0218                           ; 902F AD 18 02                 ...
-        bit     #$80                            ; 9032 89 80                    ..
-        bne     L9038                           ; 9034 D0 02                    ..
-        ldx     #$01                            ; 9036 A2 01                    ..
-L9038:  lda     $0218,x                         ; 9038 BD 18 02                 ...
-        sta     $E7,x                           ; 903B 95 E7                    ..
-        dex                                     ; 903D CA                       .
-        bpl     L9038                           ; 903E 10 F8                    ..
-        rts                                     ; 9040 60                       `
+L902D:  ldx     #$04
+        lda     $0218
+        bit     #$80
+        bne     L9038
+        ldx     #$01
+L9038:  lda     $0218,x
+        sta     $E7,x
+        dex
+        bpl     L9038
+        rts
 ; ----------------------------------------------------------------------------
-L9041:  jsr     L8C92                           ; 9041 20 92 8C                  ..
-        stz     V1541_02D6                      ; 9044 9C D6 02                 ...
-        lda     #'*'                            ; 9047 A9 2A                    .*
-        sta     $0238                           ; 9049 8D 38 02                 .8.
-        stz     $0239                           ; 904C 9C 39 02                 .9.
-        stz     $024C                           ; 904F 9C 4C 02                 .L.
-        lda     $03A5                           ; 9052 AD A5 03                 ...
-L9055:  bit     #$80                            ; 9055 89 80                    ..
-        beq     L907D_SEC_RTS                   ; 9057 F0 24                    .$
-        ldx     #$00                            ; 9059 A2 00                    ..
-        ldy     MON_MMU_MODE                    ; 905B AC A1 03                 ...
-L905E:  lda     #$E2 ;ZP-address                ; 905E A9 E2                    ..
-        sta     SINNER                          ; 9060 8D 4E 03                 .N.
-        jsr     GO_RAM_LOAD_GO_KERN             ; 9063 20 4A 03                  J.
-        sta     $0238,x                         ; 9066 9D 38 02                 .8.
-        iny                                     ; 9069 C8                       .
-        inx                                     ; 906A E8                       .
-        cpy     $03A2                           ; 906B CC A2 03                 ...
-        bne     L905E                           ; 906E D0 EE                    ..
-        cpx     #$14                            ; 9070 E0 14                    ..
-        bcs     L9077                           ; 9072 B0 03                    ..
-        stz     $0238,x                         ; 9074 9E 38 02                 .8.
+L9041:  jsr     L8C92
+        stz     V1541_02D6
+        lda     #'*'
+        sta     $0238
+        stz     $0239
+        stz     $024C
+        lda     $03A5
+L9055:  bit     #$80
+        beq     L907D_SEC_RTS
+        ldx     #$00
+        ldy     MON_MMU_MODE
+L905E:  lda     #$E2 ;ZP-address
+        sta     SINNER
+        jsr     GO_RAM_LOAD_GO_KERN
+        sta     $0238,x
+        iny
+        inx
+        cpy     $03A2
+        bne     L905E
+        cpx     #$14
+        bcs     L9077
+        stz     $0238,x
 L9079 := *+2
 L9077:  LDA     V1541_FILE_TYPE
-        sta     $024C                           ; 907A 8D 4C 02                 .L.
+        sta     $024C
 L907D_SEC_RTS:
-        sec                                     ; 907D 38                       8
-        rts                                     ; 907E 60                       `
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-        ldx     EAL                             ; 907F A6 B2                    ..
-        ldy     EAH                             ; 9081 A4 B3                    ..
-        sec                                     ; 9083 38                       8
-        rts                                     ; 9084 60                       `
+        ldx     EAL
+        ldy     EAH
+        sec
+        rts
 ; ----------------------------------------------------------------------------
 L9085_V1541_SAVE:
-        jsr     L908B_V1541_INTERNAL_SAVE       ; 9085 20 8B 90                  ..
-        jmp     V1541_KERNAL_CALL_DONE          ; 9088 4C 3F 99                 L?.
+        jsr     L908B_V1541_INTERNAL_SAVE
+        jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L908B_V1541_INTERNAL_SAVE:
-        ldx     STAH                            ; 908B A6 B7                    ..
-        lda     STAL                            ; 908D A5 B6                    ..
-        sta     SAL                             ; 908F 85 B8                    ..
-        stx     SAH                             ; 9091 86 B9                    ..
-        cpx     #>$08F8                         ; 9093 E0 08                    ..
-        bcc     L90DD_25_WRITE_ERROR            ; 9095 90 46                    .F
-        cpx     #<$08F8                         ; 9097 E0 F8                    ..
-        bcs     L90DD_25_WRITE_ERROR            ; 9099 B0 42                    .B
-        lda     EAH                             ; 909B A5 B3                    ..
-        cmp     #>$F800                         ; 909D C9 F8                    ..
-        bcc     L90A7                           ; 909F 90 06                    ..
-        bne     L90DD_25_WRITE_ERROR            ; 90A1 D0 3A                    .:
-        lda     EAL                             ; 90A3 A5 B2                    ..
-        bne     L90DD_25_WRITE_ERROR            ; 90A5 D0 36                    .6
-L90A7:  jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP  ; 90A7 20 AF 8E                  ..
-        bcc     L90DA_33_SYNTAX_ERROR           ; 90AA 90 2E                    ..
-        bit     #$80                            ; 90AC 89 80                    ..
-        beq     L90DA_33_SYNTAX_ERROR           ; 90AE F0 2A                    .*
-        bit     #$60                            ; 90B0 89 60                    .`
-        bne     L90DA_33_SYNTAX_ERROR           ; 90B2 D0 26                    .&
-        lda     V1541_FILE_MODE                           ; 90B4 AD A3 03                 ...
-        bne     L90DA_33_SYNTAX_ERROR           ; 90B7 D0 21                    .!
-        lda     $03A0                           ; 90B9 AD A0 03                 ...
-        beq     L90C2                           ; 90BC F0 04                    ..
-        cmp     #$40                            ; 90BE C9 40                    .@
-        bne     L90DA_33_SYNTAX_ERROR           ; 90C0 D0 18                    ..
+        ldx     STAH
+        lda     STAL
+        sta     SAL
+        stx     SAH
+        cpx     #>$08F8
+        bcc     L90DD_25_WRITE_ERROR
+        cpx     #<$08F8
+        bcs     L90DD_25_WRITE_ERROR
+        lda     EAH
+        cmp     #>$F800
+        bcc     L90A7
+        bne     L90DD_25_WRITE_ERROR
+        lda     EAL
+        bne     L90DD_25_WRITE_ERROR
+L90A7:  jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP
+        bcc     L90DA_33_SYNTAX_ERROR
+        bit     #$80
+        beq     L90DA_33_SYNTAX_ERROR
+        bit     #$60
+        bne     L90DA_33_SYNTAX_ERROR
+        lda     V1541_FILE_MODE
+        bne     L90DA_33_SYNTAX_ERROR
+        lda     $03A0
+        beq     L90C2
+        cmp     #$40
+        bne     L90DA_33_SYNTAX_ERROR
 L90C3 := *+1
 L90C2:  jsr     L8D9F
         bcc     L90EC
@@ -2608,186 +2608,185 @@ L90CB := *+1
 
 L90D2 := *+2
 L90D0:  LDA $0218
-        and     #$80                            ; 90D3 29 80                    ).
-        beq     L90E1                           ; 90D5 F0 0A                    ..
-        lda     #doserr_26_write_prot_on ;#26 write protect on                           ; 90D7 A9 1A                    ..
-        .byte   $2C                             ; 90D9 2C                       ,
+        and     #$80
+        beq     L90E1
+        lda     #doserr_26_write_prot_on ;#26 write protect on
+        .byte   $2C
 L90DA_33_SYNTAX_ERROR:
-        lda     #doserr_33_syntax_err  ;33 syntax error (invalid filename)                           ; 90DA A9 21                    .!
-        .byte   $2C                             ; 90DC 2C                       ,
+        lda     #doserr_33_syntax_err  ;33 syntax error (invalid filename)
+        .byte   $2C
 L90DD_25_WRITE_ERROR:
-        lda     #doserr_25_write_err ;25 write error (write-verify error)                           ; 90DD A9 19                    ..
+        lda     #doserr_25_write_err ;25 write error (write-verify error)
 L90DF_ERROR:
-        clc                                     ; 90DF 18                       .
-        rts                                     ; 90E0 60                       `
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L90E1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;maybe returns cbm dos error code in A                          ; 90E1 20 11 90                  ..
-        bcc     L90DF_ERROR ;branch if error                          ; 90E4 90 F9                    ..
-        jsr     L8DE0                           ; 90E6 20 E0 8D                  ..
-        inc     a                               ; 90E9 1A                       .
-        bra     L910D                           ; 90EA 80 21                    .!
-L90EC:  stz     $03A0                           ; 90EC 9C A0 03                 ...
+L90E1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ;maybe returns cbm dos error code in A
+        bcc     L90DF_ERROR ;branch if error
+        jsr     L8DE0
+        inc     a
+        bra     L910D
+L90EC:  stz     $03A0
         jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL ;maybe returns cbm dos error code in A                               ; 90EF 20 13 8B                  ..
-L90F2:  bcc     L90DF_ERROR ;branch if error                          ; 90F2 90 EB                    ..
-        jsr     L8FF3                           ; 90F4 20 F3 8F                  ..
-        stz     $0218                           ; 90F7 9C 18 02                 ...
-        lda     V1541_FILE_TYPE                 ; 90FA AD A4 03                 ...
-        cmp     #ftype_s_seq                            ; 90FD C9 53                    .S
-        beq     L9106                           ; 90FF F0 05                    ..
-        lda     #$40                            ; 9101 A9 40                    .@
-        sta     $0218                           ; 9103 8D 18 02                 ...
+L90F2:  bcc     L90DF_ERROR ;branch if error
+        jsr     L8FF3
+        stz     $0218
+        lda     V1541_FILE_TYPE
+        cmp     #ftype_s_seq
+        beq     L9106
+        lda     #$40
+        sta     $0218
 L9108:=*+2
 L9106:  jsr     L8E91
         bcc     L90DF_ERROR
-        eor     #$01                            ; 910B 49 01                    I.
-L910D:  pha                                     ; 910D 48                       H
-;todo jsr
+        eor     #$01
+L910D:  pha
 L9110:=*+2
         jsr L91A4
         sty $021a
-        pla                                     ; 9114 68                       h
-        clc                                     ; 9115 18                       .
-        adc     $020A                           ; 9116 6D 0A 02                 m..
-        ldx     $020B                           ; 9119 AE 0B 02                 ...
-        bcc     L911F                           ; 911C 90 01                    ..
-        inx                                     ; 911E E8                       .
-L911F:  clc                                     ; 911F 18                       .
-        sbc     $021A                           ; 9120 ED 1A 02                 ...
-        bcs     L9126                           ; 9123 B0 01                    ..
-        dex                                     ; 9125 CA                       .
-L9126:  tay                                     ; 9126 A8                       .
-        bne     L912A                           ; 9127 D0 01                    ..
-        dex                                     ; 9129 CA                       .
-L912A:  dec     a                               ; 912A 3A                       :
-        cpx     $020D                           ; 912B EC 0D 02                 ...
-        bcc     L9137                           ; 912E 90 07                    ..
-        bne     L913A                           ; 9130 D0 08                    ..
-        cmp     $020C                           ; 9132 CD 0C 02                 ...
-        bcs     L913A                           ; 9135 B0 03                    ..
-L9137:  jmp     L90DD_25_WRITE_ERROR            ; 9137 4C DD 90                 L..
+        pla
+        clc
+        adc     $020A
+        ldx     $020B
+        bcc     L911F
+        inx
+L911F:  clc
+        sbc     $021A
+        bcs     L9126
+        dex
+L9126:  tay
+        bne     L912A
+        dex
+L912A:  dec     a
+        cpx     $020D
+        bcc     L9137
+        bne     L913A
+        cmp     $020C
+        bcs     L913A
+L9137:  jmp     L90DD_25_WRITE_ERROR
 ; ----------------------------------------------------------------------------
-L913A:  cpx     #$00                            ; 913A E0 00                    ..
-        bne     L9145                           ; 913C D0 07                    ..
-        cmp     STAH                            ; 913E C5 B7                    ..
-        bcs     L9145                           ; 9140 B0 03                    ..
-        jsr     L91D5                           ; 9142 20 D5 91                  ..
-L9145:  lda     $03A0                           ; 9145 AD A0 03                 ...
-        beq     L9150                           ; 9148 F0 06                    ..
-        jsr     L89E2                           ; 914A 20 E2 89                  ..
-        jsr     L8D17 ;maybe returns cbm dos error in a                          ; 914D 20 17 8D                  ..
-L9150:  jsr     L91A4                           ; 9150 20 A4 91                  ..
-        cpy     #$00                            ; 9153 C0 00                    ..
-        beq     L91A1                           ; 9155 F0 4A                    .J
-        dey                                     ; 9157 88                       .
+L913A:  cpx     #$00
+        bne     L9145
+        cmp     STAH
+        bcs     L9145
+        jsr     L91D5
+L9145:  lda     $03A0
+        beq     L9150
+        jsr     L89E2
+        jsr     L8D17 ;maybe returns cbm dos error in a
+L9150:  jsr     L91A4
+        cpy     #$00
+        beq     L91A1
+        dey
 L915A := *+2
         sty     $021a
-        sta     $021B                           ; 915B 8D 1B 02                 ...
-        lda     #$E0 ;ZP-address                ; 915E A9 E0                    ..
-        sta     SINNER                          ; 9160 8D 4E 03                 .N.
-L9163:  jsr     L89AF                           ; 9163 20 AF 89                  ..
-        ldy     #$FF                            ; 9166 A0 FF                    ..
-L9168:  jsr     GO_RAM_LOAD_GO_KERN             ; 9168 20 4A 03                  J.
-        sta     ($E4),y                         ; 916B 91 E4                    ..
-        dey                                     ; 916D 88                       .
-        bne     L9168                           ; 916E D0 F8                    ..
-        ldy     #$02                            ; 9170 A0 02                    ..
-L9172:  lda     $0219,y                         ; 9172 B9 19 02                 ...
-        sta     ($E4),y                         ; 9175 91 E4                    ..
-        dey                                     ; 9177 88                       .
-        bpl     L9172                           ; 9178 10 F8                    ..
-        sec                                     ; 917A 38                       8
-        lda     $E0                             ; 917B A5 E0                    ..
-        sbc     #$FD                            ; 917D E9 FD                    ..
-        bcs     L9183                           ; 917F B0 02                    ..
-        dec     $E1                             ; 9181 C6 E1                    ..
-L9183:  sta     $E0                             ; 9183 85 E0                    ..
-        stz     $021B                           ; 9185 9C 1B 02                 ...
-        ldy     $021A                           ; 9188 AC 1A 02                 ...
-        dec     $021A                           ; 918B CE 1A 02                 ...
-        tya                                     ; 918E 98                       .
-        bne     L9163                           ; 918F D0 D2                    ..
-        bit     $0218                           ; 9191 2C 18 02                 ,..
-        bvc     L91A1                           ; 9194 50 0B                    P.
-        ldy     #$04                            ; 9196 A0 04                    ..
-        lda     SAH                             ; 9198 A5 B9                    ..
-        sta     ($E4),y                         ; 919A 91 E4                    ..
-        dey                                     ; 919C 88                       .
-        lda     SAL                             ; 919D A5 B8                    ..
-        sta     ($E4),y                         ; 919F 91 E4                    ..
-L91A1:  jmp     L8D5B_UNKNOWN_DIR_RELATED                           ; 91A1 4C 5B 8D                 L[.
+        sta     $021B
+        lda     #$E0 ;ZP-address
+        sta     SINNER
+L9163:  jsr     L89AF
+        ldy     #$FF
+L9168:  jsr     GO_RAM_LOAD_GO_KERN
+        sta     ($E4),y
+        dey
+        bne     L9168
+        ldy     #$02
+L9172:  lda     $0219,y
+        sta     ($E4),y
+        dey
+        bpl     L9172
+        sec
+        lda     $E0
+        sbc     #$FD
+        bcs     L9183
+        dec     $E1
+L9183:  sta     $E0
+        stz     $021B
+        ldy     $021A
+        dec     $021A
+        tya
+        bne     L9163
+        bit     $0218
+        bvc     L91A1
+        ldy     #$04
+        lda     SAH
+        sta     ($E4),y
+        dey
+        lda     SAL
+        sta     ($E4),y
+L91A1:  jmp     L8D5B_UNKNOWN_DIR_RELATED
 ; ----------------------------------------------------------------------------
-L91A4:  ldx     STAH                            ; 91A4 A6 B7                    ..
-        lda     STAL                            ; 91A6 A5 B6                    ..
-        bit     $0218                           ; 91A8 2C 18 02                 ,..
-        bvc     L91B3                           ; 91AB 50 06                    P.
-        sec                                     ; 91AD 38                       8
-        sbc     #$02                            ; 91AE E9 02                    ..
-        bcs     L91B3                           ; 91B0 B0 01                    ..
-        dex                                     ; 91B2 CA                       .
-L91B3:  ldy     #$00                            ; 91B3 A0 00                    ..
-L91B5:  cpx     EAH                             ; 91B5 E4 B3                    ..
-        bcc     L91BD                           ; 91B7 90 04                    ..
-        cmp     EAL                             ; 91B9 C5 B2                    ..
-        bcs     L91C9                           ; 91BB B0 0C                    ..
-L91BD:  adc     #$FD                            ; 91BD 69 FD                    i.
-        bcc     L91C2                           ; 91BF 90 01                    ..
-        inx                                     ; 91C1 E8                       .
-L91C2:  iny                                     ; 91C2 C8                       .
-        bne     L91B5                           ; 91C3 D0 F0                    ..
-        lda     #$34                            ; 91C5 A9 34                    .4
-        clc                                     ; 91C7 18                       .
-        rts                                     ; 91C8 60                       `
+L91A4:  ldx     STAH
+        lda     STAL
+        bit     $0218
+        bvc     L91B3
+        sec
+        sbc     #$02
+        bcs     L91B3
+        dex
+L91B3:  ldy     #$00
+L91B5:  cpx     EAH
+        bcc     L91BD
+        cmp     EAL
+        bcs     L91C9
+L91BD:  adc     #$FD
+        bcc     L91C2
+        inx
+L91C2:  iny
+        bne     L91B5
+        lda     #$34
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L91C9:  dex                                     ; 91C9 CA                       .
-        sta     $E0                             ; 91CA 85 E0                    ..
-L91CC:  stx     $E1                             ; 91CC 86 E1                    ..
-        clc                                     ; 91CE 18                       .
-        lda     EAL                             ; 91CF A5 B2                    ..
-        sbc     $E0                             ; 91D1 E5 E0                    ..
-        sec                                     ; 91D3 38                       8
-        rts                                     ; 91D4 60                       `
+L91C9:  dex
+        sta     $E0
+L91CC:  stx     $E1
+        clc
+        lda     EAL
+        sbc     $E0
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-L91D5:  pha                                     ; 91D5 48                       H
-        sta     $E1                             ; 91D6 85 E1                    ..
-        stz     $E0                             ; 91D8 64 E0                    d.
-        lda     #STAH                           ; 91DA A9 B7                    ..
-        sta     SINNER                          ; 91DC 8D 4E 03                 .N.
-        lda     #$E0                            ; 91DF A9 E0                    ..
-        sta     $0360                           ; 91E1 8D 60 03                 .`.
-L91E4:  lda     STAH                            ; 91E4 A5 B7                    ..
-        cmp     EAH                             ; 91E6 C5 B3                    ..
-        bne     L91F0                           ; 91E8 D0 06                    ..
-        lda     $B6                             ; 91EA A5 B6                    ..
-        cmp     EAL                             ; 91EC C5 B2                    ..
-        beq     L9206                           ; 91EE F0 16                    ..
-L91F0:  ldy     #$00                            ; 91F0 A0 00                    ..
-        jsr     GO_RAM_LOAD_GO_KERN             ; 91F2 20 4A 03                  J.
-        jsr     GO_RAM_STORE_GO_KERN            ; 91F5 20 5C 03                  \.
-        inc     $E0                             ; 91F8 E6 E0                    ..
-        bne     L91FE                           ; 91FA D0 02                    ..
-L91FC:  inc     $E1                             ; 91FC E6 E1                    ..
-L91FE:  inc     $B6                             ; 91FE E6 B6                    ..
-        bne     L9204                           ; 9200 D0 02                    ..
-        inc     STAH                            ; 9202 E6 B7                    ..
-L9204:  bra     L91E4                           ; 9204 80 DE                    ..
-L9206:  lda     $E0                             ; 9206 A5 E0                    ..
-        sta     EAL                             ; 9208 85 B2                    ..
-        lda     $E1                             ; 920A A5 E1                    ..
-        sta     EAH                             ; 920C 85 B3                    ..
-        pla                                     ; 920E 68                       h
-        sta     STAH                            ; 920F 85 B7                    ..
-        stz     STAL                            ; 9211 64 B6                    d.
-        rts                                     ; 9213 60                       `
+L91D5:  pha
+        sta     $E1
+        stz     $E0
+        lda     #STAH
+        sta     SINNER
+        lda     #$E0
+        sta     $0360
+L91E4:  lda     STAH
+        cmp     EAH
+        bne     L91F0
+        lda     $B6
+        cmp     EAL
+        beq     L9206
+L91F0:  ldy     #$00
+        jsr     GO_RAM_LOAD_GO_KERN
+        jsr     GO_RAM_STORE_GO_KERN
+        inc     $E0
+        bne     L91FE
+L91FC:  inc     $E1
+L91FE:  inc     $B6
+        bne     L9204
+        inc     STAH
+L9204:  bra     L91E4
+L9206:  lda     $E0
+        sta     EAL
+        lda     $E1
+        sta     EAH
+        pla
+        sta     STAH
+        stz     STAL
+        rts
 ; ----------------------------------------------------------------------------
 V1541_CLOSE:
-        jsr     L921A_V1541_INTERNAL_CLOSE      ; 9214 20 1A 92                  ..
-        jmp     V1541_KERNAL_CALL_DONE          ; 9217 4C 3F 99                 L?.
+        jsr     L921A_V1541_INTERNAL_CLOSE
+        jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L921A_V1541_INTERNAL_CLOSE:
-        jsr     L8C36 ;channel related                          ; 921A 20 36 8C                  6.
-        bcs     L9221 ;branch if no error       ; 921D B0 02                    ..
-        sec                                     ; 921F 38                       8
-        rts                                     ; 9220 60                       `
+        jsr     L8C36 ;channel related
+        bcs     L9221 ;branch if no error
+        sec
+        rts
 ; ----------------------------------------------------------------------------
 L9221:  lda     $E6                             ; 9221 A5 E6                    ..
         cmp     #$0F                            ; 9223 C9 0F                    ..
@@ -2799,6 +2798,7 @@ L9221:  lda     $E6                             ; 9221 A5 E6                    
         bne     L9240                           ; 922F D0 0F                    ..
         lda     $E8                             ; 9231 A5 E8                    ..
         beq     L9240                           ; 9233 F0 0B                    ..
+;TODO probably jsr
         .byte   $20                             ; 9235 20
 L9236:  ldx     $908D,y                         ; 9236 BE 8D 90                 ...
         asl     $20                             ; 9239 06 20                    .
@@ -2809,260 +2809,260 @@ L9240:  jmp     L8C86                           ; 9240 4C 86 8C                 
 L9244 := *+1
 L9243_OPEN_V1541:
         jsr     L9249_V1541_INTERNAL_OPEN
-        jmp     V1541_KERNAL_CALL_DONE          ; 9246 4C 3F 99                 L?.
+        jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L924A := *+1
 L9249_V1541_INTERNAL_OPEN:
         jsr     L8C36 ;channel related
-        lda     $E6                             ; 924C A5 E6                    ..
-        cmp     #$0F ;command channel           ; 924E C9 0F                    ..
-L9250:  bne     L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN                           ; 9250 D0 03                    ..
-        jmp     L9737_V1541_INTERNAL_OPEN_CMD_CHAN ; 9252 4C 37 97                 L7.
+        lda     $E6
+        cmp     #$0F ;command channel
+L9250:  bne     L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN
+        jmp     L9737_V1541_INTERNAL_OPEN_CMD_CHAN
 
         ;not the command channel
 
 L9256 := *+1
 L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN:
         jsr     L8C89
-        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP                           ; 9258 20 AF 8E                  ..
+        jsr     L8EAF_MAYBE_FILENAME_OR_BUFFER_SETUP
 L925C := *+1
         BCC     L9287_ERROR
-        bit     #$20                            ; 925D 89 20                    .
-        bne     L9282                           ; 925F D0 21                    .!
+        bit     #$20
+        bne     L9282
 L9262 := *+1
         LDX     $03a0
-        beq     L928C                           ; 9264 F0 26                    .&
-        cpx     #'$'                            ; 9266 E0 24                    .$
-L9268:  bne     L927B_NOT_DOLLAR                ; 9268 D0 11                    ..
-        ldx     V1541_FILE_MODE                           ; 926A AE A3 03                 ...
+        beq     L928C
+        cpx     #'$'
+L9268:  bne     L927B_NOT_DOLLAR
+        ldx     V1541_FILE_MODE
 L926E := *+1
         BNE     L9287_ERROR
-        jsr     L8C36 ;channel related          ; 926F 20 36 8C                  6.
+        jsr     L8C36 ;channel related
 L2973 := *+1
 L9274 := *+2
         jsr     L9041
         lda     #$50
         sta     $e7
         sec
-L927A:  rts                                     ; 927A 60                       `
+L927A:  rts
 ; ----------------------------------------------------------------------------
 L927B_NOT_DOLLAR:
-        ldy     V1541_FILE_MODE                           ; 927B AC A3 03                 ...
-L927E:  cpy     #fmode_w_write                            ; 927E C0 57                    .W
-        beq     L9289                           ; 9280 F0 07                    ..
-L9282:  lda     #$21 ;33 syntax error (invalid filename)                           ; 9282 A9 21                    .!
-        .byte   $2C ;skip next two bytes        ; 9284 2C                       ,
+        ldy     V1541_FILE_MODE
+L927E:  cpy     #fmode_w_write
+        beq     L9289
+L9282:  lda     #$21 ;33 syntax error (invalid filename)
+        .byte   $2C ;skip next two bytes
 L9286 := *+1
 L9285:  lda #$21 ;33 syntax error (invalid filename)
-L9287_ERROR:  clc                                     ; 9287 18                       .
-        rts                                     ; 9288 60                       `
+L9287_ERROR:  clc
+        rts
 ; ----------------------------------------------------------------------------
-L9289:  stx     V1541_FILE_MODE                           ; 9289 8E A3 03                 ...
-L928C:  bit     #$80                            ; 928C 89 80                    ..
-        beq     L9282                           ; 928E F0 F2                    ..
-        ldy     #fmode_r_read                            ; 9290 A0 52                    .R
-        ldx     V1541_FILE_MODE                           ; 9292 AE A3 03                 ...
-        bne     L929A                           ; 9295 D0 03                    ..
-        sty     V1541_FILE_MODE                           ; 9297 8C A3 03                 ...
-L929A:  bit     #$40                            ; 929A 89 40                    .@
-        beq     L92A3                           ; 929C F0 05                    ..
-        cpx     V1541_FILE_MODE                           ; 929E EC A3 03                 ...
-        bne     L9285                           ; 92A1 D0 E2                    ..
-L92A3:  jsr     L8D9F                           ; 92A3 20 9F 8D                  ..
-        bcc     L9317                           ; 92A6 90 6F                    .o
-        jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S  ; 92A8 20 11 90                  ..
-        bcc     L92C7_ERROR                     ; 92AB 90 1A                    ..
-        ldy     V1541_FILE_MODE                           ; 92AD AC A3 03                 ...
+L9289:  stx     V1541_FILE_MODE
+L928C:  bit     #$80
+        beq     L9282
+        ldy     #fmode_r_read
+        ldx     V1541_FILE_MODE
+        bne     L929A
+        sty     V1541_FILE_MODE
+L929A:  bit     #$40
+        beq     L92A3
+        cpx     V1541_FILE_MODE
+        bne     L9285
+L92A3:  jsr     L8D9F
+        bcc     L9317
+        jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S
+        bcc     L92C7_ERROR
+        ldy     V1541_FILE_MODE
 
-        lda     #doserr_63_file_exists ;63 file exists            ; 92B0 A9 3F                    .?
-        cpy     #fmode_w_write                            ; 92B2 C0 57                    .W
-        beq     L92C7_ERROR                           ; 92B4 F0 11                    ..
-        lda     $0218                           ; 92B6 AD 18 02                 ...
-        bit     #$80                            ; 92B9 89 80                    ..
-        beq     L92C9                           ; 92BB F0 0C                    ..
-        lda     #doserr_26_write_prot_on ;26 write protect on       ; 92BD A9 1A                    ..
-        cpy     #$40                            ; 92BF C0 40                    .@
-        beq     L92C7_ERROR                           ; 92C1 F0 04                    ..
-        cpy     #$41                            ; 92C3 C0 41                    .A
-        bne     L9315                           ; 92C5 D0 4E                    .N
+        lda     #doserr_63_file_exists ;63 file exists
+        cpy     #fmode_w_write
+        beq     L92C7_ERROR
+        lda     $0218
+        bit     #$80
+        beq     L92C9
+        lda     #doserr_26_write_prot_on ;26 write protect on
+        cpy     #$40
+        beq     L92C7_ERROR
+        cpy     #$41
+        bne     L9315
 L92C7_ERROR:
-        clc                                     ; 92C7 18                       .
-        rts                                     ; 92C8 60                       `
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L92C9:  lda     $0219                           ; 92C9 AD 19 02                 ...
-        jsr     L8C9F                           ; 92CC 20 9F 8C                  ..
-        bcc     L92E6                           ; 92CF 90 15                    ..
-        lda     $E7                             ; 92D1 A5 E7                    ..
-        and     #$20                            ; 92D3 29 20                    )
-        beq     L92DB                           ; 92D5 F0 04                    ..
-        lda     #doserr_60_write_file_open ;60 write file open        ; 92D7 A9 3C                    .<
-        bra     L92C7_ERROR                     ; 92D9 80 EC                    ..
+L92C9:  lda     $0219
+        jsr     L8C9F
+        bcc     L92E6
+        lda     $E7
+        and     #$20
+        beq     L92DB
+        lda     #doserr_60_write_file_open ;60 write file open
+        bra     L92C7_ERROR
 L92DD := *+2
 L92DB:  ldy     V1541_FILE_MODE
-        cpy     #fmode_r_read                            ; 92DE C0 52                    .R
-        beq     L92F8                           ; 92E0 F0 16                    ..
-L92E2:  lda     #doserr_60_write_file_open ;60 write file open        ; 92E2 A9 3C                    .<
-        bra     L92C7_ERROR                     ; 92E4 80 E1                    ..
-L92E6:  lda     $0218                           ; 92E6 AD 18 02                 ...
-        bit     #$20                            ; 92E9 89 20                    .
-        beq     L92F8                           ; 92EB F0 0B                    ..
-        ldy     V1541_FILE_MODE                           ; 92ED AC A3 03                 ...
-        cpy     #fmode_m_modify                            ; 92F0 C0 4D                    .M
-        beq     L92F8                           ; 92F2 F0 04                    ..
-        cpy     #$40                            ; 92F4 C0 40                    .@
-        bne     L92E2                           ; 92F6 D0 EA                    ..
-L92F8:  ldy     V1541_FILE_MODE                           ; 92F8 AC A3 03                 ...
-        cpy     #'@' ;todo weird for a mode maybe somehow A?                           ; 92FB C0 40                    .@
-        bne     L930C                           ; 92FD D0 0D                    ..
-        jsr     L8D17 ;maybe returns cbm dos error in a                          ; 92FF 20 17 8D                  ..
-        jsr     L89E2                           ; 9302 20 E2 89                  ..
-        lda     #fmode_w_write                            ; 9305 A9 57                    .W
-        sta     V1541_FILE_MODE                           ; 9307 8D A3 03                 ...
-        bra     L9317                           ; 930A 80 0B                    ..
-L930C:  cpy     #fmode_m_modify                            ; 930C C0 4D                    .M
-        beq     L9315                           ; 930E F0 05                    ..
-        jsr     L8E20_MAYBE_CHECKS_HEADER       ; 9310 20 20 8E                   .
-        bcc     L92C7_ERROR ;branch if error                          ; 9313 90 B2                    ..
-L9315:  bra     L9335                           ; 9315 80 1E                    ..
-L9317:  ldy     V1541_FILE_MODE                           ; 9317 AC A3 03                 ...
-        cpy     #fmode_r_read                            ; 931A C0 52                    .R
-        beq     L9322_ERROR                           ; 931C F0 04                    ..
-        cpy     #fmode_m_modify                            ; 931E C0 4D                    .M
-        bne     L9326                           ; 9320 D0 04                    ..
+        cpy     #fmode_r_read
+        beq     L92F8
+L92E2:  lda     #doserr_60_write_file_open ;60 write file open
+        bra     L92C7_ERROR
+L92E6:  lda     $0218
+        bit     #$20
+        beq     L92F8
+        ldy     V1541_FILE_MODE
+        cpy     #fmode_m_modify
+        beq     L92F8
+        cpy     #$40
+        bne     L92E2
+L92F8:  ldy     V1541_FILE_MODE
+        cpy     #'@' ;TODO weird for a mode maybe somehow A?
+        bne     L930C
+        jsr     L8D17 ;maybe returns cbm dos error in a
+        jsr     L89E2
+        lda     #fmode_w_write
+        sta     V1541_FILE_MODE
+        bra     L9317
+L930C:  cpy     #fmode_m_modify
+        beq     L9315
+        jsr     L8E20_MAYBE_CHECKS_HEADER
+        bcc     L92C7_ERROR ;branch if error
+L9315:  bra     L9335
+L9317:  ldy     V1541_FILE_MODE
+        cpy     #fmode_r_read
+        beq     L9322_ERROR
+        cpy     #fmode_m_modify
+        bne     L9326
 L9322_ERROR:
-        lda     #doserr_62_file_not_found ;62 file not found                           ; 9322 A9 3E                    .>
-        clc                                     ; 9324 18                       .
-        rts                                     ; 9325 60                       `
+        lda     #doserr_62_file_not_found ;62 file not found
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L9326:  lda     #fmode_w_write                            ; 9326 A9 57                    .W
-        sta     V1541_FILE_MODE                           ; 9328 8D A3 03                 ...
-        lda     V1541_FILE_TYPE                           ; 932B AD A4 03                 ...
-        bne     L9335                           ; 932E D0 05                    ..
-        lda     #ftype_s_seq                            ; 9330 A9 53                    .S
-        sta     V1541_FILE_TYPE                           ; 9332 8D A4 03                 ...
-L9335:  ldy     V1541_FILE_MODE                           ; 9335 AC A3 03                 ...
-        cpy     #fmode_w_write                            ; 9338 C0 57                    .W
-        bne     L935A                           ; 933A D0 1E                    ..
+L9326:  lda     #fmode_w_write
+        sta     V1541_FILE_MODE
+        lda     V1541_FILE_TYPE
+        bne     L9335
+        lda     #ftype_s_seq
+        sta     V1541_FILE_TYPE
+L9335:  ldy     V1541_FILE_MODE
+        cpy     #fmode_w_write
+        bne     L935A
         jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL
         bcc     L9358 ;branch on error
-        jsr     L8FF3                           ; 9341 20 F3 8F                  ..
-        stz     $0218                           ; 9344 9C 18 02                 ...
-        lda     V1541_FILE_TYPE                           ; 9347 AD A4 03                 ...
-        cmp     #ftype_p_prg                            ; 934A C9 50                    .P
-        bne     L9353                           ; 934C D0 05                    ..
-        lda     #$40                            ; 934E A9 40                    .@
-        sta     $0218                           ; 9350 8D 18 02                 ...
-L9353:  jsr     L8E91                           ; 9353 20 91 8E                  ..
-        bcs     L935A                           ; 9356 B0 02                    ..
-L9358:  clc                                     ; 9358 18                       .
-        rts                                     ; 9359 60                       `
+        jsr     L8FF3
+        stz     $0218
+        lda     V1541_FILE_TYPE
+        cmp     #ftype_p_prg
+        bne     L9353
+        lda     #$40
+        sta     $0218
+L9353:  jsr     L8E91
+        bcs     L935A
+L9358:  clc
+        rts
 ; ----------------------------------------------------------------------------
-L935A:  jsr     L8C36 ;channel related                          ; 935A 20 36 8C                  6.
-        jsr     L902D                           ; 935D 20 2D 90                  -.
+L935A:  jsr     L8C36 ;channel related
+        jsr     L902D
 L9361 := *+1
         lda     #$10
         tsb     $e7
         ldy     V1541_FILE_MODE
-L9367:  cpy     #fmode_m_modify                            ; 9367 C0 4D                    .M
-        beq     L9378                           ; 9369 F0 0D                    ..
-        cpy     #fmode_r_read                            ; 936B C0 52                    .R
-        bne     L937A                           ; 936D D0 0B                    ..
-        lda     $E6                             ; 936F A5 E6                    ..
-        cmp     #$0E                            ; 9371 C9 0E                    ..
-        bne     L9378                           ; 9373 D0 03                    ..
-        dec     LDTND                           ; 9375 CE 05 04                 ...
-L9378:  sec                                     ; 9378 38                       8
-        rts                                     ; 9379 60                       `
+L9367:  cpy     #fmode_m_modify
+        beq     L9378
+        cpy     #fmode_r_read
+        bne     L937A
+        lda     $E6
+        cmp     #$0E
+        bne     L9378
+        dec     LDTND
+L9378:  sec
+        rts
 ; ----------------------------------------------------------------------------
-L937A:  cpy     #$41                            ; 937A C0 41                    .A
-        bne     L938D                           ; 937C D0 0F                    ..
-        jsr     L8D17  ;maybe returns cbm dos error in a                         ; 937E 20 17 8D                  ..
-L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN      ; 9381 20 40 8B                  @.
-        lda     #$47                            ; 9384 A9 47                    .G
-        bcc     L9358                           ; 9386 90 D0                    ..
-        bit     SXREG                           ; 9388 2C 9D 03                 ,..
-        bpl     L9381                           ; 938B 10 F4                    ..
-L938D:  jsr     L8C36 ;channel related                          ; 938D 20 36 8C                  6.
-        lda     #$20                            ; 9390 A9 20                    .
-        tsb     $E7                             ; 9392 04 E7                    ..
-        tsb     $0218                           ; 9394 0C 18 02                 ...
-        jmp     L8D63                           ; 9397 4C 63 8D                 Lc.
+L937A:  cpy     #$41
+        bne     L938D
+        jsr     L8D17  ;maybe returns cbm dos error in a
+L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN
+        lda     #$47
+        bcc     L9358
+        bit     SXREG
+        bpl     L9381
+L938D:  jsr     L8C36 ;channel related
+        lda     #$20
+        tsb     $E7
+        tsb     $0218
+        jmp     L8D63
 ; ----------------------------------------------------------------------------
-L939A:  lda     V1541_02D6                      ; 939A AD D6 02                 ...
-L939D:  bne     L93A2                           ; 939D D0 03                    ..
-        sta     V1541_02D7                      ; 939F 8D D7 02                 ...
-L93A2:  ldx     V1541_02D7                      ; 93A2 AE D7 02                 ...
-        beq     L93C0                           ; 93A5 F0 19                    ..
-        lda     $02D8                           ; 93A7 AD D8 02                 ...
-        beq     L941F_GET_DIRPART_ONLY                           ; 93AA F0 73                    .s
-        lda     $0217,x                         ; 93AC BD 17 02                 ...
-        inx                                     ; 93AF E8                       .
-        tay                                     ; 93B0 A8                       .
-        bne     L93B8                           ; 93B1 D0 05                    ..
-        cpx     #$0A                            ; 93B3 E0 0A                    ..
-        bcc     L93B8                           ; 93B5 90 01                    ..
-        tax                                     ; 93B7 AA                       .
-L93B8:  stx     V1541_02D7                      ; 93B8 8E D7 02                 ...
-        stz     SXREG                           ; 93BB 9C 9D 03                 ...
-        sec                                     ; 93BE 38                       8
-        rts                                     ; 93BF 60                       `
+L939A:  lda     V1541_02D6
+L939D:  bne     L93A2
+        sta     V1541_02D7
+L93A2:  ldx     V1541_02D7
+        beq     L93C0
+        lda     $02D8
+        beq     L941F_GET_DIRPART_ONLY
+        lda     $0217,x
+        inx
+        tay
+        bne     L93B8
+        cpx     #$0A
+        bcc     L93B8
+        tax
+L93B8:  stx     V1541_02D7
+        stz     SXREG
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-L93C0:  ldx     V1541_02D6                      ; 93C0 AE D6 02                 ...
-        jmp     (L93C6,x)                       ; 93C3 7C C6 93                 |..
+L93C0:  ldx     V1541_02D6
+        jmp     (L93C6,x)
 L93C6:  .addr   L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
         .addr   L93E4
         .addr   L93E9
         .addr   L93D0
         .addr   L93D6
 
-L93D0:  ldx     #$08                            ; 93D0 A2 08                    ..
-        lda     #$00                            ; 93D2 A9 00                    ..
-        bra     L93DA                           ; 93D4 80 04                    ..
+L93D0:  ldx     #$08
+        lda     #$00
+        bra     L93DA
 
-L93D6:  ldx     #$00                            ; 93D6 A2 00                    ..
-        lda     #$FF                            ; 93D8 A9 FF                    ..
-L93DA:  stx     V1541_02D6                                   ; 93DA 8E D6 02                 ...
-        sta     SXREG                           ; 93DD 8D 9D 03                 ...
-        lda     #$00                            ; 93E0 A9 00                    ..
-        sec                                     ; 93E2 38                       8
-        rts                                     ; 93E3 60                       `
+L93D6:  ldx     #$00
+        lda     #$FF
+L93DA:  stx     V1541_02D6
+        sta     SXREG
+        lda     #$00
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-L93E4:  jsr     L8CBB                           ; 93E4 20 BB 8C                  ..
-        bra     L93EC                           ; 93E7 80 03                    ..
-L93E9:  jsr     L8CC3                           ; 93E9 20 C3 8C                  ..
-L93EC:  ldx     #$04                            ; 93EC A2 04                    ..
-        stx     V1541_02D6                      ; 93EE 8E D6 02                 ...
-        bcc     L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART                           ; 93F1 90 21                    .!
+L93E4:  jsr     L8CBB
+        bra     L93EC
+L93E9:  jsr     L8CC3
+L93EC:  ldx     #$04
+        stx     V1541_02D6
+        bcc     L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
 
-        lda     #$38                            ; 93F3 A9 38                    .8
-        sta     $E2                             ; 93F5 85 E2                    ..
-        lda     #$02                            ; 93F7 A9 02                    ..
-        stz     MON_MMU_MODE                    ; 93F9 9C A1 03                 ...
-L93FC:  sta     $E3                             ; 93FC 85 E3                    ..
-        ldx     #$00                            ; 93FE A2 00                    ..
-L9400:  lda     $0238,x                         ; 9400 BD 38 02                 .8.
-L9403:  beq     L940A                           ; 9403 F0 05                    ..
-        inx                                     ; 9405 E8                       .
-        cpx     #$14                            ; 9406 E0 14                    ..
-        bne     L9400                           ; 9408 D0 F6                    ..
-L940A:  stx     $03A2                           ; 940A 8E A2 03                 ...
-        jsr     L8FC3                           ; 940D 20 C3 8F                  ..
-        bcc     L93E9                           ; 9410 90 D7                    ..
-        bra     L941A_STA_1_02D7_GET_DIRPART    ; 9412 80 06                    ..
+        lda     #$38
+        sta     $E2
+        lda     #$02
+        stz     MON_MMU_MODE
+L93FC:  sta     $E3
+        ldx     #$00
+L9400:  lda     $0238,x
+L9403:  beq     L940A
+        inx
+        cpx     #$14
+        bne     L9400
+L940A:  stx     $03A2
+        jsr     L8FC3
+        bcc     L93E9
+        bra     L941A_STA_1_02D7_GET_DIRPART
 
 L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART:
-        inc     V1541_02D6                      ; 9414 EE D6 02                 ...
-        inc     V1541_02D6                      ; 9417 EE D6 02                 ...
+        inc     V1541_02D6
+        inc     V1541_02D6
 
 L941A_STA_1_02D7_GET_DIRPART:
-        lda     #$01                            ; 941A A9 01                    ..
-        sta     V1541_02D7                      ; 941C 8D D7 02                 ...
+        lda     #$01
+        sta     V1541_02D7
 
 L941F_GET_DIRPART_ONLY:
-        jsr     L8CCE                           ; 941F 20 CE 8C                  ..
-        jsr     L942B_GET_V1541_DIR_PART            ; 9422 20 2B 94                  +.
-        dec     $02D8                           ; 9425 CE D8 02                 ...
-        jmp     L939A                           ; 9428 4C 9A 93                 L..
+        jsr     L8CCE
+        jsr     L942B_GET_V1541_DIR_PART
+        dec     $02D8
+        jmp     L939A
 
 ; ----------------------------------------------------------------------------
 ; Jumps (by a jump table) to the right routine to dump the "virtual 1541"
@@ -3100,88 +3100,88 @@ L9469_BLOCKS_USED:
 ; ----------------------------------------------------------------------------
 ; This dumps the directory listing tail, with the "block used" text.
 L9488_GET_V1541_BLOCKS_USED:
-        ldx     #$1E                            ; 9488 A2 1E                    ..
-L948A:  lda     L9469_BLOCKS_USED,x             ; 948A BD 69 94                 .i.
-        sta     $0218,x                         ; 948D 9D 18 02                 ...
-        dex                                     ; 9490 CA                       .
-        bpl     L948A                           ; 9491 10 F7                    ..
-        cld                                     ; 9493 D8                       .
-        sec                                     ; 9494 38                       8
-        lda     $0208                           ; 9495 AD 08 02                 ...
-        sbc     $020A                           ; 9498 ED 0A 02                 ...
-        sta     $021A                           ; 949B 8D 1A 02                 ...
-        lda     $0209                           ; 949E AD 09 02                 ...
-        sbc     $020B                           ; 94A1 ED 0B 02                 ...
+        ldx     #$1E
+L948A:  lda     L9469_BLOCKS_USED,x
+        sta     $0218,x
+        dex
+        bpl     L948A
+        cld
+        sec
+        lda     $0208
+        sbc     $020A
+        sta     $021A
+        lda     $0209
+        sbc     $020B
 L94A6           := * + 2
-        sta     $021B                           ; 94A4 8D 1B 02                 ...
-        rts                                     ; 94A7 60                       `
+        sta     $021B
+        rts
 ; ----------------------------------------------------------------------------
 ; Afaik this dumps a row of the directory listing, about a file, you can even
 ; see the "PRG", "SEQ" stuffs appended.
 L94A8_GET_V1541_FILE:
-        ldx     #$04                            ; 94A8 A2 04                    ..
-L94AA:  inx                                     ; 94AA E8                       .
-        lda     $0218,x                         ; 94AB BD 18 02                 ...
-        beq     L94B4                           ; 94AE F0 04                    ..
-        cpx     #$15                            ; 94B0 E0 15                    ..
-        bne     L94AA                           ; 94B2 D0 F6                    ..
-L94B4:  lda     #'"'                            ; 94B4 A9 22                    ."
-L94B6:  sta     $0218,x                         ; 94B6 9D 18 02                 ...
-        lda     #' '                            ; 94B9 A9 20                    .
-        inx                                     ; 94BB E8                       .
-        cpx     #' '                            ; 94BC E0 20                    .
-        bne     L94B6                           ; 94BE D0 F6                    ..
-        lda     $0218                           ; 94C0 AD 18 02                 ...
-        bit     #$30                            ; 94C3 89 30                    .0
-        beq     L94CC                           ; 94C5 F0 05                    ..
-        ldx     #'*'                            ; 94C7 A2 2A                    .*
-        stx     $022E                           ; 94C9 8E 2E 02                 ...
-L94CC:  bit     #$80                            ; 94CC 89 80                    ..
-        bne     L94D5                           ; 94CE D0 05                    ..
-        jsr     L8DE0                           ; 94D0 20 E0 8D                  ..
-        bra     L94D8                           ; 94D3 80 03                    ..
-L94D5:  lda     $021B                           ; 94D5 AD 1B 02                 ...
-L94D8:  sta     $021A                           ; 94D8 8D 1A 02                 ...
-        lda     $0218                           ; 94DB AD 18 02                 ...
-        and     #$40                            ; 94DE 29 40                    )@
-        beq     L94EA                           ; 94E0 F0 08                    ..
-        lda     #'P' ;ftype_p_prg                           ; 94E2 A9 50                    .P
-        ldx     #'R'                            ; 94E4 A2 52                    .R
-        ldy     #'G'                            ; 94E6 A0 47                    .G
-        bra     L94F0                           ; 94E8 80 06                    ..
-L94EA:  lda     #'S' ;ftype_s_seq                           ; 94EA A9 53                    .S
-        ldx     #'E'                            ; 94EC A2 45                    .E
-        ldy     #'Q'                            ; 94EE A0 51                    .Q
-L94F0:  sta     $022F ;P    S                   ; 94F0 8D 2F 02                 ./.
-        stx     $0230 ;R or E                   ; 94F3 8E 30 02                 .0.
-        sty     $0231 ;G    Q                   ; 94F6 8C 31 02                 .1.
-        lda     #$01                            ; 94F9 A9 01                    ..
-        sta     $0218                           ; 94FB 8D 18 02                 ...
-        lda     #$10                            ; 94FE A9 10                    ..
-        sta     $0219                           ; 9500 8D 19 02                 ...
-        stz     $021B                           ; 9503 9C 1B 02                 ...
-        lda     #'"'                            ; 9506 A9 22                    ."
-        sta     $021C                           ; 9508 8D 1C 02                 ...
-        lda     $021A                           ; 950B AD 1A 02                 ...
-        cmp     #$64                            ; 950E C9 64                    .d
-        bcs     L9515                           ; 9510 B0 03                    ..
-        jsr     L9522                           ; 9512 20 22 95                  ".
-L9515:  lda     $021A                           ; 9515 AD 1A 02                 ...
-        cmp     #$0A                            ; 9518 C9 0A                    ..
-        bcc     L951F                           ; 951A 90 03                    ..
-        jsr     L9522                           ; 951C 20 22 95                  ".
-L951F:  jsr     L9522                           ; 951F 20 22 95                  ".
-L9522:  lda     #' '                            ; 9522 A9 20                    .
-        ldx     #$04                            ; 9524 A2 04                    ..
-L9526:  ldy     $0218,x                         ; 9526 BC 18 02                 ...
-        sta     $0218,x                         ; 9529 9D 18 02                 ...
-        tya                                     ; 952C 98                       .
-        inx                                     ; 952D E8                       .
-        cpx     #$1F                            ; 952E E0 1F                    ..
-        bne     L9526                           ; 9530 D0 F4                    ..
-        lda     #0                              ; 9532 A9 00                    ..
-        sta     $0237                           ; 9534 8D 37 02                 .7.
-        rts                                     ; 9537 60                       `
+        ldx     #$04
+L94AA:  inx
+        lda     $0218,x
+        beq     L94B4
+        cpx     #$15
+        bne     L94AA
+L94B4:  lda     #'"'
+L94B6:  sta     $0218,x
+        lda     #' '
+        inx
+        cpx     #' '
+        bne     L94B6
+        lda     $0218
+        bit     #$30
+        beq     L94CC
+        ldx     #'*'
+        stx     $022E
+L94CC:  bit     #$80
+        bne     L94D5
+        jsr     L8DE0
+        bra     L94D8
+L94D5:  lda     $021B
+L94D8:  sta     $021A
+        lda     $0218
+        and     #$40
+        beq     L94EA
+        lda     #'P' ;ftype_p_prg
+        ldx     #'R'
+        ldy     #'G'
+        bra     L94F0
+L94EA:  lda     #'S' ;ftype_s_seq
+        ldx     #'E'
+        ldy     #'Q'
+L94F0:  sta     $022F ;P    S
+        stx     $0230 ;R or E
+        sty     $0231 ;G    Q
+        lda     #$01
+        sta     $0218
+        lda     #$10
+        sta     $0219
+        stz     $021B
+        lda     #'"'
+        sta     $021C
+        lda     $021A
+        cmp     #$64
+        bcs     L9515
+        jsr     L9522
+L9515:  lda     $021A
+        cmp     #$0A
+        bcc     L951F
+        jsr     L9522
+L951F:  jsr     L9522
+L9522:  lda     #' '
+        ldx     #$04
+L9526:  ldy     $0218,x
+        sta     $0218,x
+        tya
+        inx
+        cpx     #$1F
+        bne     L9526
+        lda     #0
+        sta     $0237
+        rts
 ; ----------------------------------------------------------------------------
 LOAD__: sta     VERCHK
         stz     SATUS
@@ -3344,140 +3344,140 @@ L9675 := *+1
         BCC     L969A_ERROR ;branch if error
         BIT     #$20
         BNE     L969A_ERROR
-        ldx     $03A0                           ; 967A AE A0 03                 ...
-        cpx     #'$'                            ; 967D E0 24                    .$
-        bne     L969C                           ; 967F D0 1B                    ..
-        ldx     V1541_FILE_MODE                 ; 9681 AE A3 03                 ...
-        bne     L9698_ERROR_34_SYNTAX_ERROR     ; 9684 D0 12                    ..
-        jsr     L9041                           ; 9686 20 41 90                  A.
-        jsr     L8C2A                           ; 9689 20 2A 8C                  *.
-        lda     #$40                            ; 968C A9 40                    .@
-        tsb     $E7                             ; 968E 04 E7                    ..
-        bra     L96C0                           ; 9690 80 2E                    ..
+        ldx     $03A0
+        cpx     #'$'
+        bne     L969C
+        ldx     V1541_FILE_MODE
+        bne     L9698_ERROR_34_SYNTAX_ERROR
+        jsr     L9041
+        jsr     L8C2A
+        lda     #$40
+        tsb     $E7
+        bra     L96C0
 ; ----------------------------------------------------------------------------
 L9692_ERROR_64_FILE_TYPE_MISMATCH:
-        lda     #doserr_64_file_type_mism       ; 9692 A9 40                    .@
-        .byte   $2C                             ; 9694 2C                       ,
+        lda     #doserr_64_file_type_mism
+        .byte   $2C
 L9695_ERROR_60_WRITE_FILE_OPEN:
-        lda     #doserr_60_write_file_open      ; 9695 A9 3C                    .<
-        .byte   $2C                             ; 9697 2C                       ,
+        lda     #doserr_60_write_file_open
+        .byte   $2C
 L9698_ERROR_34_SYNTAX_ERROR:
-        lda     #doserr_34_syntax_err           ; 9698 A9 22                    ."
+        lda     #doserr_34_syntax_err
 L969A_ERROR:
-        clc                                     ; 969A 18                       .
-        rts                                     ; 969B 60                       `
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L969C:  jsr     L8D9F                           ; 969C 20 9F 8D                  ..
-        bcc     L969A_ERROR                     ; 969F 90 F9                    ..
-        lda     $0218                           ; 96A1 AD 18 02                 ...
+L969C:  jsr     L8D9F
+        bcc     L969A_ERROR
+        lda     $0218
 L96A5 := *+1
         bit     #$20
         bne     L9695_ERROR_60_WRITE_FILE_OPEN
-        bit     #$80                            ; 96A8 89 80                    ..
-        bne     L96B1                           ; 96AA D0 05                    ..
-        jsr     L8E20_MAYBE_CHECKS_HEADER       ; 96AC 20 20 8E                   .
-        bcc     L969A_ERROR ;branch if error    ; 96AF 90 E9                    ..
-L96B1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S ; 96B1 20 11 90                  ..
-        bcc     L969A_ERROR                     ; 96B4 90 E4                    ..
-        cpx     #ftype_s_seq                            ; 96B6 E0 53                    .S
-        beq     L9692_ERROR_64_FILE_TYPE_MISMATCH; 96B8 F0 D8                    ..
-        jsr     L8C2A                           ; 96BA 20 2A 8C                  *.
-        jsr     L902D                           ; 96BD 20 2D 90                  -.
-L96C0:  lda     #$10                            ; 96C0 A9 10                    ..
-        tsb     $E7                             ; 96C2 04 E7                    ..
-        lda     $03A0                           ; 96C4 AD A0 03                 ...
-        cmp     #$40                            ; 96C7 C9 40                    .@
-        bne     L96D1                           ; 96C9 D0 06                    ..
-        lda     $E7                             ; 96CB A5 E7                    ..
-        and     #$80                            ; 96CD 29 80                    ).
-        beq     L96D4                           ; 96CF F0 03                    ..
-L96D1:  stz     $03A0                           ; 96D1 9C A0 03                 ...
-L96D4:  sec                                     ; 96D4 38                       8
-        rts                                     ; 96D5 60                       `
+        bit     #$80
+        bne     L96B1
+        jsr     L8E20_MAYBE_CHECKS_HEADER
+        bcc     L969A_ERROR ;branch if error
+L96B1:  jsr     L9011_MAYBE_CHECKS_FILE_TYPE_S
+        bcc     L969A_ERROR
+        cpx     #ftype_s_seq
+        beq     L9692_ERROR_64_FILE_TYPE_MISMATCH
+        jsr     L8C2A
+        jsr     L902D
+L96C0:  lda     #$10
+        tsb     $E7
+        lda     $03A0
+        cmp     #$40
+        bne     L96D1
+        lda     $E7
+        and     #$80
+        beq     L96D4
+L96D1:  stz     $03A0
+L96D4:  sec
+        rts
 ; ----------------------------------------------------------------------------
 ;Called only from load
 L96D6_USED_BY_LOAD:
-        stz     $E9                             ; 96D6 64 E9                    d.
-        dec     $E9                             ; 96D8 C6 E9                    ..
+        stz     $E9
+        dec     $E9
 L96DA_LOOP:
-        inc     $E9                             ; 96DA E6 E9                    ..
-        jsr     L89F9                           ; 96DC 20 F9 89                  ..
-        bcc     L9719                           ; 96DF 90 38                    .8
-L96E1:  ldx     $020B                           ; 96E1 AE 0B 02                 ...
-        lda     $020A                           ; 96E4 AD 0A 02                 ...
-        bne     L96EA                           ; 96E7 D0 01                    ..
-        dex                                     ; 96E9 CA                       .
-L96EA:  dec     a                               ; 96EA 3A                       :
-        jsr     L8A87                           ; 96EB 20 87 8A                  ..
-        ldy     #$02                            ; 96EE A0 02                    ..
-        lda     ($E4),y                         ; 96F0 B1 E4                    ..
-        bne     L96F5                           ; 96F2 D0 01                    ..
-        dec     a                               ; 96F4 3A                       :
-L96F5:  sta     $E0                             ; 96F5 85 E0                    ..
-        lda     $E9                             ; 96F7 A5 E9                    ..
-        bne     L9703                           ; 96F9 D0 08                    ..
-L96FB:  lda     $E7                             ; 96FB A5 E7                    ..
-        and     #$40                            ; 96FD 29 40                    )@
-        beq     L9703                           ; 96FF F0 02                    ..
-        iny                                     ; 9701 C8                       .
-        iny                                     ; 9702 C8                       .
-L9703:  iny                                     ; 9703 C8                       .
-        lda     ($E4),y                         ; 9704 B1 E4                    ..
-        phy                                     ; 9706 5A                       Z
-        ldy     #$00                            ; 9707 A0 00                    ..
-        jsr     GO_RAM_STORE_GO_KERN            ; 9709 20 5C 03                  \.
-        inc     EAL                             ; 970C E6 B2                    ..
-        bne     L9712                           ; 970E D0 02                    ..
-        inc     EAH                             ; 9710 E6 B3                    ..
-L9712:  ply                                     ; 9712 7A                       z
-        cpy     $E0                             ; 9713 C4 E0                    ..
-        bne     L9703                           ; 9715 D0 EC                    ..
+        inc     $E9
+        jsr     L89F9
+        bcc     L9719
+L96E1:  ldx     $020B
+        lda     $020A
+        bne     L96EA
+        dex
+L96EA:  dec     a
+        jsr     L8A87
+        ldy     #$02
+        lda     ($E4),y
+        bne     L96F5
+        dec     a
+L96F5:  sta     $E0
+        lda     $E9
+        bne     L9703
+L96FB:  lda     $E7
+        and     #$40
+        beq     L9703
+        iny
+        iny
+L9703:  iny
+        lda     ($E4),y
+        phy
+        ldy     #$00
+        jsr     GO_RAM_STORE_GO_KERN
+        inc     EAL
+        bne     L9712
+        inc     EAH
+L9712:  ply
+        cpy     $E0
+        bne     L9703
 L9718 := *+1
         bra     L96DA_LOOP
 ; ----------------------------------------------------------------------------
 L971A := *+1
 L9719:  jsr     L89E2
         jmp     L8D17
-L971F:  jsr     L9725 ;maybe returns a cbm dos error code                          ; 971F 20 25 97                  %.
+L971F:  jsr     L9725 ;maybe returns a cbm dos error code
 L9724 := *+2
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L9725:  jsr     L8C3B ;maybe returns a cbm dos error code                          ; 9725 20 3B 8C                  ;.
-        bcc     L972D_RTS ;branch if error                          ; 9728 90 03                    ..
-        jsr     L8B46 ;maybe returns a cbm dos error code                          ; 972A 20 46 8B                  F.
-L972D_RTS:  rts                                     ; 972D 60                       `
+L9725:  jsr     L8C3B ;maybe returns a cbm dos error code
+        bcc     L972D_RTS ;branch if error
+        jsr     L8B46 ;maybe returns a cbm dos error code
+L972D_RTS:  rts
 ; ----------------------------------------------------------------------------
 ;Called with Y=cmd len
 ;If Y>=$3C then return carry=0 and A=32 syntax error (long line)
 ;          else return carry=1 and A=32 (don't care)
 L972E_V1541_CHECK_MAX_CMD_LEN:
-        lda     #doserr_32_syntax_err           ; 972E A9 20                    .
-L9730:  cpy     #$3C ;if Y<3C then OK, else error 32  ; 9730 C0 3C                    .<
-L9732:  rol     a                               ; 9732 2A                       *
-        eor     #$01                            ; 9733 49 01                    I.
-        ror     a                               ; 9735 6A                       j
-        rts                                     ; 9736 60                       `
+        lda     #doserr_32_syntax_err
+L9730:  cpy     #$3C ;if Y<3C then OK, else error 32
+L9732:  rol     a
+        eor     #$01
+        ror     a
+        rts
 ; ----------------------------------------------------------------------------
 L9737_V1541_INTERNAL_OPEN_CMD_CHAN:
-        jsr     L8C36 ;channel related          ; 9737 20 36 8C                  6.
-        lda     #$10                            ; 973A A9 10                    ..
-        tsb     $E7                             ; 973C 04 E7                    ..
-        ldy     FNLEN                           ; 973E AC 87 03                 ...
-        sty     V1541_CMD_LEN                   ; 9741 8C D5 02                 ...
-        jsr     L972E_V1541_CHECK_MAX_CMD_LEN   ; 9744 20 2E 97                  ..
-        bcs     L974A ;branch if no error       ; 9747 B0 01                    ..
+        jsr     L8C36 ;channel related
+        lda     #$10
+        tsb     $E7
+        ldy     FNLEN
+        sty     V1541_CMD_LEN
+        jsr     L972E_V1541_CHECK_MAX_CMD_LEN
+        bcs     L974A ;branch if no error
 L9749_RTS:
-        rts                                     ; 9749 60                       `
+        rts
 ; ----------------------------------------------------------------------------
-L974A:  lda     #FNADR                          ; 974A A9 AE                    ..
-        sta     SINNER                          ; 974C 8D 4E 03                 .N.
-        dey                                     ; 974F 88                       .
-        bmi     L9749_RTS                       ; 9750 30 F7                    0.
-L9752:  jsr     GO_RAM_LOAD_GO_KERN             ; 9752 20 4A 03                  J.
-        sta     V1541_CMD_BUF,y                 ; 9755 99 95 02                 ...
-        dey                                     ; 9758 88                       .
-        bpl     L9752                           ; 9759 10 F7                    ..
-        bra     L9772_V1541_INTERPRET_CMD       ; 975B 80 15                    ..
+L974A:  lda     #FNADR
+        sta     SINNER
+        dey
+        bmi     L9749_RTS
+L9752:  jsr     GO_RAM_LOAD_GO_KERN
+        sta     V1541_CMD_BUF,y
+        dey
+        bpl     L9752
+        bra     L9772_V1541_INTERPRET_CMD
 
 L975D_V1541_CHROUT_CMD_CHAN:
         ldy     V1541_CMD_LEN
@@ -3489,30 +3489,30 @@ L9767 :=  *+1
 L9766_STORE_CHR_IF_0D_INTERP_CMD:
         sta     V1541_CMD_BUF,Y
         inc     V1541_CMD_LEN
-        cmp     #$0D ;CR?                       ; 976C C9 0D                    ..
-        beq     L9772_V1541_INTERPRET_CMD       ; 976E F0 02                    ..
-        sec                                     ; 9770 38                       8
-        rts                                     ; 9771 60                       `
+        cmp     #$0D ;CR?
+        beq     L9772_V1541_INTERPRET_CMD
+        sec
+        rts
 
 L9772_V1541_INTERPRET_CMD:
-        lda     V1541_CMD_BUF                   ; 9772 AD 95 02                 ...
-L9775:  ldx     #(4*2)-1 ;4 cmds in table, two chars each ; 9775 A2 07                    ..
-L9777:  cmp     L978E_V1541_CMDS,x              ; 9777 DD 8E 97                 ...
-        beq     L9783_FOUND_CMD_IN_TABLE        ; 977A F0 07                    ..
-        dex                                     ; 977C CA                       .
+        lda     V1541_CMD_BUF
+L9775:  ldx     #(4*2)-1 ;4 cmds in table, two chars each
+L9777:  cmp     L978E_V1541_CMDS,x
+        beq     L9783_FOUND_CMD_IN_TABLE
+        dex
 L977E := *+1
         bpl     L9777
-        lda     #doserr_31_invalid_cmd          ; 977F A9 1F                    ..
-        clc                                     ; 9781 18                       .
-        rts                                     ; 9782 60                       `
+        lda     #doserr_31_invalid_cmd
+        clc
+        rts
 
 L9783_FOUND_CMD_IN_TABLE:
-        txa                                     ; 9783 8A                       .
-        and     #$FE                            ; 9784 29 FE                    ).
-        pha                                     ; 9786 48                       H
-        jsr     L979E                           ; 9787 20 9E 97                  ..
-        plx                                     ; 978A FA                       .
-        jmp     (L9796_V1541_CMD_HANDLERS,x)    ; 978B 7C 96 97                 |..
+        txa
+        and     #$FE
+        pha
+        jsr     L979E
+        plx
+        jmp     (L9796_V1541_CMD_HANDLERS,x)
 L9792 := *+4
 
 L978E_V1541_CMDS:
@@ -3532,99 +3532,99 @@ L97A7 := *+1
 
 ;Called twice from rename, not used anywhere else
 L97A9_USED_BY_RENAME:
-        jsr     L979E                           ; 97A9 20 9E 97                  ..
-L97AC:  lda     ($E2)                           ; 97AC B2 E2                    ..
-        inc     $E2                             ; 97AE E6 E2                    ..
-        bne     L97B4                           ; 97B0 D0 02                    ..
-        inc     $E3                             ; 97B2 E6 E3                    ..
-L97B4:  dec     $039F                           ; 97B4 CE 9F 03                 ...
-        beq     L97D2_33_SYNTAX_ERROR           ; 97B7 F0 19                    ..
-        cmp     #'='                            ; 97B9 C9 3D                    .=
-        bne     L97AC                           ; 97BB D0 EF                    ..
-        jsr     L8EBD                           ; 97BD 20 BD 8E                  ..
-        bcc     L97D4_CLC_RTS                   ; 97C0 90 12                    ..
-        and     #$40                            ; 97C2 29 40                    )@
-        ora     V1541_FILE_TYPE                 ; 97C4 0D A4 03                 ...
-        ora     V1541_FILE_MODE                 ; 97C7 0D A3 03                 ...
-        ora     $03A0                           ; 97CA 0D A0 03                 ...
-        bne     L97D2_33_SYNTAX_ERROR           ; 97CD D0 03                    ..
-        jmp     L8D9F                           ; 97CF 4C 9F 8D                 L..
+        jsr     L979E
+L97AC:  lda     ($E2)
+        inc     $E2
+        bne     L97B4
+        inc     $E3
+L97B4:  dec     $039F
+        beq     L97D2_33_SYNTAX_ERROR
+        cmp     #'='
+        bne     L97AC
+        jsr     L8EBD
+        bcc     L97D4_CLC_RTS
+        and     #$40
+        ora     V1541_FILE_TYPE
+        ora     V1541_FILE_MODE
+        ora     $03A0
+        bne     L97D2_33_SYNTAX_ERROR
+        jmp     L8D9F
 ; ----------------------------------------------------------------------------
 
 L97D2_33_SYNTAX_ERROR:
-        lda     #doserr_33_syntax_err ;Invalid filename          ; 97D2 A9 21                    .!
+        lda     #doserr_33_syntax_err ;Invalid filename
 L97D4_CLC_RTS:
-        clc                                     ; 97D4 18                       .
-        rts                                     ; 97D5 60                       `
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 L97D6_V1541_S_SCRATCH:
-        bcs     L97DC                           ; 97D6 B0 04                    ..
+        bcs     L97DC
 L97D8_SCRATCH_NO_FILENAME:
-        lda     #doserr_34_syntax_err ;34 No file given          ; 97D8 A9 22                    ."
-        clc                                     ; 97DA 18                       .
-        rts                                     ; 97DB 60                       `
+        lda     #doserr_34_syntax_err ;34 No file given
+        clc
+        rts
 
-L97DC:  bit     #$80                            ; 97DC 89 80                    ..
-        beq     L97D8_SCRATCH_NO_FILENAME       ; 97DE F0 F8                    ..
-        and     #$20                            ; 97E0 29 20                    )
-        ora     V1541_FILE_TYPE                 ; 97E2 0D A4 03                 ...
-        ora     V1541_FILE_MODE                 ; 97E5 0D A3 03                 ...
-        bne     L97D8_SCRATCH_NO_FILENAME       ; 97E8 D0 EE                    ..
-        lda     #$00                            ; 97EA A9 00                    ..
-        pha                                     ; 97EC 48                       H
+L97DC:  bit     #$80
+        beq     L97D8_SCRATCH_NO_FILENAME
+        and     #$20
+        ora     V1541_FILE_TYPE
+        ora     V1541_FILE_MODE
+        bne     L97D8_SCRATCH_NO_FILENAME
+        lda     #$00
+        pha
 L97ED:
 L97EE           := * + 1
-        jsr     L8D9F                           ; 97ED 20 9F 8D                  ..
-        bcc     L9805                           ; 97F0 90 13                    ..
-L97F2:  tsx                                     ; 97F2 BA                       .
+        jsr     L8D9F
+        bcc     L9805
+L97F2:  tsx
 L97F5           := * + 2
-        inc     stack+1,x                       ; 97F3 FE 01 01                 ...
-        jsr     L8D17  ;maybe returns cbm dos error in a                         ; 97F6 20 17 8D                  ..
-        lda     $0218                           ; 97F9 AD 18 02                 ...
-        and     #$80                            ; 97FC 29 80                    ).
-        bne     L97ED                           ; 97FE D0 ED                    ..
-        jsr     L89E2                           ; 9800 20 E2 89                  ..
-L9803:  bra     L97ED                           ; 9803 80 E8                    ..
-L9805:  pla                                     ; 9805 68                       h
-        ldx     #$01                            ; 9806 A2 01                    ..
-        ldy     #$00                            ; 9808 A0 00                    ..
-        sec                                     ; 980A 38                       8
-        jmp     L9964_STORE_XAYZ                           ; 980B 4C 64 99                 Ld.
+        inc     stack+1,x
+        jsr     L8D17  ;maybe returns cbm dos error in a
+        lda     $0218
+        and     #$80
+        bne     L97ED
+        jsr     L89E2
+L9803:  bra     L97ED
+L9805:  pla
+        ldx     #$01
+        ldy     #$00
+        sec
+        jmp     L9964_STORE_XAYZ
 ; ----------------------------------------------------------------------------
 L980F := *+1
 L980E_V1541_R_RENAME:
         bcc     L9840_RENAME_ERROR
         bit     #$80
         beq     L983E_RENAME_INVALID_FILENAME
-        and     #$40                            ; 9814 29 40                    )@
-        ora     $03A0                           ; 9816 0D A0 03                 ...
-        ora     V1541_FILE_MODE                 ; 9819 0D A3 03                 ...
+        and     #$40
+        ora     $03A0
+        ora     V1541_FILE_MODE
 L981D := *+1
         ORA     V1541_FILE_TYPE
-        bne     L983E_RENAME_INVALID_FILENAME   ; 981F D0 1D                    ..
+        bne     L983E_RENAME_INVALID_FILENAME
 
-        jsr     L8D9F                           ; 9821 20 9F 8D                  ..
-        lda     #doserr_63_file_exists          ; 9824 A9 3F                    .?
-        bcs     L9840_RENAME_ERROR              ; 9826 B0 18                    ..
+        jsr     L8D9F
+        lda     #doserr_63_file_exists
+        bcs     L9840_RENAME_ERROR
 
-        jsr     L97A9_USED_BY_RENAME            ; 9828 20 A9 97                  ..
-        bcc     L9840_RENAME_ERROR              ; 982B 90 13                    ..
+        jsr     L97A9_USED_BY_RENAME
+        bcc     L9840_RENAME_ERROR
 
-        jsr     L979E                           ; 982D 20 9E 97                  ..
-        jsr     L8FF3                           ; 9830 20 F3 8F                  ..
+        jsr     L979E
+        jsr     L8FF3
 
-L9833:  jsr     L8D5B_UNKNOWN_DIR_RELATED       ; 9833 20 5B 8D                  [.
-        bcc     L9840_RENAME_ERROR              ; 9836 90 08                    ..
+L9833:  jsr     L8D5B_UNKNOWN_DIR_RELATED
+        bcc     L9840_RENAME_ERROR
 
-        jsr     L97A9_USED_BY_RENAME      ; 9838 20 A9 97                  ..
-        jmp     L8D17 ;maybe returns cbm dos error in a  ; 983B 4C 17 8D                 L..
+        jsr     L97A9_USED_BY_RENAME
+        jmp     L8D17 ;maybe returns cbm dos error in a
 
 ; ----------------------------------------------------------------------------
 L983E_RENAME_INVALID_FILENAME:
-        lda     #doserr_33_syntax_err ;33 Invalid filename       ; 983E A9 21                    .!
+        lda     #doserr_33_syntax_err ;33 Invalid filename
 L9840_RENAME_ERROR:
-        clc                                     ; 9840 18                       .
-        rts                                     ; 9841 60                       `
+        clc
+        rts
 
 ; ----------------------------------------------------------------------------
 L9842_V1541_V_VALIDATE:
@@ -3838,30 +3838,31 @@ L9A8E:  .byte   $00,$01,$02,$80,$81,$82,$83,$84 ; 9A8E 00 01 02 80 81 82 83 84  
 L9A9A:  .byte   $41,$81,$10,$22,$42,$82,$10,$23 ; 9A9A 41 81 10 22 42 82 10 23  A.."B..#
         .byte   $43,$83,$00                     ; 9AA2 43 83 00                 C..
 ; ----------------------------------------------------------------------------
-L9AA5_V1541_CHRIN_CMD_CHAN:  lda     $0217                           ; 9AA5 AD 17 02                 ...
-        inc     $0217                           ; 9AA8 EE 17 02                 ...
-        ldy     #$0B                            ; 9AAB A0 0B                    ..
+L9AA5_V1541_CHRIN_CMD_CHAN:
+        lda     $0217
+        inc     $0217
+        ldy     #$0B
 L9AAD_SEARCH_L9A8E_LOOP:
-        cmp     L9A8E,y                         ; 9AAD D9 8E 9A                 ...
-        beq     L9AB8_FOUND_IN_L9A8E            ; 9AB0 F0 06                    ..
-        dey                                     ; 9AB2 88                       .
-        bpl     L9AAD_SEARCH_L9A8E_LOOP         ; 9AB3 10 F8                    ..
-        jmp     L9AE8_NOT_FOUND_IN_L9A8E        ; 9AB5 4C E8 9A                 L..
+        cmp     L9A8E,y
+        beq     L9AB8_FOUND_IN_L9A8E
+        dey
+        bpl     L9AAD_SEARCH_L9A8E_LOOP
+        jmp     L9AE8_NOT_FOUND_IN_L9A8E
 ; ----------------------------------------------------------------------------
 L9AB8_FOUND_IN_L9A8E:
-        lda     L9A9A,y                         ; 9AB8 B9 9A 9A                 ...
-        bne     L9ACD                           ; 9ABB D0 10                    ..
-        tax                                     ; 9ABD AA                       .
-        tay                                     ; 9ABE A8                       .
+        lda     L9A9A,y
+        bne     L9ACD
+        tax
+        tay
 L9AC1 := *+2
         JSR     L9964_STORE_XAYZ
         SEC
         ROR     $039d
         LDA     #$0d ;cr
         .byte $2c
-L9AC9:  lda     #$2C ;,                         ; 9AC9 A9 2C                    .,
-        sec                                     ; 9ACB 38                       8
-        rts                                     ; 9ACC 60                       `
+L9AC9:  lda     #$2C ;,
+        sec
+        rts
 ; ----------------------------------------------------------------------------
 L9ACD:  bit     #$10                            ; 9ACD 89 10                    ..
         bne     L9AC9                           ; 9ACF D0 F8                    ..
@@ -3875,45 +3876,46 @@ L9AD6:  lda     $020F,x                         ; 9AD6 BD 0F 02                 
         txa                                     ; 9AE0 8A                       .
         bvs     L9AE4                           ; 9AE1 70 01                    p.
         tya                                     ; 9AE3 98                       .
+;TODO probably code
 L9AE4:  .byte   $09                             ; 9AE4 09                       .
 L9AE5:  bmi     L9B1F                           ; 9AE5 30 38                    08
         rts                                     ; 9AE7 60                       `
 ; ----------------------------------------------------------------------------
 L9AE8_NOT_FOUND_IN_L9A8E:
-        dec     a                               ; 9AE8 3A                       :
-        sta     $E0                             ; 9AE9 85 E0                    ..
-        ldx     #$00                            ; 9AEB A2 00                    ..
-        lda     $0210                           ; 9AED AD 10 02                 ...
+        dec     a
+        sta     $E0
+        ldx     #$00
+        lda     $0210
 L9AF0_LOOP:
-        inx                                     ; 9AF0 E8                       .
-        inx                                     ; 9AF1 E8                       .
-        inx                                     ; 9AF2 E8                       .
-        inx                                     ; 9AF3 E8                       .
-        beq     L9B12                           ; 9AF4 F0 1C                    ..
-        cmp     L9A2A,x                         ; 9AF6 DD 2A 9A                 .*.
-        bne     L9AF0_LOOP                           ; 9AF9 D0 F5                    ..
+        inx
+        inx
+        inx
+        inx
+        beq     L9B12
+        cmp     L9A2A,x
+        bne     L9AF0_LOOP
 L9AFB_OUTER_LOOP:
-        lda     #$20                            ; 9AFB A9 20                    .
-        ldy     L9A2B,x                         ; 9AFD BC 2B 9A                 .+.
+        lda     #$20
+        ldy     L9A2B,x
 L9B01 := *+1
         beq     L9B12
 L9B02_INNER_LOOP:
-        dec     $E0                             ; 9B02 C6 E0                    ..
-        beq     L9B19                           ; 9B04 F0 13                    ..
-        iny                                     ; 9B06 C8                       .
-        lda     L9971-2,y                       ; 9B07 B9 6F 99                 .o.
-        bne     L9B02_INNER_LOOP                ; 9B0A D0 F6                    ..
-        inx                                     ; 9B0C E8                       .
-        txa                                     ; 9B0D 8A                       .
-        and     #$03                            ; 9B0E 29 03                    ).
-        bne     L9AFB_OUTER_LOOP                ; 9B10 D0 E9                    ..
-L9B12:  lda     #$80                            ; 9B12 A9 80                    ..
-        sta     $0217                           ; 9B14 8D 17 02                 ...
-        lda     #$2C                            ; 9B17 A9 2C                    .,
-L9B19:  sec                                     ; 9B19 38                       8
-        rts                                     ; 9B1A 60                       `
+        dec     $E0
+        beq     L9B19
+        iny
+        lda     L9971-2,y
+        bne     L9B02_INNER_LOOP
+        inx
+        txa
+        and     #$03
+        bne     L9AFB_OUTER_LOOP
+L9B12:  lda     #$80
+        sta     $0217
+        lda     #$2C
+L9B19:  sec
+        rts
 ; ----------------------------------------------------------------------------
-L9B1B:  jmp     (L9B1E,x)                       ; 9B1B 7C 1E 9B                 |..
+L9B1B:  jmp     (L9B1E,x)
 L9B1F := *+1
 L9B1E:  .addr L9BF6
         .addr L9BDA
