@@ -287,8 +287,8 @@ doserr_71_dir_error       = $47 ;71 directory error
 doserr_72_disk_full       = $48 ;72 disk full
 doserr_73_dos_mismatch    = $49 ;73 power-on message
 
-doschan_14_unknown   = $0e ;14 unknown channel
-doschan_15_command   = $0f ;15 command channel
+doschan_14_cmd_app   = $0e ;14 unknown channel, seems to be used by "command.cmd" app
+doschan_15_command   = $0f ;15 normal cbm dos command channel
 doschan_16_directory = $10 ;16 directory channel
 doschan_17_unknown   = $11 ;17 unknown channel
 
@@ -365,9 +365,9 @@ ROM_ENTRY_COMMAND:
         cpx     #$08
         bne     L8066
 
-        lda     #$7E        ;A = Logical file number (126)
-L8052:  ldx     #$01        ;X = Device 1 (Virtual 1541)
-        ldy     #$0E        ;Y = Channel 14
+        lda     #$7E                  ;A = Logical file number (126)
+L8052:  ldx     #$01                  ;X = Device 1 (Virtual 1541)
+        ldy     #doschan_14_cmd_app   ;Y = Channel 14
         jsr     SETLFS_
 
         lda     $0423       ;A = Filename length
@@ -1726,8 +1726,11 @@ L8A77:  stx     $DA                             ; 8A77 86 DA                    
         inc     $E5                             ; 8A7B E6 E5                    ..
         bmi     L8A87                           ; 8A7D 30 08                    0.
         bra     L8AA9                           ; 8A7F 80 28                    .(
+
 L8A81:  ldx     $020B                           ; 8A81 AE 0B 02                 ...
+
 L8A84:  lda     $020A                           ; 8A84 AD 0A 02                 ...
+
 L8A87:  sta     $D9                             ; 8A87 85 D9                    ..
         stx     $DA                             ; 8A89 86 DA                    ..
         sec                                     ; 8A8B 38                       8
@@ -1856,24 +1859,27 @@ L8B50:  lda     V1541_DEFAULT_CHAN
         jmp     L9AA5_V1541_CHRIN_CMD_CHAN
 ; ----------------------------------------------------------------------------
 L8B59:  lda     V1541_ACTIV_FLAGS
-        bit     #$80 ;maybe eof?
-        bne     L8BA0
+        bit     #$80 ;eof?
+        bne     L8BA0_CHRIN_EOF  ;branch if eof
+        ;not eof
         lda     V1541_ACTIV_E8
-        bne     L8B66
+        bne     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO
         jmp     L939A
 ; ----------------------------------------------------------------------------
-L8B66:  stz     SXREG
+L8B66_CHRIN_V1541_ACTIV_E8_NONZERO:
+        stz     SXREG
         lda     V1541_ACTIV_EA
         bne     L8B7F
         jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
-        bcs     L8B7B ;branch if no error
+        bcs     L8B7B_CHRIN_NO_ERROR ;branch if no error
         dec     SXREG
-        lda     #$0D
+        lda     #$0D      ;carriage return if error or eof
         sec
         rts
 ; ----------------------------------------------------------------------------
 L8B79:  inc     V1541_ACTIV_E9
-L8B7B:  lda     #$02
+L8B7B_CHRIN_NO_ERROR:
+        lda     #$02
         sta     V1541_ACTIV_EA
 L8B7F:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         bcc     L8B9F_RTS ;branch if error
@@ -1893,7 +1899,8 @@ L8B9B:  tay
         sec
 L8B9F_RTS:  rts
 ; ----------------------------------------------------------------------------
-L8BA0:  lda     #$0D
+L8BA0_CHRIN_EOF:
+        lda     #$0D    ;CR is returned when reading past EOF
         stz     SXREG
         dec     SXREG
         sec
@@ -2053,7 +2060,7 @@ L8C6E_RTS:
 
 ; ----------------------------------------------------------------------------
 L8C6F_V1541_I_INITIALIZE:
-        lda     #doschan_14_unknown
+        lda     #doschan_14_cmd_app
         jsr     V1541_SELECT_CHANNEL_A
         ldx     #$47
 L8C77 := *+1
@@ -2065,7 +2072,7 @@ L8C7A:  bpl     L8C76
         txa
         tay
         sec
-        jmp     L9964_STORE_XAYZ
+        jmp     L9964_STORE_XAY_CLEAR_0217
 ; ----------------------------------------------------------------------------
 V1541_SELECT_CHANNEL_AND_CLEAR_IT:
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
@@ -2144,7 +2151,7 @@ L8CF5_LOOP:
         cpx     #$19
         beq     L8D13_67_ILLEGAL_SYS_TS
         phx
-        jsr     L8B66
+        jsr     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO
         plx
         bcc     L8D15_CLC_RTS ;branch if error
         sta     V1541_DATA_BUF,x
@@ -2171,7 +2178,7 @@ L8D17:  jsr     L8C92
         bcc     L8D3C ;branch if error
 L8D22:  bit     SXREG
         bmi     L8D3C
-L8D27:  jsr     L8B66 ;maybe returns cbm dos error in a
+L8D27:  jsr     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO ;maybe returns cbm dos error in a
         bcc     L8D5A_RTS ;branch if error
         jsr     L8CD1
         jsr     L8C0F_DIR_RELATED ;maybe returns cbm dos error in a
@@ -2205,7 +2212,7 @@ L8D63:  jsr     L8E91
         jsr     V1541_SELECT_DIR_CHANNEL_AND_CLEAR_IT
         lda     #$10 ;file is open for reading?
         sta     V1541_ACTIV_FLAGS
-L8D72:  jsr     L8B66
+L8D72:  jsr     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO
         bcs     L8D7A_NO_ERROR ;branch if no error
         lda     #doserr_71_dir_error ;maybe: 71 directory error
         rts
@@ -3748,7 +3755,7 @@ L9805_ERROR:  pla
         ldx     #$01
         ldy     #$00
         sec
-        jmp     L9964_STORE_XAYZ
+        jmp     L9964_STORE_XAY_CLEAR_0217
 
 ; ----------------------------------------------------------------------------
 L980F := *+1
@@ -3917,7 +3924,7 @@ V1541_KERNAL_CALL_DONE:
         ;error occurred
         lda     V1541_ACTIV_E8
         ldy     V1541_ACTIV_E9
-        jsr     L9964_STORE_XAYZ
+        jsr     L9964_STORE_XAY_CLEAR_0217
         lda     #$04
         cpx     #doserr_25_write_err ;25 write-verify error
         bne     L9953
@@ -3932,11 +3939,12 @@ L995C:  sta     SATUS
 L9962:  clc
         rts
 ; ----------------------------------------------------------------------------
-L9964_STORE_XAYZ:
+L9964_STORE_XAY_CLEAR_0217:
         stx     $0210
         sta     $0211
 L96A9 := *-1
         sty     $0212
+
         stz     $0217
         rts
 ; ----------------------------------------------------------------------------
@@ -4011,7 +4019,7 @@ L9AB8_FOUND_IN_L9A8E:
         tax
         tay
 L9AC1 := *+2
-        JSR     L9964_STORE_XAYZ
+        JSR     L9964_STORE_XAY_CLEAR_0217
         SEC
         ROR     $039d
         LDA     #$0d ;cr
@@ -8013,7 +8021,7 @@ LB688_GET_KEY_NONBLOCKING:
         bne     LB6D1                           ; B698 D0 37                    .7
         jsr     GET_KEY_FROM_KEYD_BUFFER        ; B69A 20 6C B6                  l.
         bcc     LB6C7                           ; B69D 90 28                    .(
-        lda     #doschan_14_unknown             ; B69F A9 0E                    ..
+        lda     #doschan_14_cmd_app             ; B69F A9 0E                    ..
 LB6A1:  jsr     V1541_SELECT_CHANNEL_A          ; B6A1 20 40 8C                  @.
         bcc     LB6C0 ;branch on error          ; B6A4 90 1A                    ..
         rol     $03FA                           ; B6A6 2E FA 03                 ...
