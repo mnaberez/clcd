@@ -111,15 +111,19 @@ LA              := $00C6
 LENGTH          := $00CF
 V1541_FNADR     := $00E2  ;2 bytes
 V1541_CHAN      := $00E6
-V1541_FLAGS     := $00E7
-BLNCT           := $00EF  ;Counter for cursor blink
-stack           := $0100
-ROM_ENV_A       := $0204
-ROM_ENV_X       := $0205
-ROM_ENV_Y       := $0206
-V1541_DATA_BUF  := $0218
-V1541_CMD_BUF   := $0295
-V1541_CMD_LEN   := $02d5
+V1541_ACTIV_FLAGS := $00E7  ; \
+V1541_ACTIV_E8    := $00E8  ;  Active Channel
+V1541_ACTIV_E9    := $00E9  ;  4 bytes
+V1541_ACTIV_EA    := $00EA  ; /
+BLNCT             := $00EF  ;Counter for cursor blink
+stack             := $0100
+ROM_ENV_A         := $0204
+ROM_ENV_X         := $0205
+ROM_ENV_Y         := $0206
+V1541_DATA_BUF    := $0218 ;basic line for dir listing, other unknown uses
+V1541_CHAN_BUF    := $024D ;71 bytes, all data for all channels, see V1541_GET_CHAN_A
+V1541_CMD_BUF     := $0295 ;command sent to command channel
+V1541_CMD_LEN     := $02d5
 V1541_02D6      := $02d6
 V1541_02D7      := $02d7
 LAT             := $02DB
@@ -1613,10 +1617,10 @@ L89BD:  dec     $020A                           ; 89BD CE 0A 02                 
 ; ----------------------------------------------------------------------------
 L89C6:  jsr     L89AF                           ; 89C6 20 AF 89                  ..
         bcc     L89E1                           ; 89C9 90 16                    ..
-        lda     $E8                             ; 89CB A5 E8                    ..
+        lda     V1541_ACTIV_E8                             ; 89CB A5 E8                    ..
         sta     $020E                           ; 89CD 8D 0E 02                 ...
         sta     ($E4)                           ; 89D0 92 E4                    ..
-        lda     $E9                             ; 89D2 A5 E9                    ..
+        lda     V1541_ACTIV_E9                             ; 89D2 A5 E9                    ..
         sta     $020F                           ; 89D4 8D 0F 02                 ...
         ldy     #$01                            ; 89D7 A0 01                    ..
         sta     ($E4),y                         ; 89D9 91 E4                    ..
@@ -1775,10 +1779,10 @@ L8AE0:  jsr     L8AEE                           ; 8AE0 20 EE 8A                 
         lda     #doserr_20_read_err ;20 read error (block header not found)                           ; 8AEB A9 14                    ..
         rts                                     ; 8AED 60                       `
 ; ----------------------------------------------------------------------------
-L8AEE:  lda     $E8                             ; 8AEE A5 E8                    ..
+L8AEE:  lda     V1541_ACTIV_E8                             ; 8AEE A5 E8                    ..
         cmp     $020E                           ; 8AF0 CD 0E 02                 ...
         bne     L8AFA                           ; 8AF3 D0 05                    ..
-        lda     $E9                             ; 8AF5 A5 E9                    ..
+        lda     V1541_ACTIV_E9                             ; 8AF5 A5 E9                    ..
         cmp     $020F                           ; 8AF7 CD 0F 02                 ...
 L8AFA:  rts                                     ; 8AFA 60                       `
 ; ----------------------------------------------------------------------------
@@ -1829,11 +1833,11 @@ L8B3F := *+2
         jmp     V1541_KERNAL_CALL_DONE
 
 L8B40_V1541_INTERNAL_CHRIN:
-        jsr     L8C36_CHAN_FROM_SA ;channel related; maybe returns a cbm dos error code
+        jsr     V1541_GET_CHAN_SA
         bcs     L8B46 ;branch if no error
         rts
 ; ----------------------------------------------------------------------------
-L8B46:  lda     V1541_FLAGS
+L8B46:  lda     V1541_ACTIV_FLAGS
         bit     #$10
         bne     L8B50
         lda     #doserr_61_file_not_open
@@ -1841,19 +1845,19 @@ L8B46:  lda     V1541_FLAGS
         rts
 ; ----------------------------------------------------------------------------
 L8B50:  lda     V1541_CHAN
-        cmp     #$0F ;command channel?
+        cmp     #15 ;command channel?
         bne     L8B59
         jmp     L9AA5_V1541_CHRIN_CMD_CHAN
 ; ----------------------------------------------------------------------------
-L8B59:  lda     V1541_FLAGS
+L8B59:  lda     V1541_ACTIV_FLAGS
         bit     #$80 ;maybe eof?
         bne     L8BA0
-        lda     $E8
+        lda     V1541_ACTIV_E8
         bne     L8B66
         jmp     L939A
 ; ----------------------------------------------------------------------------
 L8B66:  stz     SXREG
-        lda     $EA
+        lda     V1541_ACTIV_EA
         bne     L8B7F
         jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         bcs     L8B7B ;branch if no error
@@ -1862,19 +1866,19 @@ L8B66:  stz     SXREG
         sec
         rts
 ; ----------------------------------------------------------------------------
-L8B79:  inc     $E9
+L8B79:  inc     V1541_ACTIV_E9
 L8B7B:  lda     #$02
-        sta     $EA
+        sta     V1541_ACTIV_EA
 L8B7F:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         bcc     L8B9F_RTS ;branch if error
         ldy     #$02
         lda     ($E4),y
         beq     L8B8E
-        cmp     $EA
+        cmp     V1541_ACTIV_EA
         beq     L8B92
-L8B8E:  inc     $EA
+L8B8E:  inc     V1541_ACTIV_EA
         beq     L8B79
-L8B92:  lda     $EA
+L8B92:  lda     V1541_ACTIV_EA
         cmp     ($E4),y
         bne     L8B9B
         ror     SXREG
@@ -1896,11 +1900,11 @@ V1541_CHROUT:
 ; ----------------------------------------------------------------------------
 L8BB0_V1541_INTERNAL_CHROUT:
         sta     $039E
-        jsr     L8C36_CHAN_FROM_SA ;channel related
+        jsr     V1541_GET_CHAN_SA
         bcs     L8BB9 ;branch if no error
         rts
 
-L8BB9:  lda     V1541_FLAGS
+L8BB9:  lda     V1541_ACTIV_FLAGS
         bit     #$20
         bne     L8BC3
         lda     #doserr_61_file_not_open
@@ -1915,7 +1919,7 @@ L8BC7_73_DOS_MISMATCH:
         bra     L8BC1_CLC_RTS
 
 L8BCB:  lda     V1541_CHAN
-        cmp     #$0F ;command channel?
+        cmp     #15 ;command channel?
         bne     L8BD7_V1541_CHROUT_NOT_CMD_CHAN
         jmp     L975D_V1541_CHROUT_CMD_CHAN
 ; ----------------------------------------------------------------------------
@@ -1923,13 +1927,13 @@ L8BD4:  sta     $039E
         ;Fall through
 
 L8BD7_V1541_CHROUT_NOT_CMD_CHAN:
-        lda     $EA
+        lda     V1541_ACTIV_EA
         bne     L8BE1
         jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
         bcs     L8BF7 ;branch if no error
         rts
 ; ----------------------------------------------------------------------------
-L8BE1:  inc     $EA
+L8BE1:  inc     V1541_ACTIV_EA
         bne     L8BFE
         jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
         bcc     L8C0E_RTS ;branch if error
@@ -1938,13 +1942,13 @@ L8BE1:  inc     $EA
         ldy     #$02
         lda     #$00
 L8BF3:  sta     ($E4),y
-        inc     $E9
+        inc     V1541_ACTIV_E9
 L8BF7:  ldy     #$03
-        sty     $EA
+        sty     V1541_ACTIV_EA
         jsr     L89C6
 L8BFE:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         ldy     #$02
-        lda     $EA
+        lda     V1541_ACTIV_EA
         sta     ($E4),y
         tay
         lda     $039E
@@ -1955,17 +1959,17 @@ L8C0E_RTS:
 ; ----------------------------------------------------------------------------
 L8C0F_DIR_RELATED:
         pha
-        lda     $EA
+        lda     V1541_ACTIV_EA
 L8C12:  inc     a
         bne     L8C17
-        inc     $E9
+        inc     V1541_ACTIV_E9
 L8C17:  cmp     #$03
         bcc     L8C12
-L8C1B:  sta     $EA
+L8C1B:  sta     V1541_ACTIV_EA
         jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         pla
         bcc     L8C27_71_DIR_ERROR ;branch if error
-        ldy     $EA
+        ldy     V1541_ACTIV_EA
         sta     ($E4),y
 L8C27_71_DIR_ERROR:
         lda     #doserr_71_dir_error ;71 directory error
@@ -1973,62 +1977,80 @@ L8C27_71_DIR_ERROR:
 
 ; ----------------------------------------------------------------------------
 L8C2B := *+1
-L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89:
-        jsr     L8C3B_CHAN_HEX_11 ;maybe returns a cbm dos error code
+L8C2A_JSR_V1541_GET_CHAN_17_JMP_L8C89:
+        jsr     V1541_GET_CHAN_17 ;maybe returns a cbm dos error code
         jmp     L8C89
 
-L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89:
-        jsr     L8C3E_CHAN_HEX_10
+L8C30_JSR_V1541_GET_CHAN_16_L8C89:
+        jsr     V1541_GET_CHAN_16
         jmp     L8C89
 ; ----------------------------------------------------------------------------
-L8C36_CHAN_FROM_SA:
+
+;Get a channel's 4 bytes of data from the all-channels area
+;into the active area.  Returns carry clear on failure, set on success.
+V1541_GET_CHAN_SA:
         ;SA high nib is command, low nib is channel
         lda     SA
         and     #$0F
 L8C3A:  .byte   $2C ;skip next 2 bytes
-L8C3B_CHAN_HEX_11:
+
+V1541_GET_CHAN_17:
         lda     #$11
         .byte   $2C ;skip next 2 bytes
-L8C3E_CHAN_HEX_10:
+
+V1541_GET_CHAN_16:
         lda     #$10
-L8C40_CHAN_A:
+
+V1541_GET_CHAN_A:
         cmp     V1541_CHAN
         beq     L8C66_70_NO_CHANNEL
-        pha
-        lda     V1541_CHAN
-        jsr     L8C4D
-L8C4A:  pla
-        sta     V1541_CHAN
-L8C4D:  inc     a
-        asl     a
-        asl     a
-        dec     a
-        tax
+
+        pha                               ;Save the requested channel number
+        lda     V1541_CHAN                ;Get the current channel number
+        jsr     L8C4D_SWAP_ACTIV_AND_BUF  ;Save the active channel in its slot in all-channels buf
+
+L8C4A:  pla                               ;Get the requested channel number back
+        sta     V1541_CHAN                ;Set it as the active channel number
+                                          ;Fall through to get data from all-channels buf into active
+
+;Get buffer index from channel number
+L8C4D_SWAP_ACTIV_AND_BUF:
+        ;X = ((A+1)*4) - 1       Examples:
+        inc     a               ;A=0 -> X=3
+        asl     a               ;A=1 -> X=7
+        asl     a               ;A=2 -> X=11
+        dec     a               ;A=3 -> X=15
+        tax                     ;A=4 -> X=19
+                                ;A=5 -> X=23
+
         ldy     #$03
-L8C54:  lda     V1541_FLAGS,y
+L8C54_LOOP:
+        lda     V1541_ACTIV_FLAGS,y
         pha
-        lda     $024D,x
-        sta     V1541_FLAGS,y
+        lda     V1541_CHAN_BUF,x
+        sta     V1541_ACTIV_FLAGS,y
         pla
-        sta     $024D,x
+        sta     V1541_CHAN_BUF,x
         dex
         dey
-        bpl     L8C54
+        bpl     L8C54_LOOP
+
 L8C66_70_NO_CHANNEL:
         lda     #doserr_70_no_channel
 L8C68:  clc
-        ldx     V1541_FLAGS
+        ldx     V1541_ACTIV_FLAGS
         beq     L8C6E_RTS
         sec
 L8C6E_RTS:
         rts
+
 ; ----------------------------------------------------------------------------
 L8C6F_V1541_I_INITIALIZE:
-        lda     #$0E
-        jsr     L8C40_CHAN_A
+        lda     #14
+        jsr     V1541_GET_CHAN_A
         ldx     #$47
 L8C77 := *+1
-L8C76:  STZ     $024D,X
+L8C76:  STZ     V1541_CHAN_BUF,X
         dex
 L8C7A:  bpl     L8C76
         stz     V1541_CMD_LEN
@@ -2038,9 +2060,10 @@ L8C7A:  bpl     L8C76
         sec
         jmp     L9964_STORE_XAYZ
 ; ----------------------------------------------------------------------------
-L8C86:  jsr     L8C36_CHAN_FROM_SA ;channel related
+V1541_GET_CHAN_AND_CLEAR_IT:
+        jsr     V1541_GET_CHAN_SA
 L8C89:  ldx     #$03
-L8C8B:  stz     V1541_FLAGS,x
+L8C8B:  stz     V1541_ACTIV_FLAGS,x
         dex
         bpl     L8C8B
         sec
@@ -2059,23 +2082,24 @@ L8C9F:  tay
 L8CA2:  phy
         phx
         txa
-        jsr     L8C40_CHAN_A
+        jsr     V1541_GET_CHAN_A
         plx
         ply
-        lda     V1541_FLAGS
+        lda     V1541_ACTIV_FLAGS
         beq     L8CB6
         bit     #$80
         bne     L8CB6
-        cpy     $E8
+        cpy     V1541_ACTIV_E8
         beq     L8CBA
 L8CB6:  dex
         bpl     L8CA2
         clc
 L8CBA:  rts
 ; ----------------------------------------------------------------------------
-L8CBB:  stz     $E9
-        stz     $EA
-        stz     $E8
+L8CBB:
+        stz     V1541_ACTIV_E9
+        stz     V1541_ACTIV_EA
+        stz     V1541_ACTIV_E8
         bra     L8CCE
 ; ----------------------------------------------------------------------------
 ;returns cbm dos error code in A
@@ -2086,19 +2110,19 @@ L8CC3:  jsr     L8CE6
         bmi     L8CD1
 
 L8CCE:  jsr     L8CE6
-L8CD1:  ldx     $EA
+L8CD1:  ldx     V1541_ACTIV_EA
         ldy     $03A7
         stx     $03A7
-        sty     $EA
-        ldx     $E9
+        sty     V1541_ACTIV_EA
+        ldx     V1541_ACTIV_E9
         ldy     $03A6
         stx     $03A6
-        sty     $E9
+        sty     V1541_ACTIV_E9
         rts
 ; ----------------------------------------------------------------------------
 ;returns cbm dos error code in A
-L8CE6:  ldx     $EA
-        ldy     $E9
+L8CE6:  ldx     V1541_ACTIV_EA
+        ldy     V1541_ACTIV_E9
         stx     $03A7
 L8CEE := *+1
         sty     $03a6
@@ -2131,7 +2155,7 @@ L8D15_CLC_RTS:
 ; ----------------------------------------------------------------------------
 ;maybe returns cbm dos error in a
 L8D17:  jsr     L8C92
-        jsr     L8C3E_CHAN_HEX_10
+        jsr     V1541_GET_CHAN_16
         jsr     L8CE6
         bcc     L8D3C ;branch if error
 L8D22:  bit     SXREG
@@ -2148,13 +2172,13 @@ L8D3C:  jsr     L8CD1
         jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         lda     #doserr_71_dir_error ;71 directory error
         bcc     L8D5A_RTS ;branch if error
-        lda     $EA
+        lda     V1541_ACTIV_EA
         beq     L8D50
         ldy     #$02
         sta     ($E4),y
-        inc     $E9
+        inc     V1541_ACTIV_E9
 L8D50:  jsr     L89F9
-        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
+        jsr     L8C30_JSR_V1541_GET_CHAN_16_L8C89
         jsr     L8E39
         sec
 L8D5A_RTS:
@@ -2167,9 +2191,9 @@ L8D5B_UNKNOWN_DIR_RELATED:
 L8D63:  jsr     L8E91
         bcc     L8D9E
         jsr     L8C92
-        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
+        jsr     L8C30_JSR_V1541_GET_CHAN_16_L8C89
         lda     #$10 ;file is open for reading?
-        sta     V1541_FLAGS
+        sta     V1541_ACTIV_FLAGS
 L8D72:  jsr     L8B66
         bcs     L8D7A ;branch if no error
         lda     #doserr_71_dir_error ;maybe: 71 directory error
@@ -2178,7 +2202,7 @@ L8D72:  jsr     L8B66
 L8D7A:  lda     SXREG
         bpl     L8D72
         lda     #$20 ;file open for writing?
-        tsb     V1541_FLAGS
+        tsb     V1541_ACTIV_FLAGS
         ldx     #$FF
 L8D85:  inx
         phx
@@ -2189,7 +2213,7 @@ L8D85:  inx
         bcc     L8D85
         lda     V1541_DATA_BUF,x
         bne     L8D85
-        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
+        jsr     L8C30_JSR_V1541_GET_CHAN_16_L8C89
         jsr     L8E39
         sec
 L8D9E:  rts
@@ -2197,7 +2221,7 @@ L8D9E:  rts
 ;returns cbm dos error code in a
 ;carry clear = file exists, carry set = not found
 L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR:
-        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
+        jsr     L8C30_JSR_V1541_GET_CHAN_16_L8C89
         jsr     L8CBB
         bra     L8DAA
 
@@ -2220,7 +2244,7 @@ L8DBA_62_FILE_NOT_FOUND:
 ;returns cbm dos error code in a
 L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR:
         pha
-        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
+        jsr     L8C30_JSR_V1541_GET_CHAN_16_L8C89
         jsr     L8CBB
         bra     L8DCA
 L8DC7:  jsr     L8CC3
@@ -2599,7 +2623,7 @@ L902D:  ldx     #$04
         bne     L9038
         ldx     #$01
 L9038:  lda     V1541_DATA_BUF,x
-        sta     V1541_FLAGS,x
+        sta     V1541_ACTIV_FLAGS,x
         dex
         bpl     L9038
         rts
@@ -2859,19 +2883,19 @@ V1541_CLOSE:
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L921A_V1541_INTERNAL_CLOSE:
-        jsr     L8C36_CHAN_FROM_SA ;channel related
+        jsr     V1541_GET_CHAN_SA
         bcs     L9221 ;branch if no error
         sec
         rts
 L9221:  lda     V1541_CHAN
-        cmp     #$0F ;command channel?
+        cmp     #15 ;command channel?
         beq     L9240_RTS
-        lda     V1541_FLAGS
+        lda     V1541_ACTIV_FLAGS
         bit     #$20 ;is file open for writing?
         beq     L9240_RTS
         bit     #$80
         bne     L9240_RTS
-        lda     $E8
+        lda     V1541_ACTIV_E8
         beq     L9240_RTS
 L9236 := *+1
         jsr     L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR
@@ -2879,7 +2903,7 @@ L9236 := *+1
         jsr     L8D17
         jsr     L8D5B_UNKNOWN_DIR_RELATED
 L9240_RTS:
-        jmp     L8C86
+        jmp     V1541_GET_CHAN_AND_CLEAR_IT
 ; ----------------------------------------------------------------------------
 L9244 := *+1
 L9243_OPEN_V1541:
@@ -2888,9 +2912,9 @@ L9243_OPEN_V1541:
 ; ----------------------------------------------------------------------------
 L924A := *+1
 L9249_V1541_INTERNAL_OPEN:
-        jsr     L8C36_CHAN_FROM_SA ;channel related
+        jsr     V1541_GET_CHAN_SA
         lda     V1541_CHAN
-        cmp     #$0F ;command channel
+        cmp     #15 ;command channel
 L9250:  bne     L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN
         jmp     L9737_V1541_INTERNAL_OPEN_CMD_CHAN
 
@@ -2912,12 +2936,12 @@ L9268:  bne     L927B_NOT_DOLLAR
         ldx     V1541_FILE_MODE
 L926E := *+1
         BNE     L9287_ERROR
-        jsr     L8C36_CHAN_FROM_SA ;channel related
+        jsr     V1541_GET_CHAN_SA
 L2973 := *+1
 L9274 := *+2
         jsr     L9041
         lda     #$50
-        sta     V1541_FLAGS
+        sta     V1541_ACTIV_FLAGS
         sec
 L927A:  rts
 ; ----------------------------------------------------------------------------
@@ -2969,7 +2993,7 @@ L92C7_ERROR:
 L92C9:  lda     V1541_DATA_BUF+1
         jsr     L8C9F
         bcc     L92E6
-        lda     V1541_FLAGS
+        lda     V1541_ACTIV_FLAGS
         and     #$20
         beq     L92DB
         lda     #doserr_60_write_file_open ;60 write file open
@@ -3037,11 +3061,11 @@ L9358_ERROR:
         clc
         rts
 
-L935A:  jsr     L8C36_CHAN_FROM_SA ;channel related
+L935A:  jsr     V1541_GET_CHAN_SA
         jsr     L902D
 L9361 := *+1
         lda     #$10
-        tsb     V1541_FLAGS
+        tsb     V1541_ACTIV_FLAGS
         ldy     V1541_FILE_MODE
 L9367:  cpy     #fmode_m_modify
         beq     L9378
@@ -3062,9 +3086,9 @@ L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN
         bcc     L9358_ERROR
         bit     SXREG
         bpl     L9381
-L938D:  jsr     L8C36_CHAN_FROM_SA ;channel related
+L938D:  jsr     V1541_GET_CHAN_SA
         lda     #$20
-        tsb     V1541_FLAGS
+        tsb     V1541_ACTIV_FLAGS
         tsb     V1541_DATA_BUF
         jmp     L8D63
 
@@ -3448,9 +3472,9 @@ L9675 := *+1
         ldx     V1541_FILE_MODE
         bne     L9698_ERROR_34_SYNTAX_ERROR
         jsr     L9041
-        jsr     L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89
+        jsr     L8C2A_JSR_V1541_GET_CHAN_17_JMP_L8C89
         lda     #$40
-        tsb     V1541_FLAGS
+        tsb     V1541_ACTIV_FLAGS
         bra     L96C0
 ; ----------------------------------------------------------------------------
 L9692_ERROR_64_FILE_TYPE_MISMATCH:
@@ -3481,14 +3505,14 @@ L96B1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
         bcc     L969A_ERROR
         cpx     #ftype_s_seq
         beq     L9692_ERROR_64_FILE_TYPE_MISMATCH
-        jsr     L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89
+        jsr     L8C2A_JSR_V1541_GET_CHAN_17_JMP_L8C89
         jsr     L902D
 L96C0:  lda     #$10
-        tsb     V1541_FLAGS
+        tsb     V1541_ACTIV_FLAGS
         lda     $03A0
         cmp     #$40 ;'@'
         bne     L96D1
-        lda     V1541_FLAGS
+        lda     V1541_ACTIV_FLAGS
         and     #$80
         beq     L96D4
 L96D1:  stz     $03A0
@@ -3497,10 +3521,10 @@ L96D4:  sec
 ; ----------------------------------------------------------------------------
 ;Called only from load
 L96D6_USED_BY_LOAD:
-        stz     $E9
-        dec     $E9
+        stz     V1541_ACTIV_E9
+        dec     V1541_ACTIV_E9
 L96DA_LOOP:
-        inc     $E9
+        inc     V1541_ACTIV_E9
         jsr     L89F9
         bcc     L9719
 L96E1:  ldx     $020B
@@ -3514,9 +3538,9 @@ L96EA:  dec     a
         bne     L96F5
         dec     a
 L96F5:  sta     $E0
-        lda     $E9
+        lda     V1541_ACTIV_E9
         bne     L9703
-L96FB:  lda     V1541_FLAGS
+L96FB:  lda     V1541_ACTIV_FLAGS
         and     #$40
         beq     L9703
         iny
@@ -3542,7 +3566,7 @@ L971F:  jsr     L9725 ;maybe returns a cbm dos error code
 L9724 := *+2
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L9725:  jsr     L8C3B_CHAN_HEX_11 ;maybe returns a cbm dos error code
+L9725:  jsr     V1541_GET_CHAN_17 ;maybe returns a cbm dos error code
         bcc     L972D_RTS ;branch if error
         jsr     L8B46 ;maybe returns a cbm dos error code
 L972D_RTS:  rts
@@ -3559,9 +3583,9 @@ L9732:  rol     a
         rts
 ; ----------------------------------------------------------------------------
 L9737_V1541_INTERNAL_OPEN_CMD_CHAN:
-        jsr     L8C36_CHAN_FROM_SA ;channel related
+        jsr     V1541_GET_CHAN_SA
         lda     #$10
-        tsb     V1541_FLAGS
+        tsb     V1541_ACTIV_FLAGS
         ldy     FNLEN
         sty     V1541_CMD_LEN
         jsr     L972E_V1541_CHECK_MAX_CMD_LEN
@@ -3755,9 +3779,9 @@ L9871:  jsr     L8CC3
         jsr     L8CD1
         jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         ldy     #$02
-        lda     $EA
+        lda     V1541_ACTIV_EA
         sta     ($E4),y
-L9882:  inc     $E9
+L9882:  inc     V1541_ACTIV_E9
         beq     L9890
         jsr     L89F9
         bra     L9882
@@ -3771,30 +3795,30 @@ L9897:  jsr     L8CC3
 L989B :=*+1
         BCC     L98D0 ;branch if error
 L989E := *+2
-        jsr     L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89
+        jsr     L8C2A_JSR_V1541_GET_CHAN_17_JMP_L8C89
         LDA     V1541_DATA_BUF
         bit     #$80
         bne     L98B4
         lda     V1541_DATA_BUF+1
-        sta     $E8
+        sta     V1541_ACTIV_E8
 L98AB:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
         bcs     L98B9 ;branch if no error
         ;error
-        lda     $E9
+        lda     V1541_ACTIV_E9
         beq     L9897
 L98B4:  jsr     L8D17 ;maybe returns cbm dos error in a
         bra     L9890
 
-L98B9:  inc     $E9
+L98B9:  inc     V1541_ACTIV_E9
         ldy     #$02
         lda     ($E4),y
         beq     L98AB
-        lda     $E9
+        lda     V1541_ACTIV_E9
         pha
         jsr     L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1
-        sta     $E9
+        sta     V1541_ACTIV_E9
         pla
-        cmp     $E9
+        cmp     V1541_ACTIV_E9
 L98CD := *+1
         BNE     L98B4
         BRA     L9897
@@ -3857,8 +3881,8 @@ V1541_KERNAL_CALL_DONE:
         bcs     L9955 ;branch if no error
 
         ;error occurred
-        lda     $E8
-        ldy     $E9
+        lda     V1541_ACTIV_E8
+        ldy     V1541_ACTIV_E9
         jsr     L9964_STORE_XAYZ
         lda     #$04
         cpx     #doserr_25_write_err ;25 write-verify error
@@ -7955,7 +7979,7 @@ LB688_GET_KEY_NONBLOCKING:
         jsr     GET_KEY_FROM_KEYD_BUFFER        ; B69A 20 6C B6                  l.
         bcc     LB6C7                           ; B69D 90 28                    .(
         lda     #$0E                            ; B69F A9 0E                    ..
-LB6A1:  jsr     L8C40_CHAN_A                    ; B6A1 20 40 8C                  @.
+LB6A1:  jsr     V1541_GET_CHAN_A                    ; B6A1 20 40 8C                  @.
         bcc     LB6C0                           ; B6A4 90 1A                    ..
         rol     $03FA                           ; B6A6 2E FA 03                 ...
         lda     MODKEY                          ; B6A9 A5 AD                    ..
@@ -8586,8 +8610,8 @@ JX120_CLOSE_IEC:
         bcc     ROPEN         ;>8 ==>not a disk, do real close
         lda     SA
         and     #$0F
-        cmp     #$0F
-        beq     JX150         ;sa=$f, no real close
+        cmp     #15           ;command channel?
+        beq     JX150         ;yes, sa=$f, no real close
 
 ROPEN:  jsr     CLSEI
 
