@@ -114,6 +114,9 @@ V1541_CHAN      := $00E6
 V1541_FLAGS     := $00E7
 BLNCT           := $00EF  ;Counter for cursor blink
 stack           := $0100
+ROM_ENV_A       := $0204
+ROM_ENV_X       := $0205
+ROM_ENV_Y       := $0206
 V1541_DATA_BUF  := $0218
 V1541_CMD_BUF   := $0295
 V1541_CMD_LEN   := $02d5
@@ -297,6 +300,7 @@ Commodore_LCD:
 ; Every ROM images begins with this "identification" string. This one is also
 ; used to compare with the searched ones by the ROM scanning routine.
         .byte   "Commodore LCD"
+
 ; ----------------------------------------------------------------------------
 ; Every ROM contains a "directory" with the "applications" to be found.
 ;
@@ -379,7 +383,7 @@ L8077:  dec     L03C0
         bpl     L8082
         sec
         bra     L80BB
-L8082:  lda     $0204
+L8082:  lda     ROM_ENV_A
         and     PowersOfTwo,x
         beq     L8077
         lda     ROM_MMU_values,x
@@ -699,10 +703,11 @@ L82BB:  dec     a
         plx
         rts
 ; ----------------------------------------------------------------------------
-L82BE:  jsr     ScanROMs
-        sta     $0204
-        stx     $0205
-        sty     $0206
+L82BE_CHECK_ROM_ENV:
+        jsr     ScanROMs
+        sta     ROM_ENV_A
+        stx     ROM_ENV_X
+        sty     ROM_ENV_Y
         rts
 ; ----------------------------------------------------------------------------
 ROM_MMU_values:
@@ -754,7 +759,7 @@ L82FE:  phx
         phy
         jsr     PrintRomSumChkByPassed
         sec
-        .byte   $24
+        .byte   $24 ;skip 1 byte
 L8315:  clc
         ply
         tsx
@@ -764,12 +769,13 @@ L8315:  clc
         pla
         ply
         plx
-        cmp     $0204
-        bne     L832E
-        cpx     $0205
-        bne     L832E
-        cpy     $0206
-L832E:  rts
+        cmp     ROM_ENV_A
+        bne     L832E_RTS
+        cpx     ROM_ENV_X
+        bne     L832E_RTS
+        cpy     ROM_ENV_Y
+L832E_RTS:
+        rts
 ; ----------------------------------------------------------------------------
 PrintRomSumChkByPassed:
 ; Push Y onto the stack. Write "ROMSUM ...." text, then take the value from
@@ -1032,8 +1038,8 @@ L8510:  ldx     #$FF
         jsr     L8685
 L8516:  jsr     L889A
         jsr     L83ED
-        jsr     L8644
-        jsr     L86E9
+        jsr     L8644_CHECK_BUTTON
+        jsr     L86E9_MAYBE_V1541_SHUTDOWN
         sei
         tsx
         stx     $0207
@@ -1065,7 +1071,7 @@ KL_RESET:
         bne     L8582_COULD_NOT_RESTORE_STATE
         sec
         jsr     LCDsetupGetOrSet
-        jsr     L870F_CHECK_DISK_INTACT
+        jsr     L870F_CHECK_V1541_DISK_INTACT
         bcs     L8582_COULD_NOT_RESTORE_STATE ;Branch if not intact
         jsr     ScanROMs
         bne     L8582_COULD_NOT_RESTORE_STATE
@@ -1078,7 +1084,7 @@ KL_RESET:
         lsr     a ;Bit 0 = MOD_STOP
         bcs     L8582_COULD_NOT_RESTORE_STATE ;Branch if STOP is pressed
         jsr     L83F0
-        jsr     L8644
+        jsr     L8644_CHECK_BUTTON
         jsr     L887F
         ldx     $0200
         jsr     L840F
@@ -1102,19 +1108,19 @@ L8582_COULD_NOT_RESTORE_STATE:
         bne     L85C0
         jmp     L87C5
 ; ----------------------------------------------------------------------------
-L85C0:  jsr     L870F_CHECK_DISK_INTACT
-        bcc     L85E2
+L85C0:  jsr     L870F_CHECK_V1541_DISK_INTACT
+        bcc     L85E2 ;branch if intact
         jsr     PRIMM
         .byte   "YOUR DISK IS NOT INTACT",$0d,$07,0
 ; ----------------------------------------------------------------------------
-L85E2:  jsr     L82BE
+L85E2:  jsr     L82BE_CHECK_ROM_ENV
         beq     L8607
         jsr     PRIMM
         .byte   "ROM ENVIROMENT HAS CHANGED",$0d,$07,0
 ; ----------------------------------------------------------------------------
 L8607:  jsr     L889A
         jsr     L83F0
-        jsr     L8644
+        jsr     L8644_CHECK_BUTTON
         stz     $0384
         lda     #$0E
         sta     CursorY
@@ -1127,7 +1133,8 @@ L8607:  jsr     L889A
         jsr     PrintNewLine
         jmp     L843F
 ; ----------------------------------------------------------------------------
-L8644:  cli
+L8644_CHECK_BUTTON:
+        cli
         ldy     #$00
 L8647:  ldx     #$02
         jsr     WaitXticks_
@@ -1140,15 +1147,15 @@ L8653:  iny
         jsr     PRIMM80
         .byte   "HEY, LEAVE OFF THE BUTTON, WILL YA ??",$0D,0
         jsr     BELL
-        bra     L8644
+        bra     L8644_CHECK_BUTTON
 ; ----------------------------------------------------------------------------
 L8685:  stz     $0200
         stz     $0203
         stz     $0202
         jsr     KL_IOINIT
-        jsr     L87BA
+        jsr     L87BA_INIT_KEYB_AND_EDITOR
         jsr     KL_RESTOR
-        jsr     LFDDF
+        jsr     LFDDF_JSR_LFFE7_CLALL
         jsr     L8C6F_V1541_I_INITIALIZE
         stz     $0384
 ; Set MEMBOT vector to $0FFF
@@ -1165,16 +1172,18 @@ KL_RAMTAS:
         stz     $DA
 ; This seems to test the zero page memory.
         ldx     #$00
-L86B0:  lda     $00,x
+L86B0_LOOP:
+        lda     $00,x
         ldy     #$01
 L86B4:  eor     $FF
         sta     $00,x
         cmp     $00,x
-        bne     L86E3
+        bne     L86E3_NOT_EQUAL
         dey
         bpl     L86B4
         dex
-        bne     L86B0
+        bne     L86B0_LOOP
+
 ; Test rest of the RAM, using the kernal window to page in the testable area.
 L86C2:  lda     $D9
         ldx     $DA
@@ -1188,24 +1197,30 @@ L86CF:  lda     ($E4),y
 L86D3:  eor     #$FF
         sta     ($E4),y
         cmp     ($E4),y
-        bne     L86E3
+        bne     L86E3_NOT_EQUAL
         dex
         bpl     L86D3
         iny
 L86DF:  bne     L86CF
         bra     L86C2
-L86E3:  lda     $D9
+
+L86E3_NOT_EQUAL:
+        lda     $D9
         ldx     $DA
         plp
         rts
 ; ----------------------------------------------------------------------------
-L86E9:  jsr     L8C6F_V1541_I_INITIALIZE
-        jsr     L86F6
+;Called only from L84FA_MAYBE_SHUTDOWN
+L86E9_MAYBE_V1541_SHUTDOWN:
+        jsr     L8C6F_V1541_I_INITIALIZE
+        jsr     L86F6_V1541_UNKNOWN
         sta     $02D9
         sty     $02DA
         rts
-; ----------------------------------------------------------------------------
-L86F6:  cld
+
+;Called only from routine directly above (L86E9_MAYBE_V1541_SHUTDOWN)
+L86F6_V1541_UNKNOWN:
+        cld
         lda     #$00
         tay
         ldx     #$D1
@@ -1221,7 +1236,7 @@ L8703:  dex
 L870E:  rts
 ; ----------------------------------------------------------------------------
 ;carry clear = intact, set = not intact
-L870F_CHECK_DISK_INTACT:
+L870F_CHECK_V1541_DISK_INTACT:
         jsr     L8E46
         bcc     L8745
         lda     $020A
@@ -1252,7 +1267,7 @@ L8745:  sec
 ; ----------------------------------------------------------------------------
 KL_IOINIT:
         jsr     InitIOhw
-        jsr     LB4DA
+        jsr     KEYB_INIT
 
         ;Clear alarm seconds, minutes, hours
         ldx     #$02
@@ -1340,10 +1355,11 @@ InitIOhw:
         plp
         rts
 ; ----------------------------------------------------------------------------
-L87BA:  jsr     LB4DA
+L87BA_INIT_KEYB_AND_EDITOR:
+        jsr     KEYB_INIT
         ldx     #$00
-        jsr     LD230_JMP_LD233_PLUS_X
-        jmp     LB1DA
+        jsr     LD230_JMP_LD233_PLUS_X ;X=0 stores zeroes in some locations
+        jmp     SCINIT_
 ; ----------------------------------------------------------------------------
 L87C5:  sei
         ldx     #$FF
@@ -1364,112 +1380,112 @@ L87F3 := *+20
         .byte   "ESTABLISHING SYSTEM PARAMETERS ",$07,$0D,0
 ; ----------------------------------------------------------------------------
 L8805           := * + 1
-        jsr     L82BE                           ; 8804 20 BE 82                  ..
-        lda     #$0F                            ; 8807 A9 0F                    ..
+        jsr     L82BE_CHECK_ROM_ENV
+        lda     #$0F
 L880B           := * + 2
-        sta     $020C                           ; 8809 8D 0C 02                 ...
+        sta     $020C
 L880E           := * + 2
-        jsr     KL_RAMTAS                       ; 880C 20 A8 86                  ..
+        jsr     KL_RAMTAS
 L8811           := * + 2
-        sta     $0208                           ; 880F 8D 08 02                 ...
-        stx     $0209                           ; 8812 8E 09 02                 ...
-        sta     $020A                           ; 8815 8D 0A 02                 ...
-        stx     $020B                           ; 8818 8E 0B 02                 ...
-        stx     $00                             ; 881B 86 00                    ..
-        lsr     $00                             ; 881D 46 00                    F.
-        ror     a                               ; 881F 6A                       j
-        lsr     $00                             ; 8820 46 00                    F.
-        ror     a                               ; 8822 6A                       j
-        jsr     L8850                           ; 8823 20 50 88                  P.
-        jsr     L8E5C                           ; 8826 20 5C 8E                  \.
+        sta     $0208
+        stx     $0209
+        sta     $020A
+        stx     $020B
+        stx     $00
+        lsr     $00
+        ror     a
+        lsr     $00
+        ror     a
+        jsr     L8850
+        jsr     L8E5C
 L882A := *+1
 L882D := *+4
 L8841 := *+24
 L8844 := *+27
         jsr PRIMM
         .byte   " KBYTE SYSTEM ESTABLISHED",$0d,0
-        jsr     LD411                           ; 8847 20 11 D4                  ..
-        jsr     L8644                           ; 884A 20 44 86                  D.
-        jmp     L843F                           ; 884D 4C 3F 84                 L?.
+        jsr     LD411
+        jsr     L8644_CHECK_BUTTON
+        jmp     L843F
 ; ----------------------------------------------------------------------------
-L8850:  jsr     L886A                           ; 8850 20 6A 88                  j.
-        pha                                     ; 8853 48                       H
-        phx                                     ; 8854 DA                       .
-        tya                                     ; 8855 98                       .
-        bne     L885D                           ; 8856 D0 05                    ..
-        pla                                     ; 8858 68                       h
-        bne     L8861                           ; 8859 D0 06                    ..
-        beq     L8864                           ; 885B F0 07                    ..
-L885D:  jsr     L8865                           ; 885D 20 65 88                  e.
-        pla                                     ; 8860 68                       h
-L8861:  jsr     L8865                           ; 8861 20 65 88                  e.
-L8864:  pla                                     ; 8864 68                       h
-L8865:  ora     #$30                            ; 8865 09 30                    .0
-        jmp     KR_ShowChar_                       ; 8867 4C B3 AB                 L..
+L8850:  jsr     L886A
+        pha
+        phx
+        tya
+        bne     L885D
+        pla
+        bne     L8861
+        beq     L8864
+L885D:  jsr     L8865
+        pla
+L8861:  jsr     L8865
+L8864:  pla
+L8865:  ora     #$30
+        jmp     KR_ShowChar_
 ; ----------------------------------------------------------------------------
-L886A:  ldy     #$FF                            ; 886A A0 FF                    ..
-        cld                                     ; 886C D8                       .
-        sec                                     ; 886D 38                       8
-L886E:  iny                                     ; 886E C8                       .
-        sbc     #$64                            ; 886F E9 64                    .d
-        bcs     L886E                           ; 8871 B0 FB                    ..
-        adc     #$64                            ; 8873 69 64                    id
-        ldx     #$FF                            ; 8875 A2 FF                    ..
-L8877:  inx                                     ; 8877 E8                       .
-        sbc     #$0A                            ; 8878 E9 0A                    ..
-        bcs     L8877                           ; 887A B0 FB                    ..
-        adc     #$0A                            ; 887C 69 0A                    i.
-        rts                                     ; 887E 60                       `
+L886A:  ldy     #$FF
+        cld
+        sec
+L886E:  iny
+        sbc     #$64
+        bcs     L886E
+        adc     #$64
+        ldx     #$FF
+L8877:  inx
+        sbc     #$0A
+        bcs     L8877
+        adc     #$0A
+        rts
 ; ----------------------------------------------------------------------------
-L887F:  clc                                     ; 887F 18                       .
-        jsr     L88C2                           ; 8880 20 C2 88                  ..
-        bit     $0384                           ; 8883 2C 84 03                 ,..
-        bvc     L8896                           ; 8886 50 0E                    P.
-        ldy     #$02                            ; 8888 A0 02                    ..
-L888A:  lda     ($E4),y                         ; 888A B1 E4                    ..
-        sta     SETUP_LCD_A,y                   ; 888C 99 7A 03                 .z.
-        dey                                     ; 888F 88                       .
-        bpl     L888A                           ; 8890 10 F8                    ..
-        sec                                     ; 8892 38                       8
-        jsr     LCDsetupGetOrSet                ; 8893 20 28 B2                  (.
-L8896:  stz     $0384                           ; 8896 9C 84 03                 ...
-        rts                                     ; 8899 60                       `
+L887F:  clc
+        jsr     L88C2
+        bit     $0384
+        bvc     L8896
+        ldy     #$02
+L888A:  lda     ($E4),y
+        sta     SETUP_LCD_A,y
+        dey
+        bpl     L888A
+        sec
+        jsr     LCDsetupGetOrSet
+L8896:  stz     $0384
+        rts
 ; ----------------------------------------------------------------------------
-L889A:  jsr     LBE69                           ; 889A 20 69 BE                  i.
-        sec                                     ; 889D 38                       8
-        jsr     L88C2                           ; 889E 20 C2 88                  ..
-        bit     $0384                           ; 88A1 2C 84 03                 ,..
-        bvc     L88BF                           ; 88A4 50 19                    P.
-        lda     #$93 ;CHR$(147) Clear Screen    ; 88A6 A9 93                    ..
-        jsr     KR_ShowChar_                       ; 88A8 20 B3 AB                  ..
-        ldy     #$02                            ; 88AB A0 02                    ..
-L88AD:  lda     SETUP_LCD_A,y                   ; 88AD B9 7A 03                 .z.
-        sta     ($E4),y                         ; 88B0 91 E4                    ..
-        dey                                     ; 88B2 88                       .
-        bpl     L88AD                           ; 88B3 10 F8                    ..
-        and     #$01                            ; 88B5 29 01                    ).
-        ldy     VidMemHi                        ; 88B7 A4 A0                    ..
-        ldx     #$00                            ; 88B9 A2 00                    ..
-        clc                                     ; 88BB 18                       .
-        jsr     LCDsetupGetOrSet                ; 88BC 20 28 B2                  (.
-L88BF:  jmp     KL_RESTOR                       ; 88BF 4C 96 C6                 L..
+L889A:  jsr     LBE69
+        sec
+        jsr     L88C2
+        bit     $0384
+        bvc     L88BF
+        lda     #$93 ;CHR$(147) Clear Screen
+        jsr     KR_ShowChar_
+        ldy     #$02
+L88AD:  lda     SETUP_LCD_A,y
+        sta     ($E4),y
+        dey
+        bpl     L88AD
+        and     #$01
+        ldy     VidMemHi
+        ldx     #$00
+        clc
+        jsr     LCDsetupGetOrSet
+L88BF:  jmp     KL_RESTOR
 ; ----------------------------------------------------------------------------
-L88C2:  ldx     #$C0                            ; 88C2 A2 C0                    ..
-        ldy     #$04                            ; 88C4 A0 04                    ..
-        jsr     KL_VECTOR                       ; 88C6 20 9B C6                  ..
-        lda     $020C                           ; 88C9 AD 0C 02                 ...
-        ldx     $020D                           ; 88CC AE 0D 02                 ...
-        inc     a                               ; 88CF 1A                       .
-        bne     L88D3                           ; 88D0 D0 01                    ..
-        inx                                     ; 88D2 E8                       .
-L88D3:  cpx     $020B                           ; 88D3 EC 0B 02                 ...
-        bcc     L88E5                           ; 88D6 90 0D                    ..
-        bne     L88DF                           ; 88D8 D0 05                    ..
-        cmp     $020A                           ; 88DA CD 0A 02                 ...
-        bcc     L88E5                           ; 88DD 90 06                    ..
-L88DF:  lda     #$80                            ; 88DF A9 80                    ..
-        sta     $0384                           ; 88E1 8D 84 03                 ...
-        rts                                     ; 88E4 60                       `
+L88C2:  ldx     #$C0
+        ldy     #$04
+        jsr     KL_VECTOR
+        lda     $020C
+        ldx     $020D
+        inc     a
+        bne     L88D3
+        inx
+L88D3:  cpx     $020B
+        bcc     L88E5
+        bne     L88DF
+        cmp     $020A
+        bcc     L88E5
+L88DF:  lda     #$80
+        sta     $0384
+        rts
 ; ----------------------------------------------------------------------------
 L88E5:  jsr     L8A87                           ; 88E5 20 87 8A                  ..
         lda     #$FF                            ; 88E8 A9 FF                    ..
@@ -1957,10 +1973,12 @@ L8C27_71_DIR_ERROR:
 
 ; ----------------------------------------------------------------------------
 L8C2B := *+1
-L8C2A:  jsr     L8C3B_CHAN_HEX_11 ;maybe returns a cbm dos error code
+L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89:
+        jsr     L8C3B_CHAN_HEX_11 ;maybe returns a cbm dos error code
         jmp     L8C89
 
-L8C30:  jsr     L8C3E_CHAN_HEX_10
+L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89:
+        jsr     L8C3E_CHAN_HEX_10
         jmp     L8C89
 ; ----------------------------------------------------------------------------
 L8C36_CHAN_FROM_SA:
@@ -2033,6 +2051,7 @@ L8C92:  lda     #$00
         bcc     L8C9E
         jsr     L8C89
         bra     L8C92
+
 L8C9E:  rts
 ; ----------------------------------------------------------------------------
 L8C9F:  tay
@@ -2135,7 +2154,7 @@ L8D3C:  jsr     L8CD1
         sta     ($E4),y
         inc     $E9
 L8D50:  jsr     L89F9
-        jsr     L8C30
+        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
         jsr     L8E39
         sec
 L8D5A_RTS:
@@ -2148,7 +2167,7 @@ L8D5B_UNKNOWN_DIR_RELATED:
 L8D63:  jsr     L8E91
         bcc     L8D9E
         jsr     L8C92
-        jsr     L8C30
+        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
         lda     #$10 ;file is open for reading?
         sta     V1541_FLAGS
 L8D72:  jsr     L8B66
@@ -2170,7 +2189,7 @@ L8D85:  inx
         bcc     L8D85
         lda     V1541_DATA_BUF,x
         bne     L8D85
-        jsr     L8C30
+        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
         jsr     L8E39
         sec
 L8D9E:  rts
@@ -2178,7 +2197,7 @@ L8D9E:  rts
 ;returns cbm dos error code in a
 ;carry clear = file exists, carry set = not found
 L8D9F_UNKNOWN_CALLS_THEN_FILENAME_COMPARE_DOES_62_FILE_NOT_FOUND_ON_ERROR:
-        jsr     L8C30
+        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
         jsr     L8CBB
         bra     L8DAA
 
@@ -2201,7 +2220,7 @@ L8DBA_62_FILE_NOT_FOUND:
 ;returns cbm dos error code in a
 L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR:
         pha
-        jsr     L8C30
+        jsr     L8C30_JSR_L8C3E_CHAN_HEX_10_L8C89
         jsr     L8CBB
         bra     L8DCA
 L8DC7:  jsr     L8CC3
@@ -3004,7 +3023,7 @@ L9335:  ldy     V1541_FILE_MODE
         cpy     #fmode_w_write
         bne     L935A
         jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL
-        bcc     L9358 ;branch on error
+        bcc     L9358_ERROR ;branch on error
         jsr     L8FF3
         stz     V1541_DATA_BUF
         lda     V1541_FILE_TYPE
@@ -3014,9 +3033,10 @@ L9335:  ldy     V1541_FILE_MODE
         sta     V1541_DATA_BUF
 L9353:  jsr     L8E91
         bcs     L935A
-L9358:  clc
+L9358_ERROR:
+        clc
         rts
-; ----------------------------------------------------------------------------
+
 L935A:  jsr     L8C36_CHAN_FROM_SA ;channel related
         jsr     L902D
 L9361 := *+1
@@ -3033,13 +3053,13 @@ L9367:  cpy     #fmode_m_modify
         dec     LDTND
 L9378:  sec
         rts
-; ----------------------------------------------------------------------------
+
 L937A:  cpy     #$41
         bne     L938D
         jsr     L8D17  ;maybe returns cbm dos error in a
 L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN
         lda     #$47
-        bcc     L9358
+        bcc     L9358_ERROR
         bit     SXREG
         bpl     L9381
 L938D:  jsr     L8C36_CHAN_FROM_SA ;channel related
@@ -3047,7 +3067,9 @@ L938D:  jsr     L8C36_CHAN_FROM_SA ;channel related
         tsb     V1541_FLAGS
         tsb     V1541_DATA_BUF
         jmp     L8D63
+
 ; ----------------------------------------------------------------------------
+
 L939A:  lda     V1541_02D6
 L939D:  bne     L93A2
         sta     V1541_02D7
@@ -3426,7 +3448,7 @@ L9675 := *+1
         ldx     V1541_FILE_MODE
         bne     L9698_ERROR_34_SYNTAX_ERROR
         jsr     L9041
-        jsr     L8C2A
+        jsr     L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89
         lda     #$40
         tsb     V1541_FLAGS
         bra     L96C0
@@ -3459,7 +3481,7 @@ L96B1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
         bcc     L969A_ERROR
         cpx     #ftype_s_seq
         beq     L9692_ERROR_64_FILE_TYPE_MISMATCH
-        jsr     L8C2A
+        jsr     L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89
         jsr     L902D
 L96C0:  lda     #$10
         tsb     V1541_FLAGS
@@ -3749,7 +3771,7 @@ L9897:  jsr     L8CC3
 L989B :=*+1
         BCC     L98D0 ;branch if error
 L989E := *+2
-        jsr     L8C2A
+        jsr     L8C2A_JSR_L8C3B_CHAN_HEX_11_JMP_L8C89
         LDA     V1541_DATA_BUF
         bit     #$80
         bne     L98B4
@@ -7343,16 +7365,18 @@ ESC_W_SCROLL_DOWN:
 LB1D4:  jsr     LB393
         jmp     LAEA6
 ; ----------------------------------------------------------------------------
-LB1DA:  jsr     LB2E4_HIDE_CURSOR
-        lda     #$08
+;Start the screen editor
+SCINIT_:
+        jsr     LB2E4_HIDE_CURSOR
+        lda     #>$0828
         sta     VidMemHi
-        ldx     #$28
+        ldx     #<$0828
         stx     $0368
         ldy     #$10
         sty     $0369
-        lda     #$0F
+        lda     #16-1
         sta     CurMaxY
-        lda     #$4F
+        lda     #80-1
         sta     CurMaxX
         stz     $037F
         stz     L0380
@@ -7654,7 +7678,8 @@ KBD_MATRIX_CTRL:                                ; ----- ----- ----- ----- ----- 
         .byte   $8B,$11,$8C,$20,$32,$89,$13,$31 ; F6    CT-Q  F8    SPACE 2     F2    HOME  1
 ; ------------------------------------------------------------------------------------------------
 
-LB4DA:  lda     #$09
+KEYB_INIT:
+        lda     #$09
         sta     $03F6
         lda     #$1E
         sta     $0367
@@ -17652,7 +17677,7 @@ KR_SCINIT:
 KL_SCINIT:
         ldx     #$00
         jsr     LD230_JMP_LD233_PLUS_X
-        jmp     LB1DA
+        jmp     SCINIT_
 ; ----------------------------------------------------------------------------
 KR_IOINIT:
         sta     MMU_MODE_KERN
@@ -17901,8 +17926,9 @@ DEFVEC_GETIN:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-LFDDF:  sta     MMU_MODE_APPL
-        jsr     LFFE7
+LFDDF_JSR_LFFE7_CLALL:
+        sta     MMU_MODE_APPL
+        jsr     LFFE7_CLALL
         jmp     MMU_MODE_KERN_RTS
 ; ----------------------------------------------------------------------------
 DEFVEC_CLALL:
@@ -18193,7 +18219,7 @@ LFFE1_STOP:  jmp     (RAMVEC_STOP)                   ; FFE1 6C 28 03            
 ; Used registers: A, X, Y.
 LFFE4_GETIN:  jmp     (RAMVEC_GETIN)                  ; FFE4 6C 2A 03                 l*.
 ; ----------------------------------------------------------------------------
-LFFE7:  jmp     (RAMVEC_CLALL)                  ; FFE7 6C 2C 03                 l,.
+LFFE7_CLALL:  jmp     (RAMVEC_CLALL)                  ; FFE7 6C 2C 03                 l,.
 ; ----------------------------------------------------------------------------
 ; ??Might be UDTIM. Update Time of Day, at memory address $0390-$0392, and
 ; Stop key indicator
