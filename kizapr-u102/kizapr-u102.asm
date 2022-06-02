@@ -447,7 +447,8 @@ L80DC:  ply
         cpx     #$00
         rts
 ; ----------------------------------------------------------------------------
-L80E0:  and     #$3F
+L80E0_DRAW_FKEY_BAR_AND_WAIT_FOR_FKEY_OR_RETURN:
+        and     #$3F
         sta     $03BC
         ldx     #$04
         jsr     LD230_JMP_LD233_PLUS_X
@@ -469,18 +470,19 @@ L810B:  ldy     #$08
         jsr     L806B
         bne     L8115
         inc     $03BF
-L8115:  jsr     L815E
+L8115:  jsr     L815E_DRAW_FKEY_BAR
 
-L8118:  jsr     LB6DF_GET_KEY_BLOCKING
+L8118_WAIT_FOR_FKEY_OR_RETURN_LOOP:
+        jsr     LB6DF_GET_KEY_BLOCKING
 
         ldx     #$09
-L811D_LOOP:
-        cmp     L8154_KEYS,x
+L811D_FIND_KEY_LOOP:
+        cmp     L8154_KEYCODES_FKEYS_AND_RETURNS,x
         beq     L8127_FOUND_KEY
         dex
-        bpl     L811D_LOOP
+        bpl     L811D_FIND_KEY_LOOP
 
-        bra     L8118
+        bra     L8118_WAIT_FOR_FKEY_OR_RETURN_LOOP
 
 L8127_FOUND_KEY:
         txa             ;A = 0=F1,1=F2,2=F3,3=F4,4=F5,5=F6,6=F7,7=F8,8=RETURN,9=SHIFT-RETURN
@@ -490,14 +492,15 @@ L8127_FOUND_KEY:
         bne     L813A
         cmp     $03BF
         beq     L813A
-        jsr     L815E
-        bra     L8118
+        jsr     L815E_DRAW_FKEY_BAR
+        bra     L8118_WAIT_FOR_FKEY_OR_RETURN_LOOP
+
 L813A:  clc
         adc     $03BE
         tay
         lda     $03BD
         jsr     L806B
-        beq     L8118
+        beq     L8118_WAIT_FOR_FKEY_OR_RETURN_LOOP
         .byte   $2C
 L8148:  ldx     #$00
         phx
@@ -507,7 +510,8 @@ L8148:  ldx     #$00
         pla
         plx
         rts
-L8154_KEYS:
+
+L8154_KEYCODES_FKEYS_AND_RETURNS:
         .byte   $85 ;F1
         .byte   $89 ;F2
         .byte   $86 ;F3
@@ -519,7 +523,8 @@ L8154_KEYS:
         .byte   $0D ;RETURN
         .byte   $8D ;SHIFT-RETURN
 ; ----------------------------------------------------------------------------
-L815E:  sec
+L815E_DRAW_FKEY_BAR:
+        sec
         cld
         lda     $03BF
         adc     $03BE
@@ -538,49 +543,58 @@ L8180:  sta     $03BD
         bit     $03BC
         beq     L8179
         bra     L8169
-L818A:  ldx     #$00
-L818C:  phx
+
+L818A:
+        ldx     #$00
+L818C_OUTER_LOOP:
+        phx
         phy
-        jsr     L81E0
+        jsr     L81E0_PUT_CHAR_IN_FKEY_BAR
         lda     #<MORE_EXIT
         sta     $DB
         lda     #>MORE_EXIT
         sta     $DC
         tsx
         lda     stack+2,x
-        ldy     #$07
+        ldy     #$07 ;0-7 for F1-F8
         cmp     #$07
-        beq     L81B8
+        beq     L81B8_INNER_LOOP
         ldy     #$00
         dec     a
         cmp     $03BF
-        beq     L81B8
+        beq     L81B8_INNER_LOOP
         ldy     stack+1,x
         lda     $03BD
         jsr     L806B
-        beq     L81C5
+        beq     L81C5_PERIOD
+
         ldy     #$06
-L81B8:  lda     ($DB),y
-        cmp     #$2E
-        beq     L81C5
+L81B8_INNER_LOOP:
+        lda     ($DB),y
+        cmp     #'.'
+        beq     L81C5_PERIOD
         clc
         jsr     LB6F9
         iny
-        bra     L81B8
-L81C5:  lda     #$0D
+        bra     L81B8_INNER_LOOP
+
+L81C5_PERIOD:
+        lda     #$0D
         clc
         jsr     LB6F9
         ply
         plx
         iny
         inx
-        cpx     #$08
-        bne     L818C
+        cpx     #$08 ;0-7 for F1-F8
+        bne     L818C_OUTER_LOOP
         rts
 MORE_EXIT:
-        .byte   "<MORE>.EXIT."
+        .byte   "<MORE>."
+        .byte   "EXIT."
 ; ----------------------------------------------------------------------------
-L81E0:  ldy     L81F3,x
+L81E0_PUT_CHAR_IN_FKEY_BAR:
+        ldy     L81F3_FKEY_COLUMNS,x
         ldx     $039C
         lda     #$89
         sec
@@ -589,9 +603,11 @@ L81E0:  ldy     L81F3,x
         ldy     #$09
         sta     ($BD),y
         rts
-; ----------------------------------------------------------------------------
-L81F3:  .byte   $00,$0A,$14,$1E
-L81F7:  .byte   $28,$32,$3C,$46
+
+L81F7 := *+4
+L81F3_FKEY_COLUMNS:
+        ;      F1,F2,F3,F4,F5,F6,F7,F8
+        .byte   0,10,20,30,40,50,60,70  ;Starting column on bottom screen line
 ; ----------------------------------------------------------------------------
 L81FB:  stz     $0450
         jsr     L806B
@@ -649,7 +665,7 @@ L8251:  jsr     L826F
         cpx     FNLEN
         bne     L8251
         lda     ($DB),y
-        cmp     #$2E
+        cmp     #'.'
         beq     L826B
 L8265:  ply
         plx
@@ -3603,6 +3619,7 @@ L9718 := *+1
 L971A := *+1
 L9719:  jsr     L89E2
         jmp     L8D17
+
 L971F:  jsr     L9725 ;maybe returns a cbm dos error code
 L9724 := *+2
         jmp     V1541_KERNAL_CALL_DONE
@@ -8010,48 +8027,69 @@ LB684_STA_03F9:
         rts                                     ; B687 60                       `
 ; ----------------------------------------------------------------------------
 LB688_GET_KEY_NONBLOCKING:
-        phx                                     ; B688 DA                       .
-        phy                                     ; B689 5A                       Z
-        lda     $03F9                           ; B68A AD F9 03                 ...
-        stz     $03F9                           ; B68D 9C F9 03                 ...
-        bne     LB6D1                           ; B690 D0 3F                    .?
-        ldx     #$0C                            ; B692 A2 0C                    ..
-        jsr     LD230_JMP_LD233_PLUS_X          ; B694 20 30 D2                  0.
-        tax                                     ; B697 AA                       .
-        bne     LB6D1                           ; B698 D0 37                    .7
-        jsr     GET_KEY_FROM_KEYD_BUFFER        ; B69A 20 6C B6                  l.
-        bcc     LB6C7                           ; B69D 90 28                    .(
-        lda     #doschan_14_cmd_app             ; B69F A9 0E                    ..
-LB6A1:  jsr     V1541_SELECT_CHANNEL_A          ; B6A1 20 40 8C                  @.
-        bcc     LB6C0 ;branch on error          ; B6A4 90 1A                    ..
-        rol     $03FA                           ; B6A6 2E FA 03                 ...
-        lda     MODKEY                          ; B6A9 A5 AD                    ..
-        lsr     a ;Bit 0 = MOD_STOP             ; B6AB 4A                       J
-        bcs     LB6BD ;Branch if STOP pressed   ; B6AC B0 0F                    ..
-        jsr     L8B46 ;maybe returns a cbm dos error code  ; B6AE 20 46 8B                  F.
-        bcc     LB6BD                           ; B6B1 90 0A                    ..
-        bit     SXREG                           ; B6B3 2C 9D 03                 ,..
-        bpl     LB6BB                           ; B6B6 10 03                    ..
-        jsr     L8C8B_CLEAR_ACTIVE_CHANNEL                           ; B6B8 20 89 8C                  ..
-LB6BB:  bra     LB6C7                           ; B6BB 80 0A                    ..
-LB6BD:  jsr     L8C8B_CLEAR_ACTIVE_CHANNEL                           ; B6BD 20 89 8C                  ..
-LB6C0:  stz     $03FA                           ; B6C0 9C FA 03                 ...
-LB6C3:  lda     #$00                            ; B6C3 A9 00                    ..
-        bra     LB6D9                           ; B6C5 80 12                    ..
-LB6C7:  ldx     #$0A                            ; B6C7 A2 0A                    ..
-        jsr     LD230_JMP_LD233_PLUS_X          ; B6C9 20 30 D2                  0.
-        ldx     #$0C                            ; B6CC A2 0C                    ..
-        jsr     LD230_JMP_LD233_PLUS_X          ; B6CE 20 30 D2                  0.
-LB6D1:  tax                                     ; B6D1 AA                       .
-        beq     LB6D9                           ; B6D2 F0 05                    ..
-        pha                                     ; B6D4 48                       H
-        jsr     LBFBE ;UNKNOWN_SECS/MINS        ; B6D5 20 BE BF                  ..
-        pla                                     ; B6D8 68                       h
-LB6D9:  ply                                     ; B6D9 7A                       z
-        plx                                     ; B6DA FA                       .
-        cmp     #$00                            ; B6DB C9 00                    ..
-        clc                                     ; B6DD 18                       .
-        rts                                     ; B6DE 60                       `
+        phx
+        phy
+
+        lda     $03F9
+        stz     $03F9
+        bne     LB6D1_NONZERO
+
+        ldx     #$0C
+        jsr     LD230_JMP_LD233_PLUS_X    ;-> LD2B2_X_0C
+        tax
+        bne     LB6D1_NONZERO
+
+        jsr     GET_KEY_FROM_KEYD_BUFFER
+        bcc     LD294_LD233_0A_THEN_0C
+
+        lda     #doschan_14_cmd_app
+LB6A1:  jsr     V1541_SELECT_CHANNEL_A
+        bcc     LB6C0_V1541_SELECT_ERROR ;branch on error
+
+        rol     $03FA
+
+        lda     MODKEY
+        lsr     a ;Bit 0 = MOD_STOP
+        bcs     LB6BD_STOP_OR_V1541_L8B46_ERROR ;Branch if STOP pressed
+
+        jsr     L8B46 ;maybe returns a cbm dos error code
+        bcc     LB6BD_STOP_OR_V1541_L8B46_ERROR
+
+        bit     SXREG
+        bpl     LB6BB_BRA_LD294_LD233_0A_THEN_0C
+
+        jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
+
+LB6BB_BRA_LD294_LD233_0A_THEN_0C:
+        bra     LD294_LD233_0A_THEN_0C
+
+LB6BD_STOP_OR_V1541_L8B46_ERROR:
+        jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
+
+LB6C0_V1541_SELECT_ERROR:
+        stz     $03FA
+        lda     #$00
+        bra     LB6D9_DONE
+
+LD294_LD233_0A_THEN_0C:
+        ldx     #$0A
+        jsr     LD230_JMP_LD233_PLUS_X    ;-> LD263_X_0A
+        ldx     #$0C
+        jsr     LD230_JMP_LD233_PLUS_X    ;-> LD2B2_X_0C
+
+LB6D1_NONZERO:
+        tax
+        beq     LB6D9_DONE
+        pha
+        jsr     LBFBE ;UNKNOWN_SECS/MINS
+        pla
+
+LB6D9_DONE:
+        ply
+        plx
+        cmp     #$00
+        clc
+        rts
 ; ----------------------------------------------------------------------------
 
 LB6DF_GET_KEY_BLOCKING:
@@ -8090,11 +8128,13 @@ LB70D:  sta     $BD                             ; B70D 85 BD                    
 ; ----------------------------------------------------------------------------
 LB710:  phx                                     ; B710 DA                       .
         phy                                     ; B711 5A                       Z
+;TODO code
         .byte   $AE                             ; B712 AE                       .
         .byte   $FD                             ; B713 FD                       .
 LB714:  .byte   $03                             ; B714 03                       .
         beq     LB754                           ; B715 F0 3D                    .=
         cpx     #$80                            ; B717 E0 80                    ..
+;TODO code
         .byte   $F0                             ; B719 F0                       .
 LB71A:  and     $0DC9,y                         ; B71A 39 C9 0D                 9..
         bne     LB729                           ; B71D D0 0A                    ..
@@ -12225,30 +12265,30 @@ LD22E:  ply                                     ; D22E 7A                       
 ; ----------------------------------------------------------------------------
 LD230_JMP_LD233_PLUS_X:
         jmp     (LD233,x)                       ; D230 7C 33 D2                 |3.
-LD233:  .addr   LD247_X_0                       ; D233 47 D2                    G.
-        .addr   LD28C_X_1                       ; D235 8C D2                    ..
-        .addr   LD255_X_2                       ; D237 55 D2                    U.
-        .addr   LD297_X_3                       ; D239 97 D2                    ..
-        .addr   LD26A_X_4                       ; D23B 6A D2                    j.
-        .addr   LD263_X_5                       ; D23D 63 D2                    c.
-        .addr   LD2B2_X_6                       ; D23F B2 D2                    ..
-        .addr   LD318_X_7                       ; D241 18 D3                    ..
-        .addr   LD252_X_8                       ; D243 52 D2                    R.
-        .addr   LD294_X_9                       ; D245 94 D2                    ..
+LD233:  .addr   LD247_X_00                      ; D233 47 D2                    G.
+        .addr   LD28C_X_02                      ; D235 8C D2                    ..
+        .addr   LD255_X_04                      ; D237 55 D2                    U.
+        .addr   LD297_X_06                      ; D239 97 D2                    ..
+        .addr   LD26A_X_08                      ; D23B 6A D2                    j.
+        .addr   LD263_X_0A                      ; D23D 63 D2                    c.
+        .addr   LD2B2_X_0C                      ; D23F B2 D2                    ..
+        .addr   LD318_X_0E                      ; D241 18 D3                    ..
+        .addr   LD252_X_10                      ; D243 52 D2                    R.
+        .addr   LD294_X_12                      ; D245 94 D2                    ..
 ; ----------------------------------------------------------------------------
-LD247_X_0:
+LD247_X_00:
         stz     $041C                           ; D247 9C 1C 04                 ...
         sta     $F8                             ; D24A 85 F8                    ..
         sty     $F9                             ; D24C 84 F9                    ..
         stz     $041D                           ; D24E 9C 1D 04                 ...
         rts                                     ; D251 60                       `
 ; ----------------------------------------------------------------------------
-LD252_X_8:
+LD252_X_10:
         lda     #$10                            ; D252 A9 10                    ..
         .byte   $2C                             ; D254 2C                       ,
         ;Fall through
 ; ----------------------------------------------------------------------------
-LD255_X_2:
+LD255_X_04:
         lda     #$20                            ; D255 A9 20                    .
         ldx     $041C                           ; D257 AE 1C 04                 ...
         beq     LD262                           ; D25A F0 06                    ..
@@ -12256,12 +12296,12 @@ LD255_X_2:
         stz     $041D                           ; D25F 9C 1D 04                 ...
 LD262:  rts                                     ; D262 60                       `
 ; ----------------------------------------------------------------------------
-LD263_X_5:
+LD263_X_0A:
         sta     $041D                           ; D263 8D 1D 04                 ...
         stz     $041E                           ; D266 9C 1E 04                 ...
         rts                                     ; D269 60                       `
 ; ----------------------------------------------------------------------------
-LD26A_X_4:
+LD26A_X_08:
         sty     $C0                             ; D26A 84 C0                    ..
         sta     $BF                             ; D26C 85 BF                    ..
         lda     $041C                           ; D26E AD 1C 04                 ...
@@ -12269,27 +12309,28 @@ LD26A_X_4:
         and     #$38                            ; D273 29 38                    )8
         beq     LD278                           ; D275 F0 01                    ..
 LD277:  rts                                     ; D277 60                       `
+
 LD278:  lda     $041D                           ; D278 AD 1D 04                 ...
         beq     LD28A                           ; D27B F0 0D                    ..
-        lda     LD28A+1,x                         ; D27D BD 8B D2                 ...
+        lda     FKEY_TO_INDEX-$85,x  ;-$85 for F1       ; D27D BD 8B D2                 ...
         eor     $041C                           ; D280 4D 1C 04                 M..
         and     $07                             ; D283 25 07                    %.
         bne     LD28A                           ; D285 D0 03                    ..
         stz     $041D                           ; D287 9C 1D 04                 ...
-LD28A:  bra     LD297_X_3
+LD28A:  bra     LD297_X_06                      ; D28A 80 0B
 ; ----------------------------------------------------------------------------
-LD28C_X_1:
+LD28C_X_02:
         sty     $039C                           ; D28C 8C 9C 03                 ...
         and     #$CF                            ; D28F 29 CF                    ).
         sta     $041C                           ; D291 8D 1C 04                 ...
         ;Fall through
 ; ----------------------------------------------------------------------------
-LD294_X_9:
+LD294_X_12:
         lda     #$10                            ; D294 A9 10                    ..
         .byte   $2C                             ; D296 2C                       ,
-        ;Fall through
+        ;Fall through (skipping two bytes)
 ; ----------------------------------------------------------------------------
-LD297_X_3:
+LD297_X_06:
         lda     #$20                            ; D297 A9 20                    .
         ldx     $041C                           ; D299 AE 1C 04                 ...
         beq     LD2AA                           ; D29C F0 0C                    ..
@@ -12299,136 +12340,146 @@ LD297_X_3:
         bne     LD2AA                           ; D2A6 D0 02                    ..
         bvs     LD327                           ; D2A8 70 7D                    p}
 LD2AA:  rts                                     ; D2AA 60                       `
-; ----------------------------------------------------------------------------
-LD2AB:  lda     $041D                           ; D2AB AD 1D 04                 ...
+
+LD2AB_UPDATE_041D_RTS:
+        lda     $041D                           ; D2AB AD 1D 04                 ...
         stz     $041D                           ; D2AE 9C 1D 04                 ...
         rts                                     ; D2B1 60                       `
 ; ----------------------------------------------------------------------------
-LD2B2_X_6:
-        lda     $041D                           ; D2B2 AD 1D 04                 ...
-        cmp     #$85  ;F1                       ; D2B5 C9 85                    ..
-        bcc     LD2AB                           ; D2B7 90 F2                    ..
-        cmp     #$8D  ;F8 +1                     ; D2B9 C9 8D                    ..
-        bcs     LD2AB                           ; D2BB B0 EE                    ..
-        tay                                     ; D2BD A8                       .
-        ldx     LD28A+1,y                       ; D2BE BE 8B D2                 ...
-        lda     $041C                           ; D2C1 AD 1C 04                 ...
-        bit     #$30                            ; D2C4 89 30                    .0
-        bne     LD2AB                           ; D2C6 D0 E3                    ..
-        bit     #$08                            ; D2C8 89 08                    ..
-        beq     LD2DB                           ; D2CA F0 0F                    ..
-        txa                                     ; D2CC 8A                       .
-        eor     $041C                           ; D2CD 4D 1C 04                 M..
-        and     #$07                            ; D2D0 29 07                    ).
-        bne     LD2DB                           ; D2D2 D0 07                    ..
-        lda     #$BF                            ; D2D4 A9 BF                    ..
-        sta     $0357                           ; D2D6 8D 57 03                 .W.
-        bra     LD2FC                           ; D2D9 80 21                    .!
-LD2DB:  bit     $041C                           ; D2DB 2C 1C 04                 ,..
-        bvc     LD2AB                           ; D2DE 50 CB                    P.
-        lda     #$F8                            ; D2E0 A9 F8                    ..
-        sta     $0357                           ; D2E2 8D 57 03                 .W.
-        ldy     $041E                           ; D2E5 AC 1E 04                 ...
-        bne     LD2FC                           ; D2E8 D0 12                    ..
-LD2EA:  dex                                     ; D2EA CA                       .
-        bmi     LD2F9                           ; D2EB 30 0C                    0.
-LD2ED:  jsr     GO_APPL_LOAD_GO_KERN            ; D2ED 20 53 03                  S.
-        iny                                     ; D2F0 C8                       .
-        beq     LD2F9                           ; D2F1 F0 06                    ..
-        cmp     #$00                            ; D2F3 C9 00                    ..
-        bne     LD2ED                           ; D2F5 D0 F6                    ..
-        beq     LD2EA                           ; D2F7 F0 F1                    ..
-LD2F9:  sty     $041E                           ; D2F9 8C 1E 04                 ...
-LD2FC:  ldy     $041E                           ; D2FC AC 1E 04                 ...
-        inc     $041E                           ; D2FF EE 1E 04                 ...
-        beq     LD309                           ; D302 F0 05                    ..
-        jsr     GO_APPL_LOAD_GO_KERN            ; D304 20 53 03                  S.
-        bne     LD30F                           ; D307 D0 06                    ..
-LD309:  stz     $041E                           ; D309 9C 1E 04                 ...
-        stz     $041D                           ; D30C 9C 1D 04                 ...
-LD30F:  rts                                     ; D30F 60                       `
+LD2B2_X_0C:
+        lda     $041D
+        cmp     #$85  ;F1
+        bcc     LD2AB_UPDATE_041D_RTS
+        cmp     #$8D  ;F8 +1
+        bcs     LD2AB_UPDATE_041D_RTS
+        tay
+        ldx     FKEY_TO_INDEX-$85,y  ;-$85 for F1
+        lda     $041C
+        bit     #$30
+        bne     LD2AB_UPDATE_041D_RTS
+        bit     #$08
+        beq     LD2DB
+        txa
+        ;A now contains a 0-7 for keys F1-F8
+        eor     $041C
+        and     #$07
+        bne     LD2DB
+        lda     #$BF
+        sta     $0357
+        bra     LD2FC
+LD2DB:  bit     $041C
+        bvc     LD2AB_UPDATE_041D_RTS
+        lda     #$F8
+        sta     $0357
+        ldy     $041E
+        bne     LD2FC
+LD2EA:  dex
+        bmi     LD2F9
+LD2ED:  jsr     GO_APPL_LOAD_GO_KERN
+        iny
+        beq     LD2F9
+        cmp     #$00
+        bne     LD2ED
+        beq     LD2EA
+LD2F9:  sty     $041E
+LD2FC:  ldy     $041E
+        inc     $041E
+        beq     LD309
+        jsr     GO_APPL_LOAD_GO_KERN
+        bne     LD30F
+LD309:  stz     $041E
+        stz     $041D
+LD30F:  rts
 ; ----------------------------------------------------------------------------
-        brk                                     ; D310 00                       .
-        .byte   $02                             ; D311 02                       .
-        tsb     $06                             ; D312 04 06                    ..
-        ora     ($03,x)                         ; D314 01 03                    ..
-        ora     $07                             ; D316 05 07                    ..
-LD318_X_7:
-        ldx     $039C                           ; D318 AE 9C 03                 ...
-        phx                                     ; D31B DA                       .
-        sta     $039C                           ; D31C 8D 9C 03                 ...
-        jsr     LD329                           ; D31F 20 29 D3                  ).
-        plx                                     ; D322 FA                       .
-        stx     $039C                           ; D323 8E 9C 03                 ...
-        rts                                     ; D326 60                       `
+;F1->0, F2->1, F3->2, ... F8->7
+FKEY_TO_INDEX:
+        .byte 0   ;$85 F1
+        .byte 2   ;$86 F3
+        .byte 4   ;$85 F5
+        .byte 6   ;$86 F7
+        .byte 1   ;$89 F2
+        .byte 3   ;$8A F4
+        .byte 5   ;$8B F6
+        .byte 7   ;$8C F8
+
+LD318_X_0E:
+        ldx     $039C
+        phx
+        sta     $039C
+        jsr     LD329
+        plx
+        stx     $039C
+        rts
 ; ----------------------------------------------------------------------------
-LD327:  ldy     #$F8                            ; D327 A0 F8                    ..
-LD329:  sty     $0357                           ; D329 8C 57 03                 .W.
-        ldx     #$00                            ; D32C A2 00                    ..
-        ldy     #$00                            ; D32E A0 00                    ..
-LD330:  phx                                     ; D330 DA                       .
-        phy                                     ; D331 5A                       Z
-        ldy     LD366_DATA,x                    ; D332 BC 66 D3                 .f.
-        ldx     $039C                           ; D335 AE 9C 03                 ...
-        lda     #$89                            ; D338 A9 89                    ..
-        sec                                     ; D33A 38                       8
-        jsr     LB6F9                           ; D33B 20 F9 B6                  ..
-        lda     #$65                            ; D33E A9 65                    .e
-        ldy     #$09                            ; D340 A0 09                    ..
-        sta     ($BD),y                         ; D342 91 BD                    ..
-        ply                                     ; D344 7A                       z
-LD345:  jsr     GO_APPL_LOAD_GO_KERN            ; D345 20 53 03                  S.
-        beq     LD359                           ; D348 F0 0F                    ..
-        cmp     #$08                            ; D34A C9 08                    ..
-        bcs     LD353                           ; D34C B0 05                    ..
-        jsr     LD36E_EXITQUITMORE              ; D34E 20 6E D3                  n.
-        bra     LD356                           ; D351 80 03                    ..
-LD353:  jsr     LD3A9                           ; D353 20 A9 D3                  ..
-LD356:  iny                                     ; D356 C8                       .
-        bne     LD345                           ; D357 D0 EC                    ..
-LD359:  lda     #$0D                            ; D359 A9 0D                    ..
-        jsr     LD3A9                           ; D35B 20 A9 D3                  ..
-        iny                                     ; D35E C8                       .
-        plx                                     ; D35F FA                       .
-        inx                                     ; D360 E8                       .
-        cpx     #$08                            ; D361 E0 08                    ..
-        bcc     LD330                           ; D363 90 CB                    ..
-        rts                                     ; D365 60                       `
-LD366_DATA:  .byte $00,$0a,$14,$1e,$28,$32,$3c,$46
+LD327:  ldy     #$F8
+LD329:  sty     $0357
+        ldx     #$00
+        ldy     #$00
+LD330:  phx
+        phy
+        ldy     LD366_FKEY_COLUMNS,x
+        ldx     $039C
+        lda     #$89
+        sec
+        jsr     LB6F9
+        lda     #$65
+        ldy     #$09
+        sta     ($BD),y
+        ply
+LD345:  jsr     GO_APPL_LOAD_GO_KERN
+        beq     LD359
+        cmp     #$08
+        bcs     LD353
+        jsr     LD36E_EXITQUITMORE
+        bra     LD356
+LD353:  jsr     LD3A9_CLC_JMP_LB6F9
+LD356:  iny
+        bne     LD345
+LD359:  lda     #$0D
+        jsr     LD3A9_CLC_JMP_LB6F9
+        iny
+        plx
+        inx
+        cpx     #$08
+        bcc     LD330
+        rts
+LD366_FKEY_COLUMNS:
+        ;      F1,F2,F3,F4,F5,F6,F7,F8
+        .byte   0,10,20,30,40,50,60,70  ;Starting column on bottom screen line
 ; ----------------------------------------------------------------------------
 LD36E_EXITQUITMORE:
-        dec     a                               ; D36E 3A                       :
-        beq     LD382                           ; D36F F0 11                    ..
-        dec     a                               ; D371 3A                       :
-        asl     a                               ; D372 0A                       .
-        asl     a                               ; D373 0A                       .
-        tax                                     ; D374 AA                       .
+        dec     a
+        beq     LD382
+        dec     a
+        asl     a
+        asl     a
+        tax
 LD375_LOOP:
-        lda     LD391_EXITQUITMORE,x            ; D375 BD 91 D3                 ...
-        jsr     LD3A9                           ; D378 20 A9 D3                  ..
-        inx                                     ; D37B E8                       .
-        txa                                     ; D37C 8A                       .
-        and     #$03                            ; D37D 29 03                    ).
-        bne     LD375_LOOP                      ; D37F D0 F4                    ..
-        rts                                     ; D381 60                       `
+        lda     LD391_EXITQUITMORE,x
+        jsr     LD3A9_CLC_JMP_LB6F9
+        inx
+        txa
+        and     #$03
+        bne     LD375_LOOP
+        rts
 ; ----------------------------------------------------------------------------
-LD382:  phy                                     ; D382 5A                       Z
-        ldy     #$00                            ; D383 A0 00                    ..
-LD385:  lda     ($BF),y                         ; D385 B1 BF                    ..
-        beq     LD38F                           ; D387 F0 06                    ..
-        jsr     LD3A9                           ; D389 20 A9 D3                  ..
-        iny                                     ; D38C C8                       .
-        bne     LD385                           ; D38D D0 F6                    ..
-LD38F:  ply                                     ; D38F 7A                       z
-        rts                                     ; D390 60                       `
+LD382:  phy
+        ldy     #$00
+LD385:  lda     ($BF),y
+        beq     LD38F
+        jsr     LD3A9_CLC_JMP_LB6F9
+        iny
+        bne     LD385
+LD38F:  ply
+        rts
 ; ----------------------------------------------------------------------------
 LD391_EXITQUITMORE:
-        .byte   "EXITQUITMOREexitquitmore"      ; D391 45 58 49 54 51 55 49 54  EXITQUIT
-                                                ; D399 4D 4F 52 45 65 78 69 74  MOREexit
-                                                ; D3A1 71 75 69 74 6D 6F 72 65  quitmore
+        .byte   "EXIT","QUIT","MORE"
+        .byte   "exit","quit","more"
 ; ----------------------------------------------------------------------------
-LD3A9:  clc                                     ; D3A9 18                       .
-        jmp     LB6F9                           ; D3AA 4C F9 B6                 L..
+LD3A9_CLC_JMP_LB6F9:
+        clc
+        jmp     LB6F9
 ; ----------------------------------------------------------------------------
 MEMBOT__:
         rol     a                               ; D3AD 2A                       *
@@ -17546,7 +17597,7 @@ LFADD:  sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
 LFAE7:  sta     MMU_MODE_KERN
-        jsr     L80E0
+        jsr     L80E0_DRAW_FKEY_BAR_AND_WAIT_FOR_FKEY_OR_RETURN
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
