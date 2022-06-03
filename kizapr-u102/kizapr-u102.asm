@@ -489,19 +489,22 @@ L8127_FOUND_KEY:
         cmp     #$07
         bcs     L8148
         cmp     #$06    ;F7
-        bne     L813A
+        bne     L813A_SKIP_DRAW_AND_WAIT
         cmp     $03BF
-        beq     L813A
+        beq     L813A_SKIP_DRAW_AND_WAIT
+
         jsr     L815E_DRAW_FKEY_BAR
         bra     L8118_WAIT_FOR_FKEY_OR_RETURN_LOOP
 
-L813A:  clc
+L813A_SKIP_DRAW_AND_WAIT:
+        clc
         adc     $03BE
         tay
         lda     $03BD
         jsr     L806B
         beq     L8118_WAIT_FOR_FKEY_OR_RETURN_LOOP
         .byte   $2C
+
 L8148:  ldx     #$00
         phx
         pha
@@ -599,7 +602,7 @@ L81E0_PUT_CHAR_IN_FKEY_BAR:
         lda     #$89
         sec
         jsr     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
-        lda     #$67
+        lda     #$67 ;TODO graphics character
         ldy     #$09
         sta     ($BD),y
         rts
@@ -5087,8 +5090,8 @@ LA21A:  tax                                     ; A21A AA                       
 LA21D:  ldx     #$1D                            ; A21D A2 1D                    ..
         .byte   $2C                             ; A21F 2C                       ,
 LA220:  ldx     #$15                            ; A220 A2 15                    ..
-        .byte   $A0                             ; A222 A0                       .
-LA223:  brk                                     ; A223 00                       .
+LA223 := *+1
+        LDY     #$00
         beq     LA227                           ; A224 F0 01                    ..
 LA226:  tax                                     ; A226 AA                       .
 LA227:  jsr     LA28A                           ; A227 20 8A A2                  ..
@@ -5178,10 +5181,10 @@ LA2B8:  lda     #$00                            ; A2B8 A9 00                    
 LA2C4:  stx     $25                             ; A2C4 86 25                    .%
         sta     $3A                             ; A2C6 85 3A                    .:
         sta     $2D                             ; A2C8 85 2D                    .-
-        .byte   $4C                             ; A2CA 4C                       L
-LA2CB:  .byte   $3B                             ; A2CB 3B                       ;
-LA2CD = *+1 ;todo this is code; entry in table
-        sta     $FA5A,x                         ; A2CC 9D 5A FA                 .Z.
+LA2CB = *+2
+        jmp     L9D3B
+LA2CD:  phy
+        plx
         bra     LA2C4                           ; A2CF 80 F3                    ..
 LA2D1:  phy                                     ; A2D1 5A                       Z
         plx                                     ; A2D2 FA                       .
@@ -5277,8 +5280,8 @@ LA369:  lda     $25                             ; A369 A5 25                    
         cmp     #$B8                            ; A36B C9 B8                    ..
         bcs     LA395                           ; A36D B0 26                    .&
         jsr     LA338                           ; A36F 20 38 A3                  8.
-        .byte   $84                             ; A372 84                       .
-LA373:  dec     a                               ; A373 3A                       :
+LA373 := *+1
+        sty     $3a
         lda     $2D                             ; A374 A5 2D                    .-
         sty     $2D                             ; A376 84 2D                    .-
         eor     #$80                            ; A378 49 80                    I.
@@ -5293,8 +5296,8 @@ LA386:  sta     $26                             ; A386 85 26                    
         sta     $27                             ; A388 85 27                    .'
         sta     $28                             ; A38A 85 28                    .(
         sta     $29                             ; A38C 85 29                    .)
-        .byte   $85                             ; A38E 85                       .
-LA38F:  rol     a                               ; A38F 2A                       *
+LA38F := *+1
+        sta     $2a
         sta     $2B                             ; A390 85 2B                    .+
         sta     $2C                             ; A392 85 2C                    .,
         tay                                     ; A394 A8                       .
@@ -5399,8 +5402,8 @@ LA443:  asl     a                               ; A443 0A                       
         ldy     #$00                            ; A44A A0 00                    ..
         sta     $22                             ; A44C 85 22                    ."
         jsr     L9C2E                           ; A44E 20 2E 9C                  ..
-        .byte   $65                             ; A451 65                       e
-LA452:  .byte   $22                             ; A452 22                       "
+LA452 := *+1
+        adc     $22
         sec                                     ; A453 38                       8
         sbc     #$30                            ; A454 E9 30                    .0
 LA456:  sta     $22                             ; A456 85 22                    ."
@@ -5453,8 +5456,9 @@ LA4BE:  jsr     LA0E5                           ; A4BE 20 E5 A0                 
 LA4C5:  jsr     L9F38                           ; A4C5 20 38 9F                  8.
 LA4C8:  jsr     LA338                           ; A4C8 20 38 A3                  8.
         ldx     #$01                            ; A4CB A2 01                    ..
-        .byte   $A5                             ; A4CD A5                       .
-LA4CE:  and     ($18,x)                         ; A4CE 21 18                    !.
+LA4CE := *+1
+        lda     $21
+        clc
         adc     #$10                            ; A4D0 69 10                    i.
 LA4D2:  bmi     LA4DD                           ; A4D2 30 09                    0.
         cmp     #$11                            ; A4D4 C9 11                    ..
@@ -5510,8 +5514,9 @@ LA500:  lda     $2C                             ; A500 A5 2C                    
 LA539:  bmi     LA500                           ; A539 30 C5                    0.
 LA53B:  txa                                     ; A53B 8A                       .
         bcc     LA542                           ; A53C 90 04                    ..
-        .byte   $49                             ; A53E 49                       I
-LA53F:  bbs7    $69,LA54B+1                     ; A53F FF 69 0A                 .i.
+LA53F := *+1
+        eor     #$ff
+        adc     #$0a
 LA542:  adc     #$2F                            ; A542 69 2F                    i/
         iny                                     ; A544 C8                       .
         iny                                     ; A545 C8                       .
@@ -5527,11 +5532,11 @@ LA54B:  sty     $3D                             ; A54B 84 3D                    
         and     #$7F                            ; A551 29 7F                    ).
         sta     $FF,y                           ; A553 99 FF 00                 ...
         dec     $21                             ; A556 C6 21                    .!
-        .byte   $D0                             ; A558 D0                       .
-LA559:  asl     $A9                             ; A559 06 A9                    ..
-        rol     $99C8                           ; A55B 2E C8 99                 ...
-        .byte   $FF                             ; A55E FF                       .
-        brk                                     ; A55F 00                       .
+LA559 := *+1
+        BNE     LA560
+        LDA     #$2e
+        INY
+        STA     $00ff,Y
 LA560:  sty     $3B                             ; A560 84 3B                    .;
         ldy     $3D                             ; A562 A4 3D                    .=
 LA564:  txa                                     ; A564 8A                       .
@@ -5542,9 +5547,11 @@ LA564:  txa                                     ; A564 8A                       
         beq     LA572                           ; A56C F0 04                    ..
         cpy     #$93                            ; A56E C0 93                    ..
         bne     LA500                           ; A570 D0 8E                    ..
+LA574 := *+2
 LA572:  ldy     $3B                             ; A572 A4 3B                    .;
-LA574:  .byte   SAH                             ; A574 B9                       .
-LA575:  bbs7    $00,LA500                       ; A575 FF 00 88                 ...
+LA575 := *+1
+        lda     $00ff,Y
+        dey
         cmp     #$30                            ; A578 C9 30                    .0
         beq     LA574                           ; A57A F0 F8                    ..
         cmp     #$2E                            ; A57C C9 2E                    ..
@@ -5558,8 +5565,8 @@ LA581:  lda     #$2B                            ; A581 A9 2B                    
         sec                                     ; A58B 38                       8
         sbc     $22                             ; A58C E5 22                    ."
         tax                                     ; A58E AA                       .
-        .byte   $A9                             ; A58F A9                       .
-LA590:  .byte   $2D                             ; A590 2D                       -
+LA590 := *+1
+        lda     #$2d
 LA591:  sta     stack+1,y                       ; A591 99 01 01                 ...
         lda     #$45                            ; A594 A9 45                    .E
         sta     stack,y                         ; A596 99 00 01                 ...
@@ -7103,6 +7110,7 @@ LAFEB:  ror     $036A,x
         dex
         bpl     LAFEB
         bra     LB013
+
 LAFF3:  jsr     LB020
         eor     $F2
         and     $036A,x
@@ -7112,9 +7120,7 @@ LAFF3:  jsr     LB020
         asl     a
         ora     $F2
         sta     $036A,x
-        .byte   $7E
-        ror     a
-        .byte   $03
+        ror     $036a,X
 LB00B:  rol     $036A,x
         inx
         cpx     #$02
@@ -12404,7 +12410,7 @@ LD2FC:  ldy     $041E
 LD309:  stz     $041E
         stz     $041D
 LD30F:  rts
-; ----------------------------------------------------------------------------
+
 ;F1->0, F2->1, F3->2, ... F8->7
 FKEY_TO_INDEX:
         .byte 0   ;$85 F1
@@ -12415,7 +12421,7 @@ FKEY_TO_INDEX:
         .byte 3   ;$8A F4
         .byte 5   ;$8B F6
         .byte 7   ;$8C F8
-
+; ----------------------------------------------------------------------------
 LD318_X_0E:
         ldx     $039C
         phx
@@ -12429,33 +12435,35 @@ LD327:  ldy     #$F8
 LD329:  sty     $0357
         ldx     #$00
         ldy     #$00
-LD330:  phx
+LD330_OUTER_LOOP:
+        phx
         phy
         ldy     LD366_FKEY_COLUMNS,x
         ldx     $039C
         lda     #$89
         sec
         jsr     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
-        lda     #$65
+        lda     #$65 ;TODO graphics character
         ldy     #$09
         sta     ($BD),y
         ply
-LD345:  jsr     GO_APPL_LOAD_GO_KERN
+LD345_INNER_LOOP:
+        jsr     GO_APPL_LOAD_GO_KERN
         beq     LD359
-        cmp     #$08
+        cmp     #$08 ;todo length of an f-bar menu bar slot label?
         bcs     LD353
         jsr     LD36E_EXITQUITMORE
         bra     LD356
 LD353:  jsr     LD3A9_CLC_JMP_LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
 LD356:  iny
-        bne     LD345
-LD359:  lda     #$0D
+        bne     LD345_INNER_LOOP
+LD359:  lda     #$0D ;TODO signals an empty f-key menu bar slot?
         jsr     LD3A9_CLC_JMP_LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
         iny
         plx
         inx
         cpx     #$08
-        bcc     LD330
+        bcc     LD330_OUTER_LOOP
         rts
 LD366_FKEY_COLUMNS:
         ;      F1,F2,F3,F4,F5,F6,F7,F8
@@ -12474,7 +12482,7 @@ LD375_LOOP:
         inx
         txa
         and     #$03
-        bne     LD375_LOOP
+        bne     LD375_LOOP ;loop for 4 chars ("EXIT")
         rts
 ; ----------------------------------------------------------------------------
 LD382:  phy
