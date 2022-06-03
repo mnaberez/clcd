@@ -451,7 +451,7 @@ L80E0_DRAW_FKEY_BAR_AND_WAIT_FOR_FKEY_OR_RETURN:
         and     #$3F
         sta     $03BC
         ldx     #$04
-        jsr     LD230_JMP_LD233_PLUS_X
+        jsr     LD230_JMP_LD233_PLUS_X  ;-> LD255_X_04
         stz     $03BD
         lda     $03BC
         ldy     #$01
@@ -506,7 +506,7 @@ L8148:  ldx     #$00
         phx
         pha
         ldx     #$06
-        jsr     LD230_JMP_LD233_PLUS_X
+        jsr     LD230_JMP_LD233_PLUS_X  ;-> LD297_X_06
         pla
         plx
         rts
@@ -1384,7 +1384,7 @@ InitIOhw:
 L87BA_INIT_KEYB_AND_EDITOR:
         jsr     KEYB_INIT
         ldx     #$00
-        jsr     LD230_JMP_LD233_PLUS_X ;X=0 stores zeroes in some locations
+        jsr     LD230_JMP_LD233_PLUS_X ;-> LD247_X_00
         jmp     SCINIT_
 ; ----------------------------------------------------------------------------
 L87C5:  sei
@@ -1513,178 +1513,178 @@ L88DF:  lda     #$80
         sta     $0384
         rts
 ; ----------------------------------------------------------------------------
-L88E5:  jsr     L8A87                           ; 88E5 20 87 8A                  ..
-        lda     #$FF                            ; 88E8 A9 FF                    ..
-        sta     $0384                           ; 88EA 8D 84 03                 ...
-        lda     #$05                            ; 88ED A9 05                    ..
-        sta     $03E7                           ; 88EF 8D E7 03                 ...
-        ldy     #$FF                            ; 88F2 A0 FF                    ..
-L88F4:  phy                                     ; 88F4 5A                       Z
-        clc                                     ; 88F5 18                       .
-        cld                                     ; 88F6 D8                       .
-        lda     $03E7                           ; 88F7 AD E7 03                 ...
-        adc     #$04                            ; 88FA 69 04                    i.
-        tax                                     ; 88FC AA                       .
-        ldy     #$13                            ; 88FD A0 13                    ..
-        sec                                     ; 88FF 38                       8
-        jsr     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT                           ; 8900 20 F9 B6                  ..
-        ply                                     ; 8903 7A                       z
-        ldx     #$29                            ; 8904 A2 29                    .)
-L8906:  phy                                     ; 8906 5A                       Z
-        lda     ($E4),y                         ; 8907 B1 E4                    ..
-        pha                                     ; 8909 48                       H
-        phy                                     ; 890A 5A                       Z
-        txa                                     ; 890B 8A                       .
-        tay                                     ; 890C A8                       .
-        lda     ($BD),y                         ; 890D B1 BD                    ..
-        ply                                     ; 890F 7A                       z
-        sta     ($E4),y                         ; 8910 91 E4                    ..
-        txa                                     ; 8912 8A                       .
-        tay                                     ; 8913 A8                       .
-        pla                                     ; 8914 68                       h
-        sta     ($BD),y                         ; 8915 91 BD                    ..
-        ply                                     ; 8917 7A                       z
-        dey                                     ; 8918 88                       .
-        dex                                     ; 8919 CA                       .
-        bpl     L8906                           ; 891A 10 EA                    ..
-        dec     $03E7                           ; 891C CE E7 03                 ...
-        bpl     L88F4                           ; 891F 10 D3                    ..
-        rts                                     ; 8921 60                       `
+L88E5:  jsr     L8A87
+        lda     #$FF
+        sta     $0384
+        lda     #$05
+        sta     $03E7
+        ldy     #$FF
+L88F4:  phy
+        clc
+        cld
+        lda     $03E7
+        adc     #$04
+        tax
+        ldy     #$13
+        sec
+        jsr     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
+        ply
+        ldx     #$29
+L8906:  phy
+        lda     ($E4),y
+        pha
+        phy
+        txa
+        tay
+        lda     ($BD),y
+        ply
+        sta     ($E4),y
+        txa
+        tay
+        pla
+        sta     ($BD),y
+        ply
+        dey
+        dex
+        bpl     L8906
+        dec     $03E7
+        bpl     L88F4
+        rts
 ; ----------------------------------------------------------------------------
-L8922:  lda     #$05                            ; 8922 A9 05                    ..
-        sta     $03E7                           ; 8924 8D E7 03                 ...
-        ldx     #$A4                            ; 8927 A2 A4                    ..
-L8929:  jsr     L893C                           ; 8929 20 3C 89                  <.
-        ldx     #$0D                            ; 892C A2 0D                    ..
-        dec     $03E7                           ; 892E CE E7 03                 ...
-        bne     L8929                           ; 8931 D0 F6                    ..
-        ldx     #$A3                            ; 8933 A2 A3                    ..
-        jsr     L893C                           ; 8935 20 3C 89                  <.
-        lda     #$0D                            ; 8938 A9 0D                    ..
-        bra     L8948                           ; 893A 80 0C                    ..
+L8922:  lda     #$05
+        sta     $03E7
+        ldx     #$A4
+L8929:  jsr     L893C
+        ldx     #$0D
+        dec     $03E7
+        bne     L8929
+        ldx     #$A3
+        jsr     L893C
+        lda     #$0D
+        bra     L8948
 ; ----------------------------------------------------------------------------
-L893C:  phx                                     ; 893C DA                       .
-        jsr     L8964                           ; 893D 20 64 89                  d.
-        plx                                     ; 8940 FA                       .
-L8941:  txa                                     ; 8941 8A                       .
-        jsr     L897C                           ; 8942 20 7C 89                  |.
-        bcc     L8941                           ; 8945 90 FA                    ..
-        rts                                     ; 8947 60                       `
+L893C:  phx
+        jsr     L8964
+        plx
+L8941:  txa
+        jsr     L897C
+        bcc     L8941
+        rts
 ; ----------------------------------------------------------------------------
-L8948:  cmp     #$07 ;CHR$(7) Bell              ; 8948 C9 07                    ..
-        bne     L894F                           ; 894A D0 03                    ..
-        jmp     BELL                            ; 894C 4C 5C C6                 L\.
+L8948:  cmp     #$07 ;CHR$(7) Bell
+        bne     L894F
+        jmp     BELL
 ; ----------------------------------------------------------------------------
-L894F:  cmp     #$93 ;CHR$(147) Clear Screen    ; 894F C9 93                    ..
-        beq     L8922                           ; 8951 F0 CF                    ..
-        cmp     #$0D ;CHR$(13) Carriage Return  ; 8953 C9 0D                    ..
-        bne     L897C                           ; 8955 D0 25                    .%
+L894F:  cmp     #$93 ;CHR$(147) Clear Screen
+        beq     L8922
+        cmp     #$0D ;CHR$(13) Carriage Return
+        bne     L897C
 L8959 := *+2
-        jsr     L897C                           ; 8956 20 7c 89
-        lda     $03e7                           ; 8959 ad e7 03
-        cmp     #$04                            ; 895D C9 04                    ..
-        bcs     L8980                           ; 895F B0 1F                    ..
-        inc     $03E7                           ; 8961 EE E7 03                 ...
-L8964:  clc                                     ; 8964 18                       .
-        cld                                     ; 8965 D8                       .
-        lda     $03E7                           ; 8966 AD E7 03                 ...
-        adc     #$04                            ; 8969 69 04                    i.
-        tax                                     ; 896B AA                       .
-        ldy     #$13                            ; 896C A0 13                    ..
-        lda     #$29                            ; 896E A9 29                    .)
-        pha                                     ; 8970 48                       H
-        sec                                     ; 8971 38                       8
-        jsr     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT                           ; 8972 20 F9 B6                  ..
-        lda     #$65                            ; 8975 A9 65                    .e
-        ply                                     ; 8977 7A                       z
-        sta     ($BD),y                         ; 8978 91 BD                    ..
-        lda     #$A7                            ; 897A A9 A7                    ..
-L897C:  clc                                     ; 897C 18                       .
-        jmp     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT                           ; 897D 4C F9 B6                 L..
+        jsr     L897C
+        lda     $03e7
+        cmp     #$04
+        bcs     L8980
+        inc     $03E7
+L8964:  clc
+        cld
+        lda     $03E7
+        adc     #$04
+        tax
+        ldy     #$13
+        lda     #$29
+        pha
+        sec
+        jsr     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
+        lda     #$65
+        ply
+        sta     ($BD),y
+        lda     #$A7
+L897C:  clc
+        jmp     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
 ; ----------------------------------------------------------------------------
-L8980:  stz     $03E7                           ; 8980 9C E7 03                 ...
-L8983:  inc     $03E7                           ; 8983 EE E7 03                 ...
-        jsr     L8964                           ; 8986 20 64 89                  d.
-        lda     $03E7                           ; 8989 AD E7 03                 ...
-        cmp     #$04                            ; 898C C9 04                    ..
-        beq     L89A1                           ; 898E F0 11                    ..
-        ldy     #$AA                            ; 8990 A0 AA                    ..
-L8992:  lda     ($BD),y                         ; 8992 B1 BD                    ..
-        jsr     L89A8                           ; 8994 20 A8 89                  ..
-        sta     ($BD),y                         ; 8997 91 BD                    ..
-        jsr     L89A8                           ; 8999 20 A8 89                  ..
-        dey                                     ; 899C 88                       .
-        bmi     L8992                           ; 899D 30 F3                    0.
-        bra     L8983                           ; 899F 80 E2                    ..
-L89A1:  lda     #$0D                            ; 89A1 A9 0D                    ..
-        jsr     L897C                           ; 89A3 20 7C 89                  |.
-        bra     L8964                           ; 89A6 80 BC                    ..
-L89A8:  tax                                     ; 89A8 AA                       .
-        tya                                     ; 89A9 98                       .
-        eor     #$80                            ; 89AA 49 80                    I.
-        tay                                     ; 89AC A8                       .
-        txa                                     ; 89AD 8A                       .
-        rts                                     ; 89AE 60                       `
+L8980:  stz     $03E7
+L8983:  inc     $03E7
+        jsr     L8964
+        lda     $03E7
+        cmp     #$04
+        beq     L89A1
+        ldy     #$AA
+L8992:  lda     ($BD),y
+        jsr     L89A8
+        sta     ($BD),y
+        jsr     L89A8
+        dey
+        bmi     L8992
+        bra     L8983
+L89A1:  lda     #$0D
+        jsr     L897C
+        bra     L8964
+L89A8:  tax
+        tya
+        eor     #$80
+        tay
+        txa
+        rts
 ; ----------------------------------------------------------------------------
-L89AF:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR                           ; 89AF 20 39 8A                  9.
-        bcs     L89B5 ;branch if no error                          ; 89B2 B0 01                    ..
-        rts                                     ; 89B4 60                       `
+L89AF:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
+        bcs     L89B5 ;branch if no error
+        rts
 ; ----------------------------------------------------------------------------
-L89B5:  lda     $020A                           ; 89B5 AD 0A 02                 ...
-L89B8:  bne     L89BD                           ; 89B8 D0 03                    ..
-        dec     $020B                           ; 89BA CE 0B 02                 ...
-L89BD:  dec     $020A                           ; 89BD CE 0A 02                 ...
-        jsr     LD3F6                           ; 89C0 20 F6 D3                  ..
-        jmp     L8A81                           ; 89C3 4C 81 8A                 L..
+L89B5:  lda     $020A
+L89B8:  bne     L89BD
+        dec     $020B
+L89BD:  dec     $020A
+        jsr     LD3F6
+        jmp     L8A81
 ; ----------------------------------------------------------------------------
-L89C6:  jsr     L89AF                           ; 89C6 20 AF 89                  ..
-        bcc     L89E1                           ; 89C9 90 16                    ..
-        lda     V1541_ACTIV_E8                             ; 89CB A5 E8                    ..
-        sta     $020E                           ; 89CD 8D 0E 02                 ...
-        sta     ($E4)                           ; 89D0 92 E4                    ..
-        lda     V1541_ACTIV_E9                             ; 89D2 A5 E9                    ..
-        sta     $020F                           ; 89D4 8D 0F 02                 ...
-        ldy     #$01                            ; 89D7 A0 01                    ..
-        sta     ($E4),y                         ; 89D9 91 E4                    ..
-        iny                                     ; 89DB C8                       .
-        lda     #$02                            ; 89DC A9 02                    ..
-        sta     ($E4),y                         ; 89DE 91 E4                    ..
-        sec                                     ; 89E0 38                       8
-L89E1:  rts                                     ; 89E1 60                       `
+L89C6:  jsr     L89AF
+        bcc     L89E1
+        lda     V1541_ACTIV_E8
+        sta     $020E
+        sta     ($E4)
+        lda     V1541_ACTIV_E9
+        sta     $020F
+        ldy     #$01
+        sta     ($E4),y
+        iny
+        lda     #$02
+        sta     ($E4),y
+        sec
+L89E1:  rts
 ; ----------------------------------------------------------------------------
-L89E2:  jsr     L8A81                           ; 89E2 20 81 8A                  ..
-L89E5:  lda     $020E                           ; 89E5 AD 0E 02                 ...
-        cmp     V1541_DATA_BUF+1                ; 89E8 CD 19 02                 ...
-        bne     L89F2                           ; 89EB D0 05                    ..
-        jsr     L89FF                           ; 89ED 20 FF 89                  ..
-        bra     L89E2                           ; 89F0 80 F0                    ..
-L89F2:  jsr     L8A61                           ; 89F2 20 61 8A                  a.
-        bcs     L89E5                           ; 89F5 B0 EE                    ..
-        sec                                     ; 89F7 38                       8
-        rts                                     ; 89F8 60                       `
+L89E2:  jsr     L8A81
+L89E5:  lda     $020E
+        cmp     V1541_DATA_BUF+1
+        bne     L89F2
+        jsr     L89FF
+        bra     L89E2
+L89F2:  jsr     L8A61
+        bcs     L89E5
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-L89F9:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER  ; 89F9 20 D5 8A                  ..
-        bcs     L89FF ;branch if no error       ; 89FC B0 01                    ..
-        rts                                     ; 89FE 60                       `
+L89F9:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        bcs     L89FF ;branch if no error
+        rts
 ; ----------------------------------------------------------------------------
-L89FF:  lda     $0216                           ; 89FF AD 16 02                 ...
-        pha                                     ; 8A02 48                       H
-        lda     $E5                             ; 8A03 A5 E5                    ..
-        pha                                     ; 8A05 48                       H
-        jsr     L8A81                           ; 8A06 20 81 8A                  ..
-        stz     $D9                             ; 8A09 64 D9                    d.
-        pla                                     ; 8A0B 68                       h
-        sta     $DA                             ; 8A0C 85 DA                    ..
-        ldy     #$00                            ; 8A0E A0 00                    ..
-L8A10:  lda     ($E4),y                         ; 8A10 B1 E4                    ..
-        tax                                     ; 8A12 AA                       .
-        pla                                     ; 8A13 68                       h
-L8A14:  pha                                     ; 8A14 48                       H
-        sta     MMU_KERN_WINDOW                 ; 8A15 8D 00 FF                 ...
-        lda     ($D9),y                         ; 8A18 B1 D9                    ..
-L8A1A:  pha                                     ; 8A1A 48                       H
-        txa                                     ; 8A1B 8A                       .
-        sta     ($D9),y                         ; 8A1C 91 D9                    ..
+L89FF:  lda     $0216
+        pha
+        lda     $E5
+        pha
+        jsr     L8A81
+        stz     $D9
+        pla
+        sta     $DA
+        ldy     #$00
+L8A10:  lda     ($E4),y
+        tax
+        pla
+L8A14:  pha
+        sta     MMU_KERN_WINDOW
+        lda     ($D9),y
+L8A1A:  pha
+        txa
+        sta     ($D9),y
 L8A20 := *+2
         lda     $0216
 L8A23 := *+2
@@ -1692,28 +1692,28 @@ L8A23 := *+2
         pla
         sta     ($e4),y
         iny
-        bne     L8A10                           ; 8A28 D0 E6                    ..
-        pla                                     ; 8A2A 68                       h
-        inc     $020A                           ; 8A2B EE 0A 02                 ...
-        bne     L8A33                           ; 8A2E D0 03                    ..
-        inc     $020B                           ; 8A30 EE 0B 02                 ...
-L8A33:  jsr     LD3F6                           ; 8A33 20 F6 D3                  ..
-        jmp     L8A81                           ; 8A36 4C 81 8A                 L..
+        bne     L8A10
+        pla
+        inc     $020A
+        bne     L8A33
+        inc     $020B
+L8A33:  jsr     LD3F6
+        jmp     L8A81
 ; ----------------------------------------------------------------------------
 L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR:
-        ldx     $020B                           ; 8A39 AE 0B 02                 ...
-        lda     $020A                           ; 8A3C AD 0A 02                 ...
-        bne     L8A42                           ; 8A3F D0 01                    ..
-        dex                                     ; 8A41 CA                       .
-L8A42:  dec     a                               ; 8A42 3A                       :
-        cpx     $020D                           ; 8A43 EC 0D 02                 ...
-        bne     L8A4E_25_WRITE_ERROR                           ; 8A46 D0 06                    ..
-        cmp     $020C                           ; 8A48 CD 0C 02                 ...
-        bne     L8A4E_25_WRITE_ERROR                           ; 8A4B D0 01                    ..
-        clc                                     ; 8A4D 18                       .
+        ldx     $020B
+        lda     $020A
+        bne     L8A42
+        dex
+L8A42:  dec     a
+        cpx     $020D
+        bne     L8A4E_25_WRITE_ERROR
+        cmp     $020C
+        bne     L8A4E_25_WRITE_ERROR
+        clc
 L8A4E_25_WRITE_ERROR:
-        lda     #doserr_25_write_err ;25 write error (write-verify error)                           ; 8A4E A9 19                    ..
-        rts                                     ; 8A50 60                       `
+        lda     #doserr_25_write_err ;25 write error (write-verify error)
+        rts
 ; ----------------------------------------------------------------------------
         cld                                     ; 8A51 D8                       .
         sec                                     ; 8A52 38                       8
@@ -1792,24 +1792,24 @@ L8ACD:  stx     $020E                           ; 8ACD 8E 0E 02                 
 ; ----------------------------------------------------------------------------
 ;maybe returns a cbm dos error code
 L8AD5_MAYBE_READS_BLOCK_HEADER:
-        jsr     L8AA9                           ; 8AD5 20 A9 8A                  ..
-        jsr     L8AEE                           ; 8AD8 20 EE 8A                  ..
-        beq     L8AFA                           ; 8ADB F0 1D                    ..
-        jsr     L8A81                           ; 8ADD 20 81 8A                  ..
-L8AE0:  jsr     L8AEE                           ; 8AE0 20 EE 8A                  ..
-        beq     L8AFA                           ; 8AE3 F0 15                    ..
-        jsr     L8A61                           ; 8AE5 20 61 8A                  a.
-        bcs     L8AE0                           ; 8AE8 B0 F6                    ..
-        clc                                     ; 8AEA 18                       .
-        lda     #doserr_20_read_err ;20 read error (block header not found)                           ; 8AEB A9 14                    ..
-        rts                                     ; 8AED 60                       `
+        jsr     L8AA9
+        jsr     L8AEE
+        beq     L8AFA
+        jsr     L8A81
+L8AE0:  jsr     L8AEE
+        beq     L8AFA
+        jsr     L8A61
+        bcs     L8AE0
+        clc
+        lda     #doserr_20_read_err ;20 read error (block header not found)
+        rts
 ; ----------------------------------------------------------------------------
-L8AEE:  lda     V1541_ACTIV_E8                             ; 8AEE A5 E8                    ..
-        cmp     $020E                           ; 8AF0 CD 0E 02                 ...
-        bne     L8AFA                           ; 8AF3 D0 05                    ..
-        lda     V1541_ACTIV_E9                             ; 8AF5 A5 E9                    ..
-        cmp     $020F                           ; 8AF7 CD 0F 02                 ...
-L8AFA:  rts                                     ; 8AFA 60                       `
+L8AEE:  lda     V1541_ACTIV_E8
+        cmp     $020E
+        bne     L8AFA
+        lda     V1541_ACTIV_E9
+        cmp     $020F
+L8AFA:  rts
 ; ----------------------------------------------------------------------------
         cpx     $DA                             ; 8AFB E4 DA                    ..
         bne     L8B08                           ; 8AFD D0 09                    ..
@@ -6396,7 +6396,7 @@ LAB90:  php
         bcc     LAB97
         ldx     #$06
 LAB97:  clc
-        jsr     LD230_JMP_LD233_PLUS_X
+        jsr     LD230_JMP_LD233_PLUS_X  ;-> LD297_X_06
         ldx     V1541_FILE_TYPE
         lda     LAB71,x
         eor     #$E0
@@ -8222,7 +8222,7 @@ LB7A7:  beq     LB7AB
         rts
 ; ----------------------------------------------------------------------------
 LB7AB:
-        jsr     LB903                           
+        jsr     SET_CURSOR_XY_FROM_PTR_B0_AND_0404_THEN_TURN_ON_CURSOR
 LB7AE_LOOP_UNTIL_KEY:
         jsr     LBFF2
         jsr     LB688_GET_KEY_NONBLOCKING
@@ -8367,77 +8367,74 @@ LB8AD_8D_SHIFT_RETURN:
         lda     $0403
         jmp     LB8A4
 ; ----------------------------------------------------------------------------
-;TODO probably a JSR
-LB8B3:  .byte   $20                             ; B8B3 20
-LB8B4:  cpx     EAL                             ; B8B4 E4 B2                    ..
-        ldy     #$00                            ; B8B6 A0 00                    ..
-        ldx     #$00                            ; B8B8 A2 00                    ..
-        lda     $0403                           ; B8BA AD 03 04                 ...
-        sec                                     ; B8BD 38                       8
-        sbc     $03FF                           ; B8BE ED FF 03                 ...
-;TODO probably code
-        .byte   $90                             ; B8C1 90                       .
-LB8C2:  php                                     ; B8C2 08                       .
-        tax                                     ; B8C3 AA                       .
-        lda     $03FF                           ; B8C4 AD FF 03                 ...
-        sbc     #$01                            ; B8C7 E9 01                    ..
-        bne     LB8CE                           ; B8C9 D0 03                    ..
-LB8CB:  lda     $0403                           ; B8CB AD 03 04                 ...
-LB8CE:  sta     $0404                           ; B8CE 8D 04 04                 ...
-;TODO probably code
-LB8D1:  .byte   $EC                             ; B8D1 EC                       .
-LB8D2:  .byte   $02                             ; B8D2 02                       .
-        tsb     $F0                             ; B8D3 04 F0                    ..
-        ora     $70BD,x                         ; B8D5 1D BD 70                 ..p
-        tsb     $DA                             ; B8D8 04 DA                    ..
-        jsr     LB09B                           ; B8DA 20 9B B0                  ..
-        plx                                     ; B8DD FA                       .
-        sta     $0401                           ; B8DE 8D 01 04                 ...
-        lda     $0400                           ; B8E1 AD 00 04                 ...
-        and     #$80                            ; B8E4 29 80                    ).
-        ora     $0401                           ; B8E6 0D 01 04                 ...
-LB8E9:  sta     ($F6),y                         ; B8E9 91 F6                    ..
-        inx                                     ; B8EB E8                       .
-        iny                                     ; B8EC C8                       .
-        cpy     $03FF                           ; B8ED CC FF 03                 ...
-        bne     LB8D1                           ; B8F0 D0 DF                    ..
-        rts                                     ; B8F2 60                       `
+LB8B3:  jsr     LB2E4_HIDE_CURSOR
+        ldy     #$00
+        ldx     #$00
+        lda     $0403
+        sec
+        sbc     $03FF
+        bcc     LB8CB
+        tax
+        lda     $03FF
+        sbc     #$01
+        bne     LB8CE
+LB8CB:  lda     $0403
+LB8CE:  sta     $0404
+LB8D1_LOOP:
+        cpx     $0402
+        beq     LB8F3
+        lda     L0470,X
+        phx
+        jsr     LB09B
+        plx
+        sta     $0401
+        lda     $0400
+        and     #$80
+        ora     $0401
+LB8E9:  sta     ($F6),y
+        inx
+        iny
+        cpy     $03FF
+        bne     LB8D1_LOOP
+        rts
+
+LB8F3:  lda     $0400
+        and     #$80
+        ora     #$20
+LB8FA_LOOP:
+        sta     ($F6),y
+        iny
+        cpy     $03FF
+        bne     LB8FA_LOOP
+        rts
 ; ----------------------------------------------------------------------------
-LB8F3:  lda     $0400                           ; B8F3 AD 00 04                 ...
-        and     #$80                            ; B8F6 29 80                    ).
-        ora     #$20                            ; B8F8 09 20                    .
-LB8FA:  sta     ($F6),y                         ; B8FA 91 F6                    ..
-        iny                                     ; B8FC C8                       .
-        cpy     $03FF                           ; B8FD CC FF 03                 ...
-        .byte   $D0                             ; B900 D0                       .
-LB901:  sed                                     ; B901 F8                       .
-        rts                                     ; B902 60                       `
-; ----------------------------------------------------------------------------
-LB903:  ldy     #$00                            ; B903 A0 00                    ..
-        lda     ($B0),y                         ; B905 B1 B0                    ..
-        tax                                     ; B907 AA                       .
-        iny                                     ; B908 C8                       .
-        lda     ($B0),y                         ; B909 B1 B0                    ..
-        clc                                     ; B90B 18                       .
-        .byte   $6D                             ; B90C 6D                       m
-        .byte   $04                             ; B90D 04                       .
-LB90E:  tsb     INSRT                           ; B90E 04 A8                    ..
-        clc                                     ; B910 18                       .
-        jsr     PLOT_                           ; B911 20 01 FE                  ..
-        jsr     LB2D6_SHOW_CURSOR                           ; B914 20 D6 B2                  ..
-        rts                                     ; B917 60                       `
+SET_CURSOR_XY_FROM_PTR_B0_AND_0404_THEN_TURN_ON_CURSOR:
+        ldy     #$00
+        lda     ($B0),y     ;X position
+        tax
+
+        iny
+        lda     ($B0),y     ;Y position
+        clc
+        adc     $0404       ;Y = Y + value at $0404
+        tay
+
+        clc
+        jsr     PLOT_
+        jsr     LB2D6_SHOW_CURSOR
+        rts
 ; ----------------------------------------------------------------------------
 LB918_CHRIN___OR_LB688_GET_KEY_NONBLOCKING:
-        lda     DFLTN                           ; B918 AD 85 03                 ...
-        and     #$1F                            ; B91B 29 1F                    ).
-        bne     CHRIN__                         ; B91D D0 06                    ..
-LB91F:  jmp     LB688_GET_KEY_NONBLOCKING       ; B91F 4C 88 B6
+        lda     DFLTN
+        and     #$1F
+        bne     CHRIN__
+LB91F:  jmp     LB688_GET_KEY_NONBLOCKING
 ; ----------------------------------------------------------------------------
 LB922_PLY_PLX_RTS:
-        ply                                     ; B922 7A                       z
-        plx                                     ; B923 FA                       .
+        ply
+        plx
 LB924_RTS:
-        rts                                     ; B924 60                       `
+        rts
 ; ----------------------------------------------------------------------------
 CHRIN__:phx
         phy
@@ -10769,7 +10766,7 @@ MON_START:
         stx     $03BB
         txs
         ldx     #$00
-        jsr     LD230_JMP_LD233_PLUS_X
+        jsr     LD230_JMP_LD233_PLUS_X  ;-> LD247_X_00
         jsr     PRIMM
         .byte   $0D,"COMMODORE LCD MONITOR",0
         bra     LC748
@@ -12281,87 +12278,87 @@ LD22E:  ply                                     ; D22E 7A                       
         rts                                     ; D22F 60                       `
 ; ----------------------------------------------------------------------------
 LD230_JMP_LD233_PLUS_X:
-        jmp     (LD233,x)                       ; D230 7C 33 D2                 |3.
-LD233:  .addr   LD247_X_00                      ; D233 47 D2                    G.
-        .addr   LD28C_X_02                      ; D235 8C D2                    ..
-        .addr   LD255_X_04                      ; D237 55 D2                    U.
-        .addr   LD297_X_06                      ; D239 97 D2                    ..
-        .addr   LD26A_X_08                      ; D23B 6A D2                    j.
-        .addr   LD263_X_0A                      ; D23D 63 D2                    c.
-        .addr   LD2B2_X_0C                      ; D23F B2 D2                    ..
-        .addr   LD318_X_0E                      ; D241 18 D3                    ..
-        .addr   LD252_X_10                      ; D243 52 D2                    R.
-        .addr   LD294_X_12                      ; D245 94 D2                    ..
+        jmp     (LD233,x)
+LD233:  .addr   LD247_X_00
+        .addr   LD28C_X_02
+        .addr   LD255_X_04
+        .addr   LD297_X_06
+        .addr   LD26A_X_08
+        .addr   LD263_X_0A
+        .addr   LD2B2_X_0C
+        .addr   LD318_X_0E
+        .addr   LD252_X_10
+        .addr   LD294_X_12
 ; ----------------------------------------------------------------------------
 LD247_X_00:
-        stz     $041C                           ; D247 9C 1C 04                 ...
-        sta     $F8                             ; D24A 85 F8                    ..
-        sty     $F9                             ; D24C 84 F9                    ..
-        stz     $041D                           ; D24E 9C 1D 04                 ...
-        rts                                     ; D251 60                       `
+        stz     $041C
+        sta     $F8
+        sty     $F9
+        stz     $041D
+        rts
 ; ----------------------------------------------------------------------------
 LD252_X_10:
-        lda     #$10                            ; D252 A9 10                    ..
-        .byte   $2C                             ; D254 2C                       ,
+        lda     #$10
+        .byte   $2C
         ;Fall through
 ; ----------------------------------------------------------------------------
 LD255_X_04:
-        lda     #$20                            ; D255 A9 20                    .
-        ldx     $041C                           ; D257 AE 1C 04                 ...
-        beq     LD262                           ; D25A F0 06                    ..
-        tsb     $041C                           ; D25C 0C 1C 04                 ...
-        stz     $041D                           ; D25F 9C 1D 04                 ...
-LD262:  rts                                     ; D262 60                       `
+        lda     #$20
+        ldx     $041C
+        beq     LD262
+        tsb     $041C
+        stz     $041D
+LD262:  rts
 ; ----------------------------------------------------------------------------
 LD263_X_0A:
-        sta     $041D                           ; D263 8D 1D 04                 ...
-        stz     $041E                           ; D266 9C 1E 04                 ...
-        rts                                     ; D269 60                       `
+        sta     $041D
+        stz     $041E
+        rts
 ; ----------------------------------------------------------------------------
 LD26A_X_08:
-        sty     $C0                             ; D26A 84 C0                    ..
-        sta     $BF                             ; D26C 85 BF                    ..
-        lda     $041C                           ; D26E AD 1C 04                 ...
-        beq     LD277                           ; D271 F0 04                    ..
-        and     #$38                            ; D273 29 38                    )8
-        beq     LD278                           ; D275 F0 01                    ..
-LD277:  rts                                     ; D277 60                       `
+        sty     $C0
+        sta     $BF
+        lda     $041C
+        beq     LD277
+        and     #$38
+        beq     LD278
+LD277:  rts
 
-LD278:  lda     $041D                           ; D278 AD 1D 04                 ...
-        beq     LD28A                           ; D27B F0 0D                    ..
-        lda     FKEY_TO_INDEX-$85,x  ;-$85 for F1       ; D27D BD 8B D2                 ...
-        eor     $041C                           ; D280 4D 1C 04                 M..
-        and     $07                             ; D283 25 07                    %.
-        bne     LD28A                           ; D285 D0 03                    ..
-        stz     $041D                           ; D287 9C 1D 04                 ...
-LD28A:  bra     LD297_X_06                      ; D28A 80 0B
+LD278:  lda     $041D
+        beq     LD28A
+        lda     FKEY_TO_INDEX-$85,x  ;-$85 for F1
+        eor     $041C
+        and     $07
+        bne     LD28A
+        stz     $041D
+LD28A:  bra     LD297_X_06
 ; ----------------------------------------------------------------------------
 LD28C_X_02:
-        sty     $039C                           ; D28C 8C 9C 03                 ...
-        and     #$CF                            ; D28F 29 CF                    ).
-        sta     $041C                           ; D291 8D 1C 04                 ...
+        sty     $039C
+        and     #$CF
+        sta     $041C
         ;Fall through
 ; ----------------------------------------------------------------------------
 LD294_X_12:
-        lda     #$10                            ; D294 A9 10                    ..
-        .byte   $2C                             ; D296 2C                       ,
+        lda     #$10
+        .byte   $2C
         ;Fall through (skipping two bytes)
 ; ----------------------------------------------------------------------------
 LD297_X_06:
-        lda     #$20                            ; D297 A9 20                    .
-        ldx     $041C                           ; D299 AE 1C 04                 ...
-        beq     LD2AA                           ; D29C F0 0C                    ..
-        trb     $041C                           ; D29E 1C 1C 04                 ...
-        lda     #$30                            ; D2A1 A9 30                    .0
-        bit     $041C                           ; D2A3 2C 1C 04                 ,..
-        bne     LD2AA                           ; D2A6 D0 02                    ..
-        bvs     LD327                           ; D2A8 70 7D                    p}
-LD2AA:  rts                                     ; D2AA 60                       `
+        lda     #$20
+        ldx     $041C
+        beq     LD2AA
+        trb     $041C
+        lda     #$30
+        bit     $041C
+        bne     LD2AA
+        bvs     LD327
+LD2AA:  rts
 
 LD2AB_UPDATE_041D_RTS:
-        lda     $041D                           ; D2AB AD 1D 04                 ...
-        stz     $041D                           ; D2AE 9C 1D 04                 ...
-        rts                                     ; D2B1 60                       `
+        lda     $041D
+        stz     $041D
+        rts
 ; ----------------------------------------------------------------------------
 LD2B2_X_0C:
         lda     $041D
@@ -12617,6 +12614,7 @@ LD46D:  asl     a                               ; D46D 0A                       
         bpl     LD461                           ; D47B 10 E4                    ..
         jmp     L8A81                           ; D47D 4C 81 8A                 L..
 ; ----------------------------------------------------------------------------
+;TODO probably data
         phx                                     ; D480 DA                       .
         ldx     #$7F                            ; D481 A2 7F                    ..
         brk                                     ; D483 00                       .
@@ -15696,18 +15694,18 @@ LF050:
         .byte   $0D,"    PC  SR AC XR YR SP"
         .byte   $0d,"; ",$1b,"Q",0
         lda     $02                             ; F070 A5 02                    ..
-        jsr     LB8D2                           ; F072 20 D2 B8                  ..
+        jsr     LF8D2-$4000                     ; F072 20 D2 B8                  ..
         txa                                     ; F075 8A                       .
-        jsr     LFFD2_CHROUT                           ; F076 20 D2 FF                  ..
+        jsr     LFFD2_CHROUT                    ; F076 20 D2 FF                  ..
         lda     $03                             ; F079 A5 03                    ..
-        jsr     LB8C2                           ; F07B 20 C2 B8                  ..
+        jsr     LF8C2-$4000                     ; F07B 20 C2 B8                  ..
         ldy     #$02                            ; F07E A0 02                    ..
 LF080:  lda     $02,y                           ; F080 B9 02 00                 ...
         jsr     LF8A5-$4000                     ; F083 20 A5 B8                  ..
         iny                                     ; F086 C8                       .
         cpy     #$08                            ; F087 C0 08                    ..
         bcc     LF080                           ; F089 90 F5                    ..
-LF08B:  jsr     LB8B4                           ; F08B 20 B4 B8                  ..
+LF08B:  jsr     LF8B4-$4000                     ; F08B 20 B4 B8                  ..
         ldx     #$00                            ; F08E A2 00                    ..
         stx     $7A                             ; F090 86 7A                    .z
         jsr     LFFCF_CHRIN ;BASIN              ; F092 20 CF FF                  ..
@@ -15826,13 +15824,13 @@ LF142:  stx     $02C8                           ; F142 8E C8 02                 
 ; ----------------------------------------------------------------------------
 ;Memory command
 LF152:  bcs     LF15C                           ; F152 B0 08                    ..
-        jsr     LB901                           ; F154 20 01 B9                  ..
+        jsr     LF901-$4000                     ; F154 20 01 B9                  ..
         jsr     LB7A7                           ; F157 20 A7 B7                  ..
         bcc     LF162                           ; F15A 90 06                    ..
 LF15C:  lda     #$0B                            ; F15C A9 0B                    ..
         sta     $60                             ; F15E 85 60                    .`
         bne     LF177                           ; F160 D0 15                    ..
-LF162:  jsr     LB90E                           ; F162 20 0E B9                  ..
+LF162:  jsr     LF90E-$4000                     ; F162 20 0E B9                  ..
         bcc     LF191                           ; F165 90 2A                    .*
         ldx     #$03                            ; F167 A2 03                    ..
         bit     $D7                             ; F169 24 D7                    $.
@@ -15843,7 +15841,7 @@ LF16E:  lsr     $62                             ; F16E 46 62                    
         ror     $60                             ; F172 66 60                    f`
         dex                                     ; F174 CA                       .
         bne     LF16E                           ; F175 D0 F7                    ..
-LF177:  jsr     LFFE1_STOP                           ; F177 20 E1 FF                  ..
+LF177:  jsr     LFFE1_STOP                      ; F177 20 E1 FF                  ..
         beq     LF18E                           ; F17A F0 12                    ..
         jsr     LF1E8-$4000                     ; F17C 20 E8 B1                  ..
         lda     #$08                            ; F17F A9 08                    ..
@@ -15851,7 +15849,7 @@ LF177:  jsr     LFFE1_STOP                           ; F177 20 E1 FF            
         bpl     LF186                           ; F183 10 01                    ..
         asl     a                               ; F185 0A                       .
 LF186:  jsr     LB952                           ; F186 20 52 B9                  R.
-        jsr     LB922_PLY_PLX_RTS                           ; F189 20 22 B9                  ".
+        jsr     LB922_PLY_PLX_RTS               ; F189 20 22 B9                  ".
         bcs     LF177                           ; F18C B0 E9                    ..
 LF18E:  jmp     LF08B-$4000                     ; F18E 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
@@ -15871,7 +15869,7 @@ LF1A8:  jmp     LF08B-$4000                     ; F1A8 4C 8B B0                 
 ; ----------------------------------------------------------------------------
 ;Modify memory command
 LF1AB:  bcs     LF1C9                           ; F1AB B0 1C                    ..
-        jsr     LB901                           ; F1AD 20 01 B9                  ..
+        jsr     LF901-$4000                     ; F1AD 20 01 B9                  ..
         ldy     #$00                            ; F1B0 A0 00                    ..
 LF1B2:  jsr     LB7A7                           ; F1B2 20 A7 B7                  ..
         bcs     LF1C9                           ; F1B5 B0 12                    ..
@@ -15900,7 +15898,7 @@ LF1DF:  jsr     LB974                           ; F1DF 20 74 B9                 
         jsr     LFF6E                           ; F1E2 20 6E FF                  n.
         jmp     LF08B-$4000                     ; F1E5 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
-LF1E8:  jsr     LB8B4                           ; F1E8 20 B4 B8                  ..
+LF1E8:  jsr     LF8B4-$4000                     ; F1E8 20 B4 B8                  ..
         lda     #$3E                            ; F1EB A9 3E                    .>
         jsr     LFFD2_CHROUT                           ; F1ED 20 D2 FF                  ..
         jsr     LF892-$4000                     ; F1F0 20 92 B8                  ..
@@ -15908,7 +15906,7 @@ LF1E8:  jsr     LB8B4                           ; F1E8 20 B4 B8                 
         beq     LF1FA                           ; F1F5 F0 03                    ..
 LF1F7:  jsr     LF8A8-$4000                           ; F1F7 20 A8 B8                  ..
 LF1FA:  jsr     LF11A-$4000                     ; F1FA 20 1A B1                  ..
-        jsr     LB8C2                           ; F1FD 20 C2 B8                  ..
+        jsr     LF8C2-$4000                           ; F1FD 20 C2 B8                  ..
         iny                                     ; F200 C8                       .
         cpy     #$08                            ; F201 C0 08                    ..
         bit     $D7                             ; F203 24 D7                    $.
@@ -15975,7 +15973,7 @@ LF26D:  lda     $0AB7,x                         ; F26D BD B7 0A                 
         bpl     LF26D                           ; F273 10 F8                    ..
         lda     #$80                            ; F275 A9 80                    ..
         sta     $0AB3                           ; F277 8D B3 0A                 ...
-LF27A:  jsr     LB8B4                           ; F27A 20 B4 B8                  ..
+LF27A:  jsr     LF8B4-$4000                           ; F27A 20 B4 B8                  ..
         ldy     #$00                            ; F27D A0 00                    ..
 LF27F:  jsr     LFFE1_STOP                           ; F27F 20 E1 FF                  ..
         beq     LF2CB                           ; F282 F0 47                    .G
@@ -15990,29 +15988,29 @@ LF28F:  ldx     $62                             ; F28F A6 62                    
         sei                                     ; F291 78                       x
         bit     $93                             ; F292 24 93                    $.
         bpl     LF299                           ; F294 10 03                    ..
-        jsr     LFF77  ; F296 20 77 FF                  w.
+        jsr     LFF77                           ; F296 20 77 FF                  w.
 LF299:  ldx     $62                             ; F299 A6 62                    .b
         jsr     LFF7A                           ; F29B 20 7A FF                  z.
         cli                                     ; F29E 58                       X
         beq     LF2AA                           ; F29F F0 09                    ..
-        jsr     LF892-$4000                           ; F2A1 20 92 B8                  ..
-        jsr     LF8A8-$4000                           ; F2A4 20 A8 B8                  ..
-        jsr     LF8A8-$4000                           ; F2A7 20 A8 B8                  ..
+        jsr     LF892-$4000                     ; F2A1 20 92 B8                  ..
+        jsr     LF8A8-$4000                     ; F2A4 20 A8 B8                  ..
+        jsr     LF8A8-$4000                     ; F2A7 20 A8 B8                  ..
 LF2AA:  bit     $0AB3                           ; F2AA 2C B3 0A                 ,..
-        bmi     LF2BA_PLY_PLX_ACPTR_IF_ST_OK_ELSE_0D   ; F2AD 30 0B                    0.
+        bmi     LF2BA                           ; F2AD 30 0B                    0.
         inc     $60                             ; F2AF E6 60                    .`
         bne     LF2C3                           ; F2B1 D0 10                    ..
         inc     $61                             ; F2B3 E6 61                    .a
         bne     LF2C3                           ; F2B5 D0 0C                    ..
         jmp     LF0BC-$4000                     ; F2B7 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
-LF2BA_PLY_PLX_ACPTR_IF_ST_OK_ELSE_0D:
-        jsr     LB922_PLY_PLX_RTS               ; F2BA 20 22 B9                  ".
-        jsr     ACPTR_IF_ST_OK_ELSE_0D          ; F2BD 20 60 B9                  `.
-        jmp     LB2C6_SEC_JMP_LCDsetupGetOrSet  ; F2C0 4C C6 B2                 L..
+LF2BA:
+        jsr     LF922-$4000                     ; F2BA 20 22 B9                  ".
+        jsr     LF960-$4000                     ; F2BD 20 60 B9                  `.
+        jmp     LF2C6-$4000                     ; F2C0 4C C6 B2                 L..
 ; ----------------------------------------------------------------------------
 LF2C3:  jsr     LB950                           ; F2C3 20 50 B9                  P.
-        jsr     LB93C                           ; F2C6 20 3C B9                  <.
+LF2C6:  jsr     LB93C                           ; F2C6 20 3C B9                  <.
         bcs     LF27F                           ; F2C9 B0 B4                    ..
 LF2CB:  jmp     LF08B-$4000                     ; F2CB 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
@@ -16043,7 +16041,7 @@ LF2F8:  lda     $60                             ; F2F8 A5 60                    
         cpy     #$20                            ; F303 C0 20                    .
         bne     LF2F8                           ; F305 D0 F1                    ..
 LF307:  sty     $93                             ; F307 84 93                    ..
-        jsr     LB8B4                           ; F309 20 B4 B8                  ..
+        jsr     LF8B4-$4000                     ; F309 20 B4 B8                  ..
 LF30C:  ldy     #$00                            ; F30C A0 00                    ..
 LF30E:  jsr     LF11A-$4000                     ; F30E 20 1A B1                  ..
         cmp     $0A80,y                         ; F311 D9 80 0A                 ...
@@ -16051,10 +16049,10 @@ LF30E:  jsr     LF11A-$4000                     ; F30E 20 1A B1                 
         iny                                     ; F316 C8                       .
         cpy     $93                             ; F317 C4 93                    ..
         bne     LF30E                           ; F319 D0 F3                    ..
-        jsr     LF892-$4000                           ; F31B 20 92 B8                  ..
-        jsr     LF8A8-$4000                           ; F31E 20 A8 B8                  ..
-        jsr     LF8A8-$4000                           ; F321 20 A8 B8                  ..
-LF324:  jsr     LFFE1_STOP                           ; F324 20 E1 FF                  ..
+        jsr     LF892-$4000                     ; F31B 20 92 B8                  ..
+        jsr     LF8A8-$4000                     ; F31E 20 A8 B8                  ..
+        jsr     LF8A8-$4000                     ; F321 20 A8 B8                  ..
+LF324:  jsr     LFFE1_STOP                      ; F324 20 E1 FF                  ..
         beq     LF331                           ; F327 F0 08                    ..
         jsr     LB950                           ; F329 20 50 B9                  P.
         jsr     LB93C                           ; F32C 20 3C B9                  <.
@@ -16103,11 +16101,11 @@ LF373:  stx     $7A                             ; F373 86 7A                    
         sta     SATUS                             ; F381 85 BA                    ..
         jsr     LB7A7                           ; F383 20 A7 B7                  ..
         bcs     LF3AB                           ; F386 B0 23                    .#
-        jsr     LB901                           ; F388 20 01 B9                  ..
+        jsr     LF901-$4000                     ; F388 20 01 B9                  ..
         sta     LA                              ; F38B 85 C6                    ..
         jsr     LB7A7                           ; F38D 20 A7 B7                  ..
         bcs     LF3D1                           ; F390 B0 3F                    .?
-        jsr     LB8B4                           ; F392 20 B4 B8                  ..
+        jsr     LF8B4-$4000                           ; F392 20 B4 B8                  ..
         ldx     $60                             ; F395 A6 60                    .`
         ldy     $61                             ; F397 A4 61                    .a
         lda     $93                             ; F399 A5 93                    ..
@@ -16162,7 +16160,7 @@ LF403:  jmp     LF0BC-$4000                     ; F403 4C BC B0                 
 ; ----------------------------------------------------------------------------
 ;Assemble command
 LF406:  bcs     LF442                           ; F406 B0 3A                    .:
-        jsr     LB901                           ; F408 20 01 B9                  ..
+        jsr     LF901-$4000                     ; F408 20 01 B9                  ..
 LF40B:  ldx     #$00                            ; F40B A2 00                    ..
         stx     $0AA1                           ; F40D 8E A1 0A                 ...
         stx     $0AB4                           ; F410 8E B4 0A                 ...
@@ -16170,7 +16168,7 @@ LF413:  jsr     LB8E9                           ; F413 20 E9 B8                 
         bne     LF41F                           ; F416 D0 07                    ..
         cpx     #$00                            ; F418 E0 00                    ..
         bne     LF41F                           ; F41A D0 03                    ..
-        jmp     LF08B-$4000                           ; F41C 4C 8B B0                 L..
+        jmp     LF08B-$4000                     ; F41C 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
 LF41F:  cmp     #$20                            ; F41F C9 20                    .
         beq     LF40B                           ; F421 F0 E8                    ..
@@ -16315,14 +16313,14 @@ LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 
         sta     $034B
         sta     $0351
         lda     $68
-        jsr     LB8D2
+        jsr     LF8D2-$4000
         stx     $034C
         lda     $67
-        jsr     LB8D2
+        jsr     LF8D2-$4000
         sta     GO_NOWHERE_LOAD_GO_KERN
         stx     SINNER
         lda     $66
-        jsr     LB8D2
+        jsr     LF8D2-$4000
         sta     $034F
         stx     $0350
         lda     #$08
@@ -16348,34 +16346,34 @@ LF593:  inc     $9F                             ; F593 E6 9F                    
 ; ----------------------------------------------------------------------------
 ;Disassemble command
 LF599:  bcs     LF5A3                           ; F599 B0 08                    ..
-        jsr     LB901                           ; F59B 20 01 B9                  ..
+        jsr     LF901-$4000                     ; F59B 20 01 B9                  ..
         jsr     LB7A7                           ; F59E 20 A7 B7                  ..
         bcc     LF5A9                           ; F5A1 90 06                    ..
 LF5A3:  lda     #$14                            ; F5A3 A9 14                    ..
         sta     $60                             ; F5A5 85 60                    .`
         bne     LF5AE                           ; F5A7 D0 05                    ..
-LF5A9:  jsr     LB90E                           ; F5A9 20 0E B9                  ..
+LF5A9:  jsr     LF90E-$4000                     ; F5A9 20 0E B9                  ..
         bcc     LF5D1                           ; F5AC 90 23                    .#
 LF5AE:  jsr     LFF7D ;somehow PRIMMs
         .byte   $0D,$1B,"Q",0
-        jsr     LFFE1_STOP                           ; F5B5 20 E1 FF                  ..
+        jsr     LFFE1_STOP                      ; F5B5 20 E1 FF                  ..
         beq     LF5CE                           ; F5B8 F0 14                    ..
         jsr     LF5D4-$4000                     ; F5BA 20 D4 B5                  ..
         inc     $0AAB                           ; F5BD EE AB 0A                 ...
         lda     $0AAB                           ; F5C0 AD AB 0A                 ...
         jsr     LB952                           ; F5C3 20 52 B9                  R.
         lda     $0AAB                           ; F5C6 AD AB 0A                 ...
-        jsr     LB924_RTS                           ; F5C9 20 24 B9                  $.
+        jsr     LB924_RTS                       ; F5C9 20 24 B9                  $.
         bcs     LF5AE                           ; F5CC B0 E0                    ..
 LF5CE:  jmp     LF08B-$4000                     ; F5CE 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
 LF5D1:  jmp     LF0BC-$4000                     ; F5D1 4C BC B0                 L..
 ; ----------------------------------------------------------------------------
 LF5D4:  lda     #$2E                            ; F5D4 A9 2E                    ..
-        jsr     LFFD2_CHROUT                           ; F5D6 20 D2 FF                  ..
-        jsr     LF8A8-$4000                           ; F5D9 20 A8 B8                  ..
+        jsr     LFFD2_CHROUT                    ; F5D6 20 D2 FF                  ..
+        jsr     LF8A8-$4000                     ; F5D9 20 A8 B8                  ..
 LF5DC:  jsr     LF892-$4000
-        jsr     LF8A8-$4000                           ; F5DF 20 A8 B8                  ..
+        jsr     LF8A8-$4000                     ; F5DF 20 A8 B8                  ..
         ldy     #$00                            ; F5E2 A0 00                    ..
         jsr     LF11A-$4000                     ; F5E4 20 1A B1                  ..
         jsr     LF659-$4000                     ; F5E7 20 59 B6                  Y.
@@ -16407,7 +16405,7 @@ LF618:  lda     $0AAA                           ; F618 AD AA 0A                 
         jsr     LF11A-$4000                     ; F61E 20 1A B1                  ..
         plp                                     ; F621 28                       (
         bcs     LF641                           ; F622 B0 1D                    ..
-        jsr     LB8C2                           ; F624 20 C2 B8                  ..
+        jsr     LF8C2-$4000                           ; F624 20 C2 B8                  ..
         dey                                     ; F627 88                       .
         bne     LF618                           ; F628 D0 EE                    ..
 LF62A:  asl     $0AAA                           ; F62A 0E AA 0A                 ...
@@ -17030,7 +17028,7 @@ LF8A8:  .byte $60 ;.##.....
         .byte $00 ;........
         .byte $00 ;........
         .byte $ff ;########
-        .byte $ff ;########
+LF8B4:  .byte $ff ;########
         .byte $00 ;........
 
         .byte $18 ;...##...
@@ -17047,7 +17045,7 @@ LF8A8:  .byte $60 ;.##.....
         .byte $1c ;...###..
         .byte $18 ;...##...
 
-        .byte $18 ;...##...
+LF8C2:  .byte $18 ;...##...
         .byte $1c ;...###..
         .byte $0f ;....####
         .byte $07 ;.....###
@@ -17065,7 +17063,7 @@ LF8A8:  .byte $60 ;.##.....
         .byte $06 ;.....##.
         .byte $08 ;....#...
         .byte $10 ;...#....
-        .byte $60 ;.##.....
+LF8D2:  .byte $60 ;.##.....
         .byte $80 ;#.......
 
         .byte $80 ;#.......
@@ -17120,7 +17118,7 @@ LF8A8:  .byte $60 ;.##.....
         .byte $00 ;........
         .byte $00 ;........
         .byte $e0 ;###.....
-        .byte $f0 ;####....
+LF901:  .byte $f0 ;####....
         .byte $38 ;..###...
         .byte $18 ;...##...
 
@@ -17135,7 +17133,7 @@ LF8A8:  .byte $60 ;.##.....
         .byte $66 ;.##..##.
         .byte $42 ;.#....#.
         .byte $42 ;.#....#.
-        .byte $66 ;.##..##.
+LF90E:  .byte $66 ;.##..##.
         .byte $3c ;..####..
 
         .byte $0c ;....##..
@@ -17159,7 +17157,7 @@ LF8A8:  .byte $60 ;.##.....
         .byte $1c ;...###..
         .byte $08 ;....#...
 
-        .byte $18 ;...##...
+LF922:  .byte $18 ;...##...
         .byte $18 ;...##...
         .byte $ff ;########
         .byte $ff ;########
@@ -17231,7 +17229,7 @@ LF944:  .byte $00 ;........
 
         .byte $ff ;########
         .byte $00 ;........
-        .byte $00 ;........
+LF960:  .byte $00 ;........
         .byte $00 ;........
         .byte $00 ;........
         .byte $00 ;........
@@ -17811,7 +17809,7 @@ KR_SCINIT:
 ; ----------------------------------------------------------------------------
 KL_SCINIT:
         ldx     #$00
-        jsr     LD230_JMP_LD233_PLUS_X
+        jsr     LD230_JMP_LD233_PLUS_X  ;-> LD247_X_00
         jmp     SCINIT_
 ; ----------------------------------------------------------------------------
 KR_IOINIT:
