@@ -108,6 +108,8 @@ VidPtrHi        := $00C2
 SA              := $00C4
 FA              := $00C5
 LA              := $00C6
+CHRPTR          := $00CD
+BUFEND          := $00CE
 LENGTH          := $00CF
 V1541_FNADR     := $00E2  ;2 bytes
 V1541_DEFAULT_CHAN := $00E6
@@ -209,7 +211,7 @@ C3P0            := $040B
 IECCNT          := $040C
 RTC_IDX         := $0411
 L0450           := $0450
-L0470           := $0470
+LINE_INPUT_BUF  := $0470  ;Buffer used for a line of input in the monitor and menu
 L066A           := $066A
 L0810           := $0810
 L0A00           := $0A00
@@ -8208,7 +8210,7 @@ LB780:  iny
         lda     ($B0),y
         sta     $0400
         ldx     #$00
-LB788:  lda     L0470,x
+LB788:  lda     LINE_INPUT_BUF,x
         beq     LB799
         cpx     $03FE
         beq     LB795
@@ -8251,7 +8253,7 @@ LB7CF:  pha
         jsr     LB8B3
         ldx     $0402
         lda     #$00
-        sta     L0470,x
+        sta     LINE_INPUT_BUF,x
         pla
         clc
         rts
@@ -8298,7 +8300,7 @@ LB80C_KEYCODE_NOT_FOUND:
         bcc     LB7AE_LOOP_UNTIL_KEY
         txa
         ldx     $0403
-        sta     L0470,x
+        sta     LINE_INPUT_BUF,x
         cpx     $0402
         bne     LB82A
         ldx     $0402
@@ -8324,15 +8326,15 @@ LB845_94_INSERT:
         beq     LB869
         cpx     $0403
         beq     LB869
-LB852:  lda     L0470,x
-        sta     L0470+1,x
+LB852:  lda     LINE_INPUT_BUF,x
+        sta     LINE_INPUT_BUF+1,x
         cpx     $0403
         beq     LB861
         dex
         jmp     LB852
 
 LB861:  lda     #$20
-        sta     L0470,x
+        sta     LINE_INPUT_BUF,x
         inc     $0402
 LB869:  jmp     LB8B3
 ; ----------------------------------------------------------------------------
@@ -8341,8 +8343,8 @@ LB86C_14_DELETE:
         beq     LB886
         dec     $0403
         dex
-LB875:  lda     $0471,x
-        sta     L0470,x
+LB875:  lda     LINE_INPUT_BUF+1,x
+        sta     LINE_INPUT_BUF,x
         cpx     $0402
         beq     LB883
         inx
@@ -8389,7 +8391,7 @@ LB8CE:  sta     $0404
 LB8D1_LOOP:
         cpx     $0402
         beq     LB8F3
-        lda     L0470,X
+        lda     LINE_INPUT_BUF,X
         phx
         jsr     LB09B
         plx
@@ -10822,12 +10824,12 @@ MON_BAD_COMMAND:
 ;Input a monitor command and dispatch it
 MON_MAIN_INPUT:
         jsr     PrintNewLine
-        stz     $CD
+        stz     CHRPTR
         ldx     #$00
 LC76E_GET_NEXT_CHAR:
         jsr     LFD3D_CHRIN ;BASIN
-        sta     L0470,x
-        stx     $CE
+        sta     LINE_INPUT_BUF,x
+        stx     BUFEND
         inx
         cpx     #80  ;80 chars is max line length
         beq     LC77F_GOT_LINE
@@ -11160,11 +11162,11 @@ LC9D0:  jsr     GNC
         beq     LC9D0
         cmp     #'"'
         bne     LC9F5_LSV_BAD_ARG
-        ldx     $CD
+        ldx     CHRPTR
 LC9DF_LOOP:
-        cpx     $CE
+        cpx     BUFEND
         bcs     LCA33_TRY_LOAD_OR_VERIFY
-        lda     L0470,x
+        lda     LINE_INPUT_BUF,x
         inx
         cmp     #'"'
         beq     LC9F8_TRY_SAVE
@@ -11177,7 +11179,7 @@ LC9F5_LSV_BAD_ARG:
         jmp     MON_BAD_COMMAND
 
 LC9F8_TRY_SAVE:
-        stx     $CD
+        stx     CHRPTR
         jsr     GNC
         jsr     MON_PARSE_HEX_WORD
         bcs     LCA33_TRY_LOAD_OR_VERIFY
@@ -11235,9 +11237,9 @@ LCA60_FILL_LOOP:
 LCA70_FILL_BAD_ARG:
         jmp     MON_BAD_COMMAND
 ; ----------------------------------------------------------------------------
-;Decrement $CD then parse 16-bit hex value from user input into $C7/C8
+;Decrement CHRPTR then parse 16-bit hex value from user input into $C7/C8
 MON_DEC_CD_THEN_PARSE_HEX_WORD:
-        dec     $CD
+        dec     CHRPTR
 
 ;Parse 16-bit hex value from user input into $C7/C8
 MON_PARSE_HEX_WORD:
@@ -11345,13 +11347,13 @@ LCAFA:  adc     #$30
 ;Get next character
 GNC:
         stx     SXREG
-        ldx     $CD
-        cpx     $CE
+        ldx     CHRPTR
+        cpx     BUFEND
         bcs     GNC99
-        lda     L0470,x
-        cmp     #':'
+        lda     LINE_INPUT_BUF,x
+        cmp     #':'                ;eol-return with z=1
         beq     GNC99
-        inc     $CD
+        inc     CHRPTR
 LCB0F:  php
         ldx     SXREG
         plp
@@ -12114,12 +12116,12 @@ MON_CMD_WALK:
         lda     $C7
 LD0D7:  sta     V1541_FILE_MODE
         jsr     MON_PRINT_HEADER_FOR_REGS
-        bra     LD11C
+        bra     LD11C_MON_WALK_LD11C
 LD0DF:  jsr     MON_PRINT_REGS_WITHOUT_HEADER
         jsr     LFDB9_STOP
         beq     LD0F9_JMP_MON_MAIN_INPUT
         dec     V1541_FILE_MODE
-        bne     LD11C
+        bne     LD11C_MON_WALK_LD11C
         jsr     LB4FB_RESET_KEYD_BUFFER
         lda     #fmode_w_write
         jsr     PUT_KEY_INTO_KEYD_BUFFER
@@ -12128,35 +12130,42 @@ LD0DF:  jsr     MON_PRINT_REGS_WITHOUT_HEADER
 LD0F9_JMP_MON_MAIN_INPUT:
         jmp     MON_MAIN_INPUT
 ; ----------------------------------------------------------------------------
-LD0FC:  tsx                                     ; D0FC BA                       .
-        .byte   $D1                             ; D0FD D1                       .
-LD0FE:  jsr     $D1D1                           ; D0FE 20 D1 D1                  ..
-        rts                                     ; D101 60                       `
-; ----------------------------------------------------------------------------
-        ora     ($D2,x)                         ; D102 01 D2                    ..
-        jmp     LD20B                           ; D104 4C 0B D2                 L..
-; ----------------------------------------------------------------------------
-        rti                                     ; D107 40                       @
-; ----------------------------------------------------------------------------
-        sbc     $D1                             ; D108 E5 D1                    ..
-        jmp     (LD1E8)                         ; D10A 6C E8 D1                 l..
-; ----------------------------------------------------------------------------
-        .byte   $7C                             ; D10D 7C                       |
-LD10E:  nop                                     ; D10E EA                       .
+LD0FC_MON_WALK_OPCODE_TO_HANDLER:
+        .addr LD1BA_MON_WALK_OPCODE_20_JSR      ;jump to this address
+        .byte $20 ;JSR                          ;  when byte equals this
+
+        .addr LD1D1_MON_WALK_OPCODE_60_RTS
+        .byte $60 ;RTS
+
+        .addr LD201_MON_WALK_OPCODE_4C_JMP
+        .byte $4c ;JMP
+
+        .addr LD20B_MON_WALK_OPCODE_40_RTI
+        .byte $40 ;RTI
+
+        .addr LD1E5_MON_WALK_OPCODE_6C_JMP_IND
+        .byte $6c ;JMP ($abcd)
+
+        .addr LD1E8_7C_MON_WALK_OPCODE_7C_JMP_IND_X
+        .byte $7c ;JMP ($abcd,X)
+
+LD10E_MON_WALK_CODE_WRITTEN_TO_LINE_INPUT_BUF:
+        nop                                     ; D10E EA                       .
         nop                                     ; D10F EA                       .
         sta     MMU_MODE_KERN                   ; D110 8D 00 FA                 ...
         jmp     LD1A3                           ; D113 4C A3 D1                 L..
-; ----------------------------------------------------------------------------
         sta     MMU_MODE_KERN                   ; D116 8D 00 FA                 ...
         jmp     LD17D                           ; D119 4C 7D D1                 L}.
+
 ; ----------------------------------------------------------------------------
-LD11C:  ldx     #$0E                            ; D11C A2 0E                    ..
-LD11E:  lda     LD10E,x                         ; D11E BD 0E D1                 ...
-        sta     $0471,x                         ; D121 9D 71 04                 .q.
+LD11C_MON_WALK_LD11C:
+        ldx     #$0E                            ; D11C A2 0E                    ..
+LD11E:  lda     LD10E_MON_WALK_CODE_WRITTEN_TO_LINE_INPUT_BUF,x  ; D11E BD 0E D1                 ...
+        sta     LINE_INPUT_BUF+1,x              ; D121 9D 71 04                 .q.
         dex                                     ; D124 CA                       .
         bpl     LD11E                           ; D125 10 F7                    ..
         jsr     LD216                           ; D127 20 16 D2                  ..
-        sta     L0470                           ; D12A 8D 70 04                 .p.
+        sta     LINE_INPUT_BUF                  ; D12A 8D 70 04                 .p.
         cmp     #$80                            ; D12D C9 80                    ..
         beq     LD139                           ; D12F F0 08                    ..
         bit     #$0F                            ; D131 89 0F                    ..
@@ -12164,13 +12173,13 @@ LD11E:  lda     LD10E,x                         ; D11E BD 0E D1                 
         bit     #$10                            ; D135 89 10                    ..
         beq     LD143                           ; D137 F0 0A                    ..
 LD139:  lda     #$07                            ; D139 A9 07                    ..
-        sta     $0471                           ; D13B 8D 71 04                 .q.
+        sta     LINE_INPUT_BUF+1                ; D13B 8D 71 04                 .q.
         jsr     LD216                           ; D13E 20 16 D2                  ..
         bra     LD168                           ; D141 80 25                    .%
 LD143:  ldx     #$0F                            ; D143 A2 0F                    ..
-LD145:  cmp     LD0FE,x                         ; D145 DD FE D0                 ...
+LD145:  cmp     LD0FC_MON_WALK_OPCODE_TO_HANDLER+2,x       ; D145 DD FE D0                 ...
         bne     LD14D                           ; D148 D0 03                    ..
-        jmp     (LD0FC,x)                       ; D14A 7C FC D0                 |..
+        jmp     (LD0FC_MON_WALK_OPCODE_TO_HANDLER,x)       ; D14A 7C FC D0                 |..
 LD14D:  dex                                     ; D14D CA                       .
         dex                                     ; D14E CA                       .
         dex                                     ; D14F CA                       .
@@ -12179,11 +12188,11 @@ LD14D:  dex                                     ; D14D CA                       
         ldy     LENGTH                          ; D155 A4 CF                    ..
         beq     LD168                           ; D157 F0 0F                    ..
         jsr     LD216                           ; D159 20 16 D2                  ..
-        sta     $0471                           ; D15C 8D 71 04                 .q.
+        sta     LINE_INPUT_BUF+1                ; D15C 8D 71 04                 .q.
         dey                                     ; D15F 88                       .
         beq     LD168                           ; D160 F0 06                    ..
         jsr     LD216                           ; D162 20 16 D2                  ..
-        sta     $0472                           ; D165 8D 72 04                 .r.
+        sta     LINE_INPUT_BUF+2                ; D165 8D 72 04                 .r.
 LD168:  ldy     $03BA                           ; D168 AC BA 03                 ...
         lda     $03B8                           ; D16B AD B8 03                 ...
         ldx     $03BB                           ; D16E AE BB 03                 ...
@@ -12192,7 +12201,7 @@ LD168:  ldy     $03BA                           ; D168 AC BA 03                 
         phx                                     ; D175 DA                       .
         ldx     $03B9                           ; D176 AE B9 03                 ...
         plp                                     ; D179 28                       (
-        jmp     L0470                           ; D17A 4C 70 04                 Lp.
+        jmp     LINE_INPUT_BUF ;actually code; see LD11E
 ; ----------------------------------------------------------------------------
 LD17D:  php                                     ; D17D 08                       .
         pha                                     ; D17E 48                       H
@@ -12225,6 +12234,7 @@ LD1B5:  cli                                     ; D1B5 58                       
         cld                                     ; D1B6 D8                       .
         jmp     LD0DF                           ; D1B7 4C DF D0                 L..
 ; ----------------------------------------------------------------------------
+LD1BA_MON_WALK_OPCODE_20_JSR:
         jsr     LD216                           ; D1BA 20 16 D2                  ..
         tax                                     ; D1BD AA                       .
         ldy     $03B5                           ; D1BE AC B5 03                 ...
@@ -12235,6 +12245,8 @@ LD1B5:  cli                                     ; D1B5 58                       
         dec     $03BB                           ; D1C9 CE BB 03                 ...
         dec     $03BB                           ; D1CC CE BB 03                 ...
         bra     LD1DD                           ; D1CF 80 0C                    ..
+; ----------------------------------------------------------------------------
+LD1D1_MON_WALK_OPCODE_60_RTS:
         plx                                     ; D1D1 FA                       .
         pla                                     ; D1D2 68                       h
         inx                                     ; D1D3 E8                       .
@@ -12245,8 +12257,13 @@ LD1D7:  inc     $03BB                           ; D1D7 EE BB 03                 
 LD1DD:  sta     $03B5                           ; D1DD 8D B5 03                 ...
         stx     $03B6                           ; D1E0 8E B6 03                 ...
         bra     LD1B5                           ; D1E3 80 D0                    ..
+; ----------------------------------------------------------------------------
+LD1E5_MON_WALK_OPCODE_6C_JMP_IND:
         ldy     $03B9                           ; D1E5 AC B9 03                 ...
-LD1E8:  ldy     #$00                            ; D1E8 A0 00                    ..
+        ;Fall through
+; ----------------------------------------------------------------------------
+LD1E8_7C_MON_WALK_OPCODE_7C_JMP_IND_X:
+        ldy     #$00                            ; D1E8 A0 00                    ..
         jsr     LD216                           ; D1EA 20 16 D2                  ..
         pha                                     ; D1ED 48                       H
         jsr     LD216                           ; D1EE 20 16 D2                  ..
@@ -12259,12 +12276,16 @@ LD1E8:  ldy     #$00                            ; D1E8 A0 00                    
         jsr     LCC6D                           ; D1FB 20 6D CC                  m.
         plx                                     ; D1FE FA                       .
         bra     LD1DD                           ; D1FF 80 DC                    ..
+; ----------------------------------------------------------------------------
+LD201_MON_WALK_OPCODE_4C_JMP:
         jsr     LD216                           ; D201 20 16 D2                  ..
         pha                                     ; D204 48                       H
         jsr     LD216                           ; D205 20 16 D2                  ..
         plx                                     ; D208 FA                       .
         bra     LD1DD                           ; D209 80 D2                    ..
-LD20B:  pla                                     ; D20B 68                       h
+; ----------------------------------------------------------------------------
+LD20B_MON_WALK_OPCODE_40_RTI:
+        pla                                     ; D20B 68                       h
         sta     L03B7                           ; D20C 8D B7 03                 ...
         plx                                     ; D20F FA                       .
         pla                                     ; D210 68                       h
