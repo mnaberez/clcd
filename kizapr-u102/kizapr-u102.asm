@@ -132,7 +132,7 @@ LAT             := $02DB
 SAT             := $02F3
 FAT             := $02E7
 L0300           := $0300
-RAMVEC_IRQ      := $0314
+RAMVEC_IRQ      := $0314   ;KERNAL RAM vectors, 36 bytes: $0314-0337
 RAMVEC_BRK      := $0316
 RAMVEC_NMI      := $0318
 RAMVEC_OPEN     := $031A
@@ -148,8 +148,8 @@ RAMVEC_CLALL    := $032C
 RAMVEC_WTF      := $032E
 RAMVEC_LOAD     := $0330
 RAMVEC_SAVE     := $0332
-L0334           := $0334
-L0336           := $0336
+RAMVEC_L0334    := $0334
+RAMVEC_L0336    := $0336
 GO_RAM_LOAD_GO_APPL       := $0338  ;
 GO_RAM_STORE_GO_APPL      := $0341  ; RAM-resident code loaded from:
 GO_RAM_LOAD_GO_KERN       := $034A  ; MMU_HELPER_ROUTINES
@@ -194,6 +194,7 @@ L03AC           := $03AC
 SXREG           := $039D
 L03B7           := $03B7
 L03C0           := $03C0
+RAMVEC_BACKUP   := $03C3  ;Backs up KERNAL RAM vectors, 36 bytes: $03C3-$03E6
 LSTP            := $03E8
 LSXP            := $03E9
 SavedCursorX    := $03EA
@@ -212,6 +213,7 @@ IECCNT          := $040C
 RTC_IDX         := $0411
 L0450           := $0450
 LINE_INPUT_BUF  := $0470  ;Buffer used for a line of input in the monitor and menu
+L04C0           := $04C0
 L066A           := $066A
 L0810           := $0810
 L0A00           := $0A00
@@ -919,7 +921,7 @@ L83F7:  phx                                     ; 83F7 DA                       
         jsr     KL_RESTOR                       ; 83FE 20 96 C6                  ..
         plx                                     ; 8401 FA                       .
         phx                                     ; 8402 DA                       .
-        jsr     L8420                           ; 8403 20 20 84                   .
+        jsr     L8420_JSR_L8277_JMP_LFA67       ; 8403 20 20 84                   .
         clc                                     ; 8406 18                       .
 L8407:  pla                                     ; 8407 68                       h
         plx                                     ; 8408 FA                       .
@@ -939,7 +941,8 @@ L841C:  sec                                     ; 841C 38                       
         bit     #$00                            ; 841D 89 00                    ..
         rts                                     ; 841F 60                       `
 ; ----------------------------------------------------------------------------
-L8420:  jsr     L8277                           ; 8420 20 77 82                  w.
+L8420_JSR_L8277_JMP_LFA67:
+        jsr     L8277                           ; 8420 20 77 82                  w.
         jmp     LFA67                           ; 8423 4C 67 FA                 Lg.
 ; ----------------------------------------------------------------------------
 MON_CMD_EXIT:
@@ -953,7 +956,7 @@ L8433           := * + 1
         jmp     L843F                           ; 8437 4C 3F 84                 L?.
 ; ----------------------------------------------------------------------------
 L843A:  ldx     #$0A                            ; 843A A2 0A                    ..
-        jsr     L8420                           ; 843C 20 20 84                   .
+        jsr     L8420_JSR_L8277_JMP_LFA67       ; 843C 20 20 84                   .
 L843F:  jsr     L8685                           ; 843F 20 85 86                  ..
         lda     #$20                            ; 8442 A9 20                    .
         ldy     #$01                            ; 8444 A0 01                    ..
@@ -970,14 +973,14 @@ L8459:  ldy     $0202                           ; 8459 AC 02 02                 
         bne     L843F                           ; 845C D0 E1                    ..
         bcc     L8472                           ; 845E 90 12                    ..
         jsr     L840F                           ; 8460 20 0F 84                  ..
-        beq     L84C3                           ; 8463 F0 5E                    .^
+        beq     L84C3_CLC_RTS                           ; 8463 F0 5E                    .^
         bit     #$12                            ; 8465 89 12                    ..
-        beq     L84C3                           ; 8467 F0 5A                    .Z
+        beq     L84C3_CLC_RTS                           ; 8467 F0 5A                    .Z
         ldy     $0200                           ; 8469 AC 00 02                 ...
         sty     $0203                           ; 846C 8C 03 02                 ...
         stz     $0200                           ; 846F 9C 00 02                 ...
 L8472:  jsr     L840F                           ; 8472 20 0F 84                  ..
-        beq     L84C3                           ; 8475 F0 4C                    .L
+        beq     L84C3_CLC_RTS                           ; 8475 F0 4C                    .L
         bit     #$01                            ; 8477 89 01                    ..
         bne     L849B                           ; 8479 D0 20                    .
         bit     #$12                            ; 847B 89 12                    ..
@@ -991,41 +994,43 @@ L8482:  sta     $0201                           ; 8482 8D 01 02                 
         lda     $0203                           ; 848E AD 03 02                 ...
         beq     L8495                           ; 8491 F0 02                    ..
         ldx     #$06                            ; 8493 A2 06                    ..
-L8495:  jsr     L8420                           ; 8495 20 20 84                   .
+L8495:  jsr     L8420_JSR_L8277_JMP_LFA67       ; 8495 20 20 84                   .
         jmp     L8426                           ; 8498 4C 26 84                 L&.
 ; ----------------------------------------------------------------------------
 L849B:  stx     $0202
         php
         sei
-        jsr     LC6CB
-        jsr     KL_RESTOR
+        jsr     SWAP_RAMVEC     ;Swap out the current vectors
+        jsr     KL_RESTOR       ;Restore the KERNAL default ones
         ldx     #$08
-        jsr     L8420
+        jsr     L8420_JSR_L8277_JMP_LFA67
         sei
-        jsr     LC6CB
+        jsr     SWAP_RAMVEC     ;Swap the other vectors back in
 L84B0 := *+1
         stz     $0202
         ldx     $0200
         jsr     L840F
-        beq     L84C0
+        beq     L84C0_JMP_L8426
         jsr     L8277
         plp
         sec
         rts
 ; ----------------------------------------------------------------------------
-L84C0:  jmp     L8426
+L84C0_JMP_L8426:
+        jmp     L8426
 ; ----------------------------------------------------------------------------
-L84C3:  clc
+L84C3_CLC_RTS:
+        clc
         rts
 ; ----------------------------------------------------------------------------
 L84C5:  php
         sei
         ldx     $0202
         beq     L84DA
-        jsr     LC6CB
+        jsr     SWAP_RAMVEC
 L84D0 := * +1
         jsr     L84ED
-        jsr     LC6CB
+        jsr     SWAP_RAMVEC
         ldx     $0202
         bra     L84E0
 L84DA:  jsr     L84ED
@@ -1042,7 +1047,7 @@ L84ED:  ldx     $0200
         jsr     L840F
         beq     L84FA_MAYBE_SHUTDOWN
         ldx     #$0E
-        jmp     L8420
+        jmp     L8420_JSR_L8277_JMP_LFA67
 ; ----------------------------------------------------------------------------
 ; This seems to be the "shutdown" function or part of it: "state" should be
 ; saved (which is checked on next reset to see it was a clean shutdown) and
@@ -1501,8 +1506,8 @@ L88AD:  lda     SETUP_LCD_A,y
         jsr     LCDsetupGetOrSet
 L88BF:  jmp     KL_RESTOR
 ; ----------------------------------------------------------------------------
-L88C2:  ldx     #$C0
-        ldy     #$04
+L88C2:  ldx     #<L04C0
+        ldy     #>L04C0
         jsr     KL_VECTOR
         lda     $020C
         ldx     $020D
@@ -7779,10 +7784,10 @@ KEYB_INIT:
         sta     $0365
         lda     #$FF
         sta     $038E
-        lda     #<LFA87
-        sta     L0336
-        lda     #>LFA87
-        sta     L0336+1
+        lda     #<LFA87_JMP_MMU_MODE_KERN_RTS
+        sta     RAMVEC_L0336
+        lda     #>LFA87_JMP_MMU_MODE_KERN_RTS
+        sta     RAMVEC_L0336+1
         ;Fall through
 
 ;looks like clearing the keyboard buffer
@@ -9470,7 +9475,7 @@ LBEFB:  txa
         bne     LBF04
         ldx     $038A
 LBF04:  dex
-        sta     $04C0,x
+        sta     L04C0,x
         stx     $040F
 RXFULL:  rts
 ; ----------------------------------------------------------------------------
@@ -9506,7 +9511,7 @@ LBF3E:  ldx     $0410
         bne     LBF46
         ldx     $038A
 LBF46:  dex
-        lda     $04C0,x
+        lda     L04C0,x
         stx     $0410
 LBF4D_CHKIN_ACIA:
         clc
@@ -10726,25 +10731,28 @@ MMU_HELPER_ROUTINES:
         sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
+MMU_HELPER_ROUTINES_SIZE = * - MMU_HELPER_ROUTINES
+
+
 KL_RESTOR:
-        ldx     #$90
-        ldy     #$FA
+        ldx     #<VECTSS
+        ldy     #>VECTSS
         clc
 KL_VECTOR:
         php
         sei
         stx     FNADR
         sty     FNADR+1
-; This copies the routines from $C669 into the RAM from $338.
-        ldx     #$2C
-LC6A3:  lda     MMU_HELPER_ROUTINES,x
-        sta     GO_RAM_LOAD_GO_APPL,x
+        ldx     #MMU_HELPER_ROUTINES_SIZE-1
+LC6A3_LOOP:
+        lda     MMU_HELPER_ROUTINES,x   ;from this ROM
+        sta     GO_RAM_LOAD_GO_APPL,x   ;into RAM
         dex
-        bpl     LC6A3
+        bpl     LC6A3_LOOP
         ldy     #FNADR
         sty     SINNER
         sty     $0360
-        ldy     #$23
+        ldy     #36-1 ;36 bytes (18 vectors)
 LC6B6:  lda     RAMVEC_IRQ,y
         bcs     LC6BE
         jsr     GO_RAM_LOAD_GO_KERN
@@ -10756,15 +10764,19 @@ LC6C6:  dey
         plp
         rts
 ; ----------------------------------------------------------------------------
-LC6CB:  sei
-        ldx     #$23
-LC6CE:  ldy     RAMVEC_IRQ,x
-        lda     $03C3,x
+;Back up the KERNAL RAM vectors
+;Swap 36 bytes between RAMVEC_IRQ and RAMVEC_BACKUP
+SWAP_RAMVEC:
+        sei
+        ldx     #36-1 ;36 bytes (18 vectors)
+LC6CE_LOOP:
+        ldy     RAMVEC_IRQ,x
+        lda     RAMVEC_BACKUP,x
         sta     RAMVEC_IRQ,x
         tya
-        sta     $03C3,x
+        sta     RAMVEC_BACKUP,x
         dex
-        bpl     LC6CE
+        bpl     LC6CE_LOOP
         rts
 ; ----------------------------------------------------------------------------
 
@@ -17588,7 +17600,8 @@ GO_APPL_STORE_GO_KERN:
         jmp     GO_NOWHERE_STORE_GO_KERN
 ; ----------------------------------------------------------------------------
 LFA78:  jsr     LFA7E
-LFA7B:  jmp     MMU_MODE_KERN_RTS
+LFA7B_JMP_MMU_MODE_KERN_RTS:
+        jmp     MMU_MODE_KERN_RTS
 ; ----------------------------------------------------------------------------
 LFA7E:
 MMU_MODE_APPL   := * + 2
@@ -17596,13 +17609,14 @@ MMU_MODE_APPL   := * + 2
 ; but on read, normal ROM content is read as opcodes, as $FA80 here is inside
 ; and opcode itself.
         sta     MMU_MODE_APPL
-        jmp     (L0334)
+        jmp     (RAMVEC_L0334)
 ; ----------------------------------------------------------------------------
 LFA84:  jsr     LFA8A
-LFA87:  jmp     MMU_MODE_KERN_RTS
+LFA87_JMP_MMU_MODE_KERN_RTS:
+        jmp     MMU_MODE_KERN_RTS
 ; ----------------------------------------------------------------------------
 LFA8A:  sta     MMU_MODE_APPL
-        jmp     (L0336)  ;Contains LFA87 by default
+        jmp     (RAMVEC_L0336)  ;Contains LFA87_JMP_MMU_MODE_KERN_RTS by default
 ; ----------------------------------------------------------------------------
 ; Default values of "RAM vectors" copied to $314 into the RAM. The "missing"
 ; vector in the gap seems to be "monitor" entry (according to C128's ROM) but
@@ -17624,8 +17638,8 @@ VECTSS: .addr   DEFVEC_IRQ
         .addr   LFAB4
         .addr   DEFVEC_LOAD
         .addr   DEFVEC_SAVE
-        .addr   LFA7B
-        .addr   LFA87
+        .addr   LFA7B_JMP_MMU_MODE_KERN_RTS
+        .addr   LFA87_JMP_MMU_MODE_KERN_RTS
 ; ----------------------------------------------------------------------------
 LFAB4:  rts
 ; ----------------------------------------------------------------------------
