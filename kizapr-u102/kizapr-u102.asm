@@ -10767,6 +10767,13 @@ LC6CE:  ldy     RAMVEC_IRQ,x
         bpl     LC6CE
         rts
 ; ----------------------------------------------------------------------------
+
+;
+; Start of the first machine language monitor
+; (There is a second one at $F000.)
+;
+
+; ----------------------------------------------------------------------------
 MON_START:
         stz     L03B7
         stz     MON_MMU_MODE
@@ -12159,151 +12166,158 @@ LD10E_MON_WALK_CODE_WRITTEN_TO_LINE_INPUT_BUF:
 
 ; ----------------------------------------------------------------------------
 LD11C_MON_WALK_LD11C:
-        ldx     #$0E                            ; D11C A2 0E                    ..
-LD11E:  lda     LD10E_MON_WALK_CODE_WRITTEN_TO_LINE_INPUT_BUF,x  ; D11E BD 0E D1                 ...
-        sta     LINE_INPUT_BUF+1,x              ; D121 9D 71 04                 .q.
-        dex                                     ; D124 CA                       .
-        bpl     LD11E                           ; D125 10 F7                    ..
-        jsr     LD216                           ; D127 20 16 D2                  ..
-        sta     LINE_INPUT_BUF                  ; D12A 8D 70 04                 .p.
-        cmp     #$80                            ; D12D C9 80                    ..
-        beq     LD139                           ; D12F F0 08                    ..
-        bit     #$0F                            ; D131 89 0F                    ..
-        bne     LD143                           ; D133 D0 0E                    ..
-        bit     #$10                            ; D135 89 10                    ..
-        beq     LD143                           ; D137 F0 0A                    ..
-LD139:  lda     #$07                            ; D139 A9 07                    ..
-        sta     LINE_INPUT_BUF+1                ; D13B 8D 71 04                 .q.
-        jsr     LD216                           ; D13E 20 16 D2                  ..
-        bra     LD168                           ; D141 80 25                    .%
-LD143:  ldx     #$0F                            ; D143 A2 0F                    ..
-LD145:  cmp     LD0FC_MON_WALK_OPCODE_TO_HANDLER+2,x       ; D145 DD FE D0                 ...
-        bne     LD14D                           ; D148 D0 03                    ..
-        jmp     (LD0FC_MON_WALK_OPCODE_TO_HANDLER,x)       ; D14A 7C FC D0                 |..
-LD14D:  dex                                     ; D14D CA                       .
-        dex                                     ; D14E CA                       .
-        dex                                     ; D14F CA                       .
-        bpl     LD145                           ; D150 10 F3                    ..
-        jsr     LCD55                           ; D152 20 55 CD                  U.
-        ldy     LENGTH                          ; D155 A4 CF                    ..
-        beq     LD168                           ; D157 F0 0F                    ..
-        jsr     LD216                           ; D159 20 16 D2                  ..
-        sta     LINE_INPUT_BUF+1                ; D15C 8D 71 04                 .q.
-        dey                                     ; D15F 88                       .
-        beq     LD168                           ; D160 F0 06                    ..
-        jsr     LD216                           ; D162 20 16 D2                  ..
-        sta     LINE_INPUT_BUF+2                ; D165 8D 72 04                 .r.
-LD168:  ldy     $03BA                           ; D168 AC BA 03                 ...
-        lda     $03B8                           ; D16B AD B8 03                 ...
-        ldx     $03BB                           ; D16E AE BB 03                 ...
-        txs                                     ; D171 9A                       .
-        ldx     L03B7                           ; D172 AE B7 03                 ...
-        phx                                     ; D175 DA                       .
-        ldx     $03B9                           ; D176 AE B9 03                 ...
-        plp                                     ; D179 28                       (
+        ldx     #$0E
+LD11E:  lda     LD10E_MON_WALK_CODE_WRITTEN_TO_LINE_INPUT_BUF,x
+        sta     LINE_INPUT_BUF+1,x
+        dex
+        bpl     LD11E
+        jsr     LD216
+        sta     LINE_INPUT_BUF
+        cmp     #$80
+        beq     LD139
+        bit     #$0F
+        bne     LD143
+        bit     #$10
+        beq     LD143
+LD139:  lda     #$07
+        sta     LINE_INPUT_BUF+1
+        jsr     LD216
+        bra     LD168
+LD143:  ldx     #$0F
+LD145:  cmp     LD0FC_MON_WALK_OPCODE_TO_HANDLER+2,x
+        bne     LD14D
+        jmp     (LD0FC_MON_WALK_OPCODE_TO_HANDLER,x)
+LD14D:  dex
+        dex
+        dex
+        bpl     LD145
+        jsr     LCD55
+        ldy     LENGTH
+        beq     LD168
+        jsr     LD216
+        sta     LINE_INPUT_BUF+1
+        dey
+        beq     LD168
+        jsr     LD216
+        sta     LINE_INPUT_BUF+2
+LD168:  ldy     $03BA
+        lda     $03B8
+        ldx     $03BB
+        txs
+        ldx     L03B7
+        phx
+        ldx     $03B9
+        plp
         jmp     LINE_INPUT_BUF ;actually code; see LD11E
 ; ----------------------------------------------------------------------------
-LD17D:  php                                     ; D17D 08                       .
-        pha                                     ; D17E 48                       H
-        phy                                     ; D17F 5A                       Z
-        lda     $03B6                           ; D180 AD B6 03                 ...
-        bne     LD188                           ; D183 D0 03                    ..
-        dec     $03B5                           ; D185 CE B5 03                 ...
-LD188:  dec     $03B6                           ; D188 CE B6 03                 ...
-        jsr     LD216                           ; D18B 20 16 D2                  ..
-        clc                                     ; D18E 18                       .
-        tay                                     ; D18F A8                       .
-        bpl     LD195                           ; D190 10 03                    ..
-        dec     $03B5                           ; D192 CE B5 03                 ...
-LD195:  adc     $03B6                           ; D195 6D B6 03                 m..
-        bcc     LD19D                           ; D198 90 03                    ..
-        inc     $03B5                           ; D19A EE B5 03                 ...
-LD19D:  sta     $03B6                           ; D19D 8D B6 03                 ...
-        ply                                     ; D1A0 7A                       z
-        pla                                     ; D1A1 68                       h
-        plp                                     ; D1A2 28                       (
-LD1A3:  php                                     ; D1A3 08                       .
-        stx     $03B9                           ; D1A4 8E B9 03                 ...
-        plx                                     ; D1A7 FA                       .
-        stx     L03B7                           ; D1A8 8E B7 03                 ...
-        tsx                                     ; D1AB BA                       .
-        stx     $03BB                           ; D1AC 8E BB 03                 ...
-        sta     $03B8                           ; D1AF 8D B8 03                 ...
-        sty     $03BA                           ; D1B2 8C BA 03                 ...
-LD1B5:  cli                                     ; D1B5 58                       X
-        cld                                     ; D1B6 D8                       .
-        jmp     LD0DF                           ; D1B7 4C DF D0                 L..
+LD17D:  php
+        pha
+        phy
+        lda     $03B6
+        bne     LD188
+        dec     $03B5
+LD188:  dec     $03B6
+        jsr     LD216
+        clc
+        tay
+        bpl     LD195
+        dec     $03B5
+LD195:  adc     $03B6
+        bcc     LD19D
+        inc     $03B5
+LD19D:  sta     $03B6
+        ply
+        pla
+        plp
+LD1A3:  php
+        stx     $03B9
+        plx
+        stx     L03B7
+        tsx
+        stx     $03BB
+        sta     $03B8
+        sty     $03BA
+LD1B5:  cli
+        cld
+        jmp     LD0DF
 ; ----------------------------------------------------------------------------
 LD1BA_MON_WALK_OPCODE_20_JSR:
-        jsr     LD216                           ; D1BA 20 16 D2                  ..
-        tax                                     ; D1BD AA                       .
-        ldy     $03B5                           ; D1BE AC B5 03                 ...
-        phy                                     ; D1C1 5A                       Z
-        ldy     $03B6                           ; D1C2 AC B6 03                 ...
-        phy                                     ; D1C5 5A                       Z
-        jsr     LD216                           ; D1C6 20 16 D2                  ..
-        dec     $03BB                           ; D1C9 CE BB 03                 ...
-        dec     $03BB                           ; D1CC CE BB 03                 ...
-        bra     LD1DD                           ; D1CF 80 0C                    ..
+        jsr     LD216
+        tax
+        ldy     $03B5
+        phy
+        ldy     $03B6
+        phy
+        jsr     LD216
+        dec     $03BB
+        dec     $03BB
+        bra     LD1DD
 ; ----------------------------------------------------------------------------
 LD1D1_MON_WALK_OPCODE_60_RTS:
-        plx                                     ; D1D1 FA                       .
-        pla                                     ; D1D2 68                       h
-        inx                                     ; D1D3 E8                       .
-        bne     LD1D7                           ; D1D4 D0 01                    ..
-        inc     a                               ; D1D6 1A                       .
-LD1D7:  inc     $03BB                           ; D1D7 EE BB 03                 ...
-        inc     $03BB                           ; D1DA EE BB 03                 ...
-LD1DD:  sta     $03B5                           ; D1DD 8D B5 03                 ...
-        stx     $03B6                           ; D1E0 8E B6 03                 ...
-        bra     LD1B5                           ; D1E3 80 D0                    ..
+        plx
+        pla
+        inx
+        bne     LD1D7
+        inc     a
+LD1D7:  inc     $03BB
+        inc     $03BB
+LD1DD:  sta     $03B5
+        stx     $03B6
+        bra     LD1B5
 ; ----------------------------------------------------------------------------
 LD1E5_MON_WALK_OPCODE_6C_JMP_IND:
-        ldy     $03B9                           ; D1E5 AC B9 03                 ...
+        ldy     $03B9
         ;Fall through
 ; ----------------------------------------------------------------------------
 LD1E8_7C_MON_WALK_OPCODE_7C_JMP_IND_X:
-        ldy     #$00                            ; D1E8 A0 00                    ..
-        jsr     LD216                           ; D1EA 20 16 D2                  ..
-        pha                                     ; D1ED 48                       H
-        jsr     LD216                           ; D1EE 20 16 D2                  ..
-        sta     $D1                             ; D1F1 85 D1                    ..
-        pla                                     ; D1F3 68                       h
-        sta     $D0                             ; D1F4 85 D0                    ..
-        jsr     LCC6D                           ; D1F6 20 6D CC                  m.
-        pha                                     ; D1F9 48                       H
-        iny                                     ; D1FA C8                       .
-        jsr     LCC6D                           ; D1FB 20 6D CC                  m.
-        plx                                     ; D1FE FA                       .
-        bra     LD1DD                           ; D1FF 80 DC                    ..
+        ldy     #$00
+        jsr     LD216
+        pha
+        jsr     LD216
+        sta     $D1
+        pla
+        sta     $D0
+        jsr     LCC6D
+        pha
+        iny
+        jsr     LCC6D
+        plx
+        bra     LD1DD
 ; ----------------------------------------------------------------------------
 LD201_MON_WALK_OPCODE_4C_JMP:
-        jsr     LD216                           ; D201 20 16 D2                  ..
-        pha                                     ; D204 48                       H
-        jsr     LD216                           ; D205 20 16 D2                  ..
-        plx                                     ; D208 FA                       .
-        bra     LD1DD                           ; D209 80 D2                    ..
+        jsr     LD216
+        pha
+        jsr     LD216
+        plx
+        bra     LD1DD
 ; ----------------------------------------------------------------------------
 LD20B_MON_WALK_OPCODE_40_RTI:
-        pla                                     ; D20B 68                       h
-        sta     L03B7                           ; D20C 8D B7 03                 ...
-        plx                                     ; D20F FA                       .
-        pla                                     ; D210 68                       h
-        inc     $03BB                           ; D211 EE BB 03                 ...
-        bra     LD1D7                           ; D214 80 C1                    ..
-LD216:  phy                                     ; D216 5A                       Z
-        ldy     #$00                            ; D217 A0 00                    ..
-        lda     $03B6                           ; D219 AD B6 03                 ...
-        sta     $D0                             ; D21C 85 D0                    ..
-        lda     $03B5                           ; D21E AD B5 03                 ...
-        sta     $D1                             ; D221 85 D1                    ..
-        jsr     LCC6D                           ; D223 20 6D CC                  m.
-        inc     $03B6                           ; D226 EE B6 03                 ...
-        bne     LD22E                           ; D229 D0 03                    ..
-        inc     $03B5                           ; D22B EE B5 03                 ...
-LD22E:  ply                                     ; D22E 7A                       z
-        rts                                     ; D22F 60                       `
+        pla
+        sta     L03B7
+        plx
+        pla
+        inc     $03BB
+        bra     LD1D7
+LD216:  phy
+        ldy     #$00
+        lda     $03B6
+        sta     $D0
+        lda     $03B5
+        sta     $D1
+        jsr     LCC6D
+        inc     $03B6
+        bne     LD22E
+        inc     $03B5
+LD22E:  ply
+        rts
 ; ----------------------------------------------------------------------------
+
+;
+; End of the first machine language monitor
+;
+
+; ----------------------------------------------------------------------------
+
 LD230_JMP_LD233_PLUS_X:
         jmp     (LD233,x)
 LD233:  .addr   LD247_X_00
@@ -15673,7 +15687,7 @@ LEAEA:  .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; EAEA FF FF FF FF FF FF FF FF  
 ; ----------------------------------------------------------------------------
 
 ;
-;Start of second machine language monitor
+;Start of the second machine language monitor
 ;
 ;$F000-F6FF contains what looks like an entire second monitor
 ;that was assembled for $B000-B6FF.  It's not the same code
@@ -16539,7 +16553,7 @@ LF6C3:  .byte $40, $02, $45, $03, $d0, $08, $40, $09
 ; ----------------------------------------------------------------------------
 
 ;
-;End of second machine language monitor
+;End of the second machine language monitor
 ;
 
 CharacterSet:
