@@ -259,6 +259,67 @@ L7A73           := $7A73
 L7D16           := $7D16
 L7E6A           := $7E6A
 
+;VIA #1 Registers
+VIA1_PORTB    := $F800
+VIA1_PORTA    := $F801
+VIA1_DDRB     := $F802
+VIA1_DDRA     := $F803
+VIA1_T1CL     := $F804
+VIA1_T1CH     := $F805
+VIA1_T1LL     := $F806
+VIA1_T1LH     := $F807
+VIA1_T2CL     := $F808
+VIA1_T2CH     := $F809
+VIA1_SR       := $F80A
+VIA1_ACR      := $F80B
+VIA1_PCR      := $F80C
+VIA1_IFR      := $F80D
+VIA1_IER      := $F80E
+VIA1_PORTANHS := $F80F
+
+;VIA #2 Registers
+VIA2_PORTB    := $F880
+VIA2_PORTA    := $F881
+VIA2_DDRB     := $F882
+VIA2_DDRA     := $F883
+VIA2_T1CL     := $F884
+VIA2_T1CH     := $F885
+VIA2_T1LL     := $F886
+VIA2_T1LH     := $F887
+VIA2_T2CL     := $F888
+VIA2_T2CH     := $F889
+VIA2_SR       := $F88A
+VIA2_ACR      := $F88B
+VIA2_PCR      := $F88C
+VIA2_IFR      := $F88D
+VIA2_IER      := $F88E
+VIA2_PORTANHS := $F88F
+
+;ACIA Registers
+ACIA_DATA     := $F980
+ACIA_ST       := $F981
+ACIA_CMD      := $F982
+ACIA_CTRL     := $F983
+
+;MMU Registers
+MMU_MODE_KERN    := $FA00
+MMU_MODE_APPL    := $FA80
+MMU_MODE_RAM     := $FB00
+MMU_MODE_RECALL  := $FB80
+MMU_MODE_SAVE    := $FC00
+MMU_MODE_TEST    := $FC80   ;Unused
+MMU_APPL_WINDOW1 := $FD00
+MMU_APPL_WINDOW2 := $FD80
+MMU_APPL_WINDOW3 := $FE00
+MMU_APPL_WINDOW4 := $FE80
+MMU_KERN_WINDOW  := $FF00
+
+;LCD Controller Registers $FF80-$FF83
+LCDCTRL_REG0 := $FF80
+LCDCTRL_REG1 := $FF81
+LCDCTRL_REG2 := $FF82
+LCDCTRL_REG3 := $FF83
+
 ;Equates
 
 ;Used to test MODKEY
@@ -5722,7 +5783,7 @@ LA646:  brk                                     ; A646 00                       
         brk                                     ; A647 00                       .
         brk                                     ; A648 00                       .
         brk                                     ; A649 00                       .
-        asl     LFF10                           ; A64A 0E 10 FF                 ...
+        asl     $FF10                           ; A64A 0E 10 FF                 ...
         .byte   $FF                             ; A64D FF                       .
         .byte   $FF                             ; A64E FF                       .
 LA64F:  bbs7    $FF,LA64F                       ; A64F FF FF FD                 ...
@@ -6291,10 +6352,9 @@ LAA53:  stx     V1541_FILE_MODE                 ; AA53 8E A3 03                 
         eor     #$F8                            ; AA63 49 F8                    I.
         bit     #$F8                            ; AA65 89 F8                    ..
         beq     LAA7F                           ; AA67 F0 16                    ..
-        .byte   $09                             ; AA69 09                       .
-;TODO this looks like data, see above
-LAA6A:  rmb0    $8D                             ; AA6A 07 8D                    ..
-        lda     ($03,x)                         ; AA6C A1 03                    ..
+LAA6A := *+1
+        ORA     #$07
+        STA     MON_MMU_MODE
         ldy     #$00                            ; AA6E A0 00                    ..
         ldx     #$00                            ; AA70 A2 00                    ..
 LAA72:  jsr     GO_APPL_LOAD_GO_KERN            ; AA72 20 53 03                  S.
@@ -7805,9 +7865,9 @@ KEYB_INIT:
         sta     $0365
         lda     #$FF
         sta     $038E
-        lda     #<LFA87_JMP_MMU_MODE_KERN_RTS
+        lda     #<LFA87_JMP_RTS_IN_KERN_MODE
         sta     RAMVEC_L0336
-        lda     #>LFA87_JMP_MMU_MODE_KERN_RTS
+        lda     #>LFA87_JMP_RTS_IN_KERN_MODE
         sta     RAMVEC_L0336+1
         ;Fall through
 
@@ -12892,7 +12952,7 @@ LD598:  iny                                     ; D598 C8                       
         tya                                     ; D59E 98                       .
         jsr     $868C                           ; D59F 20 8C 86                  ..
         ldy     #$00                            ; D5A2 A0 00                    ..
-        sta     LFF04                           ; D5A4 8D 04 FF                 ...
+        sta     $FF04                           ; D5A4 8D 04 FF                 ...
 LD5A7:  lda     stack,y                         ; D5A7 B9 00 01                 ...
         beq     LD5B1                           ; D5AA F0 05                    ..
 LD5AC:  sta     ($64),y                         ; D5AC 91 64                    .d
@@ -12918,7 +12978,7 @@ LD5BA:  jsr     DFLTO                           ; D5BA 20 86 03                 
 ; ----------------------------------------------------------------------------
 LD5D7:  jmp     L0380                           ; D5D7 4C 80 03                 L..
 ; ----------------------------------------------------------------------------
-        sta     LFF03                           ; D5DA 8D 03 FF                 ...
+        sta     $FF03                           ; D5DA 8D 03 FF                 ...
         lda     $1204                           ; D5DD AD 04 12                 ...
         sta     stack+51                        ; D5E0 8D 33 01                 .3.
         lda     #$FF                            ; D5E3 A9 FF                    ..
@@ -13201,7 +13261,7 @@ LD816:  ldx     stack+35                        ; D816 AE 23 01                 
         bne     LD839                           ; D823 D0 14                    ..
         bit     stack+38                        ; D825 2C 26 01                 ,&.
         bmi     LD833                           ; D828 30 09                    0.
-        sta     LFF03                           ; D82A 8D 03 FF                 ...
+        sta     $FF03                           ; D82A 8D 03 FF                 ...
         lda     $1205                           ; D82D AD 05 12                 ...
         jmp     L989E                           ; D830 4C 9E 98                 L..
 ; ----------------------------------------------------------------------------
@@ -13210,7 +13270,7 @@ LD833:  lda     stack+51                        ; D833 AD 33 01                 
 ; ----------------------------------------------------------------------------
 LD839:  cmp     #$2E                            ; D839 C9 2E                    ..
         bne     LD846                           ; D83B D0 09                    ..
-        sta     LFF03                           ; D83D 8D 03 FF                 ...
+        sta     $FF03                           ; D83D 8D 03 FF                 ...
         lda     $1206                           ; D840 AD 06 12                 ...
         jmp     L989E                           ; D843 4C 9E 98                 L..
 ; ----------------------------------------------------------------------------
@@ -13264,7 +13324,7 @@ LD8A7:  dec     $77                             ; D8A7 C6 77                    
         bmi     LD899                           ; D8AC 30 EB                    0.
         sec                                     ; D8AE 38                       8
         ror     stack+37                        ; D8AF 6E 25 01                 n%.
-        sta     LFF03                           ; D8B2 8D 03 FF                 ...
+        sta     $FF03                           ; D8B2 8D 03 FF                 ...
         lda     $1207                           ; D8B5 AD 07 12                 ...
         jmp     L989B                           ; D8B8 4C 9B 98                 L..
 ; ----------------------------------------------------------------------------
@@ -13458,12 +13518,12 @@ LDA42:  inc     $63                             ; DA42 E6 63                    
         lda     $63                             ; DA44 A5 63                    .c
         .byte   $2C                             ; DA46 2C                       ,
 LDA47:  lda     #$00                            ; DA47 A9 00                    ..
-        sta     LFF03                           ; DA49 8D 03 FF                 ...
+        sta     $FF03                           ; DA49 8D 03 FF                 ...
         pha                                     ; DA4C 48                       H
         lda     $03D8                           ; DA4D AD D8 03                 ...
         ldy     $03D9                           ; DA50 AC D9 03                 ...
         jsr     $8781                           ; DA53 20 81 87                  ..
-        sta     LFF03                           ; DA56 8D 03 FF                 ...
+        sta     $FF03                           ; DA56 8D 03 FF                 ...
         lda     $03D6                           ; DA59 AD D6 03                 ...
         ldy     $03D7                           ; DA5C AC D7 03                 ...
         jsr     $8781                           ; DA5F 20 81 87                  ..
@@ -14797,7 +14857,7 @@ LE4A1:  lda     #$04                            ; E4A1 A9 04                    
         sta     stack+17                        ; E4B8 8D 11 01                 ...
         ldy     #$00                            ; E4BB A0 00                    ..
 LE4BD:  jsr     L03B7                           ; E4BD 20 B7 03                  ..
-        sta     LFF03                           ; E4C0 8D 03 FF                 ...
+        sta     $FF03                           ; E4C0 8D 03 FF                 ...
         sta     $12B7,y                         ; E4C3 99 B7 12                 ...
         iny                                     ; E4C6 C8                       .
         cpy     stack+17                        ; E4C7 CC 11 01                 ...
@@ -15087,7 +15147,7 @@ LE6F8:  lda     stack+21                        ; E6F8 AD 15 01                 
         beq     LE71A                           ; E705 F0 13                    ..
         ldy     #$00                            ; E707 A0 00                    ..
 LE709:  jsr     L03B7                           ; E709 20 B7 03                  ..
-        sta     LFF03                           ; E70C 8D 03 FF                 ...
+        sta     $FF03                           ; E70C 8D 03 FF                 ...
         sta     $1100,x                         ; E70F 9D 00 11                 ...
         inx                                     ; E712 E8                       .
         iny                                     ; E713 C8                       .
@@ -15135,7 +15195,7 @@ LE725:  lda     $80                             ; E725 A5 80                    
         stx     $7B                             ; E758 86 7B                    .{
         sty     $7C                             ; E75A 84 7C                    .|
         ldy     #$28                            ; E75C A0 28                    .(
-        sta     LFF04                           ; E75E 8D 04 FF                 ...
+        sta     $FF04                           ; E75E 8D 04 FF                 ...
         lda     #$7A                            ; E761 A9 7A                    .z
         sta     ($7B),y                         ; E763 91 7B                    .{
         iny                                     ; E765 C8                       .
@@ -15157,7 +15217,7 @@ LE774:  lda     #$00                            ; E774 A9 00                    
         ldy     #$FF                            ; E78A A0 FF                    ..
 LE78C:  iny                                     ; E78C C8                       .
         jsr     L9256                           ; E78D 20 56 92                  V.
-        sta     LFF04                           ; E790 8D 04 FF                 ...
+        sta     $FF04                           ; E790 8D 04 FF                 ...
         cmp     #$0D                            ; E793 C9 0D                    ..
         beq     LE79D                           ; E795 F0 06                    ..
         sta     ($7B),y                         ; E797 91 7B                    .{
@@ -15204,13 +15264,13 @@ LE7DF:  lda     #$00                            ; E7DF A9 00                    
         beq     LE7F5                           ; E7E6 F0 0D                    ..
         ldy     #$28                            ; E7E8 A0 28                    .(
         tya                                     ; E7EA 98                       .
-        sta     LFF04                           ; E7EB 8D 04 FF                 ...
+        sta     $FF04                           ; E7EB 8D 04 FF                 ...
         sta     ($7B),y                         ; E7EE 91 7B                    .{
         iny                                     ; E7F0 C8                       .
         lda     #$FF                            ; E7F1 A9 FF                    ..
         sta     ($7B),y                         ; E7F3 91 7B                    .{
 LE7F5:  lda     #$00                            ; E7F5 A9 00                    ..
-        sta     LFF03                           ; E7F7 8D 03 FF                 ...
+        sta     $FF03                           ; E7F7 8D 03 FF                 ...
         sta     $7A                             ; E7FA 85 7A                    .z
         pla                                     ; E7FC 68                       h
         tay                                     ; E7FD A8                       .
@@ -16638,8 +16698,8 @@ CharacterSet:
 ; This is the character set. It contains 6 bytes for each characters, and the
 ; bitmap is "rotated", ie the on screen the resolution is 6*8, not 8*6.
 ; Character set area is from $F700 to $F9FF, for 128 characters (codes > 128
-; would mean inverse text probably?). The area from the point of view of the
-; CPU also contains the VIA registers, it seems (see below the character set).
+; would mean inverse text probably?).  From the point of view of the CPU, this
+;same area contains the VIA1, VIA2, and ACIA registers.
 
         .byte $00 ;........
 LF701:  .byte $3e ;..#####.
@@ -17537,50 +17597,7 @@ LF960:  .byte $00 ;........
         .byte $f0 ;####....
         .byte $f0 ;####....
 
-;These overlap the character set data above.
-
-VIA1_PORTB    := $F800
-VIA1_PORTA    := $F801
-VIA1_DDRB     := $F802
-VIA1_DDRA     := $F803
-VIA1_T1CL     := $F804
-VIA1_T1CH     := $F805
-VIA1_T1LL     := $F806
-VIA1_T1LH     := $F807
-VIA1_T2CL     := $F808
-VIA1_T2CH     := $F809
-VIA1_SR       := $F80A
-VIA1_ACR      := $F80B
-VIA1_PCR      := $F80C
-VIA1_IFR      := $F80D
-VIA1_IER      := $F80E
-VIA1_PORTANHS := $F80F
-
-VIA2_PORTB    := $F880
-VIA2_PORTA    := $F881
-VIA2_DDRB     := $F882
-VIA2_DDRA     := $F883
-VIA2_T1CL     := $F884
-VIA2_T1CH     := $F885
-VIA2_T1LL     := $F886
-VIA2_T1LH     := $F887
-VIA2_T2CL     := $F888
-VIA2_T2CH     := $F889
-VIA2_SR       := $F88A
-VIA2_ACR      := $F88B
-VIA2_PCR      := $F88C
-VIA2_IFR      := $F88D
-VIA2_IER      := $F88E
-VIA2_PORTANHS := $F88F
-
-ACIA_DATA     := $F980
-ACIA_ST       := $F981
-ACIA_CMD      := $F982
-ACIA_CTRL     := $F983
-
-
 ; ----------------------------------------------------------------------------
-MMU_MODE_KERN:
         sei
         sta     MMU_MODE_KERN
         jmp     L87C5
@@ -17655,7 +17672,7 @@ RETURN_FROM_IRQ:
 NMI:    rti
 ; ----------------------------------------------------------------------------
 LFA67:  jsr     LFA6D
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 LFA6D:  phy
         pha
@@ -17666,11 +17683,10 @@ GO_APPL_STORE_GO_KERN:
         jmp     GO_NOWHERE_STORE_GO_KERN
 ; ----------------------------------------------------------------------------
 LFA78:  jsr     LFA7E
-LFA7B_JMP_MMU_MODE_KERN_RTS:
-        jmp     MMU_MODE_KERN_RTS
+LFA7B_JMP_RTS_IN_KERN_MODE:
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 LFA7E:
-MMU_MODE_APPL   := * + 2
 ; An interesting example for addresses like $FA80 are write only registers,
 ; but on read, normal ROM content is read as opcodes, as $FA80 here is inside
 ; and opcode itself.
@@ -17678,11 +17694,11 @@ MMU_MODE_APPL   := * + 2
         jmp     (RAMVEC_L0334)
 ; ----------------------------------------------------------------------------
 LFA84:  jsr     LFA8A
-LFA87_JMP_MMU_MODE_KERN_RTS:
-        jmp     MMU_MODE_KERN_RTS
+LFA87_JMP_RTS_IN_KERN_MODE:
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 LFA8A:  sta     MMU_MODE_APPL
-        jmp     (RAMVEC_L0336)  ;Contains LFA87_JMP_MMU_MODE_KERN_RTS by default
+        jmp     (RAMVEC_L0336)  ;Contains LFA87_JMP_RTS_IN_KERN_MODE by default
 ; ----------------------------------------------------------------------------
 ; Default values of "RAM vectors" copied to $314 into the RAM. The "missing"
 ; vector in the gap seems to be "monitor" entry (according to C128's ROM) but
@@ -17701,13 +17717,14 @@ VECTSS: .addr   DEFVEC_IRQ
         .addr   DEFVEC_STOP
         .addr   DEFVEC_GETIN
         .addr   DEFVEC_CLALL
-        .addr   LFAB4
+        .addr   DEFVEC_UNKNOWN_LFAB4
         .addr   DEFVEC_LOAD
         .addr   DEFVEC_SAVE
-        .addr   LFA7B_JMP_MMU_MODE_KERN_RTS
-        .addr   LFA87_JMP_MMU_MODE_KERN_RTS
+        .addr   LFA7B_JMP_RTS_IN_KERN_MODE
+        .addr   LFA87_JMP_RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
-LFAB4:  rts
+DEFVEC_UNKNOWN_LFAB4:
+        rts
 ; ----------------------------------------------------------------------------
 LFAB5:  sta     MMU_MODE_KERN
         jsr     LD437
@@ -17745,8 +17762,7 @@ LFAF1:  sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
 LFAFB:  sta     MMU_MODE_KERN
-MMU_MODE_RAM    := * + 2
-        jsr     LA9E6                           ; FAFE 20 E6 A9                  ..
+        jsr     LA9E6
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
@@ -17822,7 +17838,6 @@ LFB77:  tsx
         inc     stack+4,x
         bne     MMU_MODE_RECALL
         inc     stack+5,x
-MMU_MODE_RECALL:
         lda     stack+4,x
         sta     $F1
         lda     stack+5,x
@@ -17906,8 +17921,7 @@ KR_LB684_STA_03F9:
         rts
 ; ----------------------------------------------------------------------------
 KR_LB688_GET_KEY_NONBLOCKING:
-MMU_MODE_SAVE   := * + 2
-        sta     MMU_MODE_KERN                   ; FBFE 8D 00 FA                 ...
+        sta     MMU_MODE_KERN
         jsr     LB688_GET_KEY_NONBLOCKING
         sta     MMU_MODE_APPL
         rts
@@ -17979,8 +17993,7 @@ MEMBOT_:sta     MMU_MODE_KERN
 ; ----------------------------------------------------------------------------
 MEMTOP_:sta     MMU_MODE_KERN
         jsr     MEMTOP__
-MME_MODE_TEST := *+2
-        sta     MMU_MODE_APPL                   ; FC88 8D 80 FA                 ...
+        sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
 KR_SCNKEY:
@@ -18036,7 +18049,7 @@ SETNAM_:sta     FNLEN
 ; ----------------------------------------------------------------------------
 Open_:  sta     MMU_MODE_APPL
         jsr     Open
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_OPEN:
         sta     MMU_MODE_KERN
@@ -18047,18 +18060,17 @@ DEFVEC_OPEN:
 LFCF1_APPL_CLOSE:
         sta     MMU_MODE_APPL
         jsr     LFFC3_CLOSE
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_CLOSE:
         sta     MMU_MODE_KERN
         jsr     CLOSE__
-MMU_APPL_WINDOW1:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
         sta     MMU_MODE_APPL
         jsr     LFFC6_CHKIN
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_CHKIN:
         sta     MMU_MODE_KERN
@@ -18068,7 +18080,7 @@ DEFVEC_CHKIN:
 ; ----------------------------------------------------------------------------
         sta     MMU_MODE_APPL
         jsr     LFFC9_CHKOUT
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_CHKOUT:
         sta     MMU_MODE_KERN
@@ -18078,7 +18090,7 @@ DEFVEC_CHKOUT:
 ; ----------------------------------------------------------------------------
 CLRCH:  sta     MMU_MODE_APPL
         jsr     LFFCC_CLRCH
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_CLRCHN:
         sta     MMU_MODE_KERN
@@ -18089,7 +18101,7 @@ DEFVEC_CLRCHN:
 LFD3D_CHRIN:
         sta     MMU_MODE_APPL
         jsr     LFFCF_CHRIN ;BASIN
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_CHRIN:
         sta     MMU_MODE_KERN
@@ -18099,7 +18111,7 @@ DEFVEC_CHRIN:
 ; ----------------------------------------------------------------------------
         sta     MMU_MODE_APPL
         jsr     LFFD2_CHROUT
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_CHROUT:
         sta     MMU_MODE_KERN
@@ -18109,9 +18121,7 @@ DEFVEC_CHROUT:
 ; ----------------------------------------------------------------------------
 LFD63_LOAD_THEN_GO_KERN:
         jsr     LOAD_
-        ;Fall through
-
-MMU_MODE_KERN_RTS:
+RTS_IN_KERN_MODE:
         sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
@@ -18122,18 +18132,17 @@ LOAD_:  stx     $B4
 ; ----------------------------------------------------------------------------
 DEFVEC_LOAD:
 LFD75           := * + 1
-        sta     MMU_MODE_KERN                   ; FD74 8D 00 FA                 ...
+        sta     MMU_MODE_KERN
         jsr     LOAD__
 LFD7A:  sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-MMU_APPL_WINDOW2:= * + 2
-        sta     MMU_MODE_RAM                    ; FD7E 8D 00 FB                 ...
+        sta     MMU_MODE_RAM
         rts
 ; ----------------------------------------------------------------------------
 LFD82_SAVE_AND_GO_KERN:
         jsr     SAVE_
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 SAVE_:  stx     EAL
         sty     EAH
@@ -18164,7 +18173,7 @@ SETTIM_:sta     MMU_MODE_KERN
 LFDB9_STOP:
         sta     MMU_MODE_APPL
         jsr     LFFE1_STOP
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_STOP:
         sta     MMU_MODE_KERN
@@ -18174,7 +18183,7 @@ DEFVEC_STOP:
 ; ----------------------------------------------------------------------------
         sta     MMU_MODE_APPL
         jsr     LFFE4_GETIN
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_GETIN:
         sta     MMU_MODE_KERN
@@ -18185,7 +18194,7 @@ DEFVEC_GETIN:
 LFDDF_JSR_LFFE7_CLALL:
         sta     MMU_MODE_APPL
         jsr     LFFE7_CLALL
-        jmp     MMU_MODE_KERN_RTS
+        jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 DEFVEC_CLALL:
         sta     MMU_MODE_KERN
@@ -18202,7 +18211,6 @@ UDTIM_: sta     MMU_MODE_KERN
 ; On CLCD the screen's resolution is 80*16 chars.
 SCREEN_:ldx     #80
         ldy     #16
-MMU_APPL_WINDOW3:
         rts
 ; ----------------------------------------------------------------------------
 ; PLOT.   Save or restore cursor position.
@@ -18222,51 +18230,31 @@ LFE07:  ldy     CursorX
 ; Input: -
 ; Output: X/Y = VIA #1 base address .
 ; Used registers: X, Y.
-IOBASE_:ldx     #<$F800                         ; FE0C A2 00                    ..
-        ldy     #>$F800                         ; FE0E A0 F8                    ..
-        rts                                     ; FE10 60                       `
+IOBASE_:ldx     #<$F800
+        ldy     #>$F800
+        rts
 ; ----------------------------------------------------------------------------
 
-; Seems to be an unused area.
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE11 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE19 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE21 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE29 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE31 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE39 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE41 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE49 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE51 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE59 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE61 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE69 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE71 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF     ; FE79 FF FF FF FF FF FF FF     .......
-MMU_APPL_WINDOW4:
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE80 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE88 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE90 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FE98 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEA0 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEA8 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEB0 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEB8 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEC0 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEC8 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FED0 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FED8 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEE0 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEE8 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEF0 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FEF8 FF FF FF FF FF FF FF FF  ........
-MMU_KERN_WINDOW:
-        .byte   $FF,$FF,$FF                     ; FF00 FF FF FF                 ...
-LFF03:  .byte   $FF                             ; FF03 FF                       .
-LFF04:  .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FF04 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF                 ; FF0C FF FF FF FF              ....
-LFF10:  .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FF10 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; FF18 FF FF FF FF FF FF FF FF  ........
-        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF     ; FF20 FF FF FF FF FF FF FF     .......
+UNUSED:
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF
+
 ; ----------------------------------------------------------------------------
         jmp     LFAB5                           ; FF27 4C B5 FA                 L..
 ; ----------------------------------------------------------------------------
@@ -18337,16 +18325,8 @@ LFF7A := * + 2
 LFF7D := * + 2
         jmp     KR_PUT_KEY_INTO_KEYD_BUFFER        ; FF7B 4C 12 FC                 L..
 ; ----------------------------------------------------------------------------
-        .byte   $FF                             ; FF7E FF                       .
-        .byte   $FF                             ; FF7F FF                       .
-        .byte   $FF                             ; FF80 FF                       .
-
-;LCD Controller Registers $FF80-$FF83
-LCDCTRL_REG0 := * -1   ;FF80
-LCDCTRL_REG1 := *      ;FF81
-LCDCTRL_REG2 := * + 1  ;FF82
-LCDCTRL_REG3 := * + 2  ;FF83
-
+;unused kernal jump table entry
+        .byte   $FF, $FF, $FF                   ; FF7E FF FF FF
 ; ------------------------------------------------------------------------------
 ; Begin of the table of the kernal vectors (well, compared with "standard
 ; KERNAL entries" on Commodore 64, I can just guess if there is not so much
@@ -18413,7 +18393,7 @@ SETLFS: jmp     SETLFS_                          ; FFBA 4C CF FC                
 ; Input: A = File name length; X/Y = Pointer to file name.
 SETNAM: jmp     SETNAM_                          ; FFBD 4C D6 FC                 L..
 ; ----------------------------------------------------------------------------
-; "OPEN". Must call SETLFS_ and SETNAM_ beforehands.
+; "OPEN". Must call SETLFS_ and SETNAM_ beforehand.
 ; RAMVEC_OPEN points to $FCE7 in RAM by default.
 Open:   jmp     (RAMVEC_OPEN)                   ; FFC0 6C 1A 03                 l..
 ; ----------------------------------------------------------------------------
@@ -18429,7 +18409,7 @@ LFFCF_CHRIN:  jmp     (RAMVEC_CHRIN)                  ; FFCF 6C 24 03           
 ; ----------------------------------------------------------------------------
 LFFD2_CHROUT:  jmp     (RAMVEC_CHROUT)                 ; FFD2 6C 26 03                 l&.
 ; ----------------------------------------------------------------------------
-; ??LOAD. Load or verify file. (Must call SETLFS_ and SETNAM_ beforehands.)
+; LOAD. Load or verify file. (Must call SETLFS_ and SETNAM_ beforehand.)
 ; Input: A: 0 = Load, 1-255 = Verify; X/Y = Load address (if secondary
 ; address = 0).
 ; Output: Carry: 0 = No errors, 1 = Error; A = KERNAL error code (if Carry =
@@ -18438,7 +18418,7 @@ LFFD2_CHROUT:  jmp     (RAMVEC_CHROUT)                 ; FFD2 6C 26 03          
 ; Real address: $F49E.
 LOAD:   jmp     LOAD_                           ; FFD5 4C 6A FD                 Lj.
 ; ----------------------------------------------------------------------------
-; ??SAVE. Save file. (Must call SETLFS_ and SETNAM_ beforehands.)
+; SAVE. Save file. (Must call SETLFS_ and SETNAM_ beforehand.)
 ; Input: A = Address of zero page register holding start address of memory
 ; area to save; X/Y = End address of memory area plus 1.
 ; Output: Carry: 0 = No errors, 1 = Error; A = KERNAL error code (if Carry =
@@ -18460,7 +18440,7 @@ RDTIM:  jmp     RDTIM_                           ; FFDB 4C A5 FD                
 ; Used registers: A, X, Y.
 SETTIM: jmp     SETTIM_                           ; FFDE 4C AF FD                 L..
 ; ----------------------------------------------------------------------------
-; ??STOP. Query Stop key indicator, at memory address $0091; if pressed, call
+; STOP. Query Stop key indicator, at memory address $0091; if pressed, call
 ; CLRCHN and clear keyboard buffer.
 ; Input: –
 ; Output: Zero: 0 = Not pressed, 1 = Pressed; Carry: 1 = Pressed.
@@ -18469,7 +18449,7 @@ SETTIM: jmp     SETTIM_                           ; FFDE 4C AF FD               
 LFFE1_STOP:  jmp     (RAMVEC_STOP)                   ; FFE1 6C 28 03                 l(.
 ; ----------------------------------------------------------------------------
 ; GETIN. Read byte from default input. (If not keyboard, must call OPEN and
-; CHKIN beforehands.)
+; CHKIN beforehand.)
 ; Input: –
 ; Output: A = Byte read.
 ; Used registers: A, X, Y.
@@ -18477,7 +18457,7 @@ LFFE4_GETIN:  jmp     (RAMVEC_GETIN)                  ; FFE4 6C 2A 03           
 ; ----------------------------------------------------------------------------
 LFFE7_CLALL:  jmp     (RAMVEC_CLALL)                  ; FFE7 6C 2C 03                 l,.
 ; ----------------------------------------------------------------------------
-; ??Might be UDTIM. Update Time of Day, at memory address $0390-$0392, and
+; UDTIM. Update Time of Day, at memory address $0390-$0392, and
 ; Stop key indicator
 UDTIM:  jmp     UDTIM_                          ; FFEA 4C F2 FD                 L..
 ; ----------------------------------------------------------------------------
@@ -18498,10 +18478,9 @@ PLOT:   jmp     PLOT_                           ; FFF0 4C 01 FE                 
 IOBASE: jmp     IOBASE_                         ; FFF3 4C 0C FE                 L..
 ; ----------------------------------------------------------------------------
 ; Four unused bytes, this is the same as with C64.
-        .byte   $FF                             ; FFF6 FF                       .
-        .byte   $FF                             ; FFF7 FF                       .
-        .byte   $FF                             ; FFF8 FF                       .
-        .byte   $FF                             ; FFF9 FF                       .
+        .byte   $FF, $FF, $FF, $FF              ; FFF6 FF FF FF FF
+; ----------------------------------------------------------------------------
+
 NMI_VECTOR:
 ; The 65xx hardware vectors (NMI, RESET, IRQ).
         .addr   NMI                             ; FFFA 66 FA                    f.
