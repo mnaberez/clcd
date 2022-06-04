@@ -8495,7 +8495,7 @@ LB93C = * + 1
         and     #$0F            ;SA & 0x0F sets translation mode
         tax
         pla
-        jmp     TRANSL_ACIA_RX  ;Translate char before returning it
+        jmp     TRANSL_INCOMING_CHAR  ;Translate char before returning it
 
 LB948_NOT_RS232:
         bcs     LB94D ;Device >= 2
@@ -8571,7 +8571,7 @@ LB988:  cpx     #$03
         bcs     LB994
 
         ;Device = 2 (ACIA)
-        jsr     USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS
+        jsr     TRANSL_OUTGOING_CHAR_GIVEN_SA
         jmp     ACIA_CHROUT
 
 LB994:  cpx     #$1E  ;30
@@ -8583,7 +8583,7 @@ LB994:  cpx     #$1E  ;30
         and     #$0F            ;SA & 0x0F sets translation mode
         tax
         pla
-        jsr     USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS  ;Translate char before sending it
+        jsr     TRANSL_OUTGOING_CHAR_GIVEN_SA  ;Translate char before sending it
         jmp     CENTRONICS_CHROUT
 
 LB9A7:  bcc     LB9AC
@@ -8597,13 +8597,13 @@ LB9AC:  sec
 ;Translate character before sending it to ACIA TX or Centronics out
 ;Translation mode is set by secondary address
 ;Set X=SA & $0F, A=char to translate
-USING_SA_TRANSL_ACIA_TX_OR_CENTRONICS:
+TRANSL_OUTGOING_CHAR_GIVEN_SA:
         pha
 LB9B1:  lda     SA
         and     #$0F
         tax
         pla
-        jmp     TRANSL_ACIA_TX_OR_CENTRONICS
+        jmp     TRANSL_OUTGOING_CHAR
 
 ; ----------------------------------------------------------------------------
 
@@ -10324,42 +10324,61 @@ LC3B2:  dex
 ; ----------------------------------------------------------------------------
 
 ;Translate a character received from the ACIA RX
-;Called with A = char, X = secondary address & $0F
-TRANSL_ACIA_RX:
-        pha
-        lda     LC44A_ACIA_RX_ONLY,x
+;Called with A = char, X = channel (from secondary address & $0F)
+;Channel number specifies translation mode (0-6, 0=no translation)
+;Returns translated char in A, destroys X, preserves Y
+;        carry set if channel number is bad, otherwise carry clear.
+TRANSL_INCOMING_CHAR:
+        pha     ;Push original char onto stack
+        lda     LC44A_INCOMING_CHAR_OFFSETS_TABLE_POS-1,x
         bra     TRANSLATE
 
 ;Translate a character before sending it to ACIA TX or Centronics
-;Called with A = char, X = secondary address & $0F
-TRANSL_ACIA_TX_OR_CENTRONICS:
-        pha
-        lda     LC444_ACIA_TX_AND_CENTRONICS,x
+;Called with A = char, X = channel (from secondary address & $0F)
+;Returns translated char in A, destroys X, preserves Y
+;Channel number specifies translation mode (0-6, 0=no translation)
+;Returns translated char in A, destroys X, preserves Y
+;        carry set if channel number is bad, otherwise carry clear.
+TRANSL_OUTGOING_CHAR:
+        pha     ;Push original char onto stack
+        lda     TRANSL_OUTGOING_CHAR_OFFSETS_TABLE_POS-1,x
         ;Fall through
 
+;Translate a character
+;Called with:
+; A = starting index to TRANSL_HANDLER_OFFSETS table
+; X = Channel number
+; Byte on top of stack is original char to translate
+;Returns:
+; A = translated character
+; carry = set if bad channel (not 0-6), otherwise carry clear
 TRANSLATE:
-        cpx     #$00
+        cpx     #$00 ;Channel = 0?
         bne     LC3DC_NONZERO
-        clc
-LC3DA_DONE:
-        pla
+        clc                   ;Carry clear = channel ok
+LC3DA_NO_CHANGE:
+        pla                   ;Pull original character off stack
         rts
 
 LC3DC_NONZERO:
         cpx     #$07
-        bcs     LC3DA_DONE
-        plx
-        phy
-        tay
-        txa
-LC3E4_LOOP:
-        phy
-        ldx     TRANSL_HANDLER_OFFSETS,y
-        jsr     JMP_TO_TRANSL_HANDLER_X
-        ply
-        iny
-        bcs     LC3E4_LOOP
-        ply
+        bcs     LC3DA_NO_CHANGE  ;Branch if channel number >= 7 (carry set = bad channel)
+
+        ;Channel number is 1-6
+        plx                   ;X = Pull original character to translate
+        phy                   ;Push whatever Y was on entry
+        tay                   ;Y = starting index to TRANSL_HANDLER_OFFSETS table
+        txa                   ;A = original character to translate
+
+LC3E4_TRY_NEXT_HANDLER:
+        phy                               ;Save handler-to-try index to handler we're trying
+        ldx     TRANSL_HANDLER_OFFSETS,y  ;Get the handler's offset in the address table
+        jsr     JMP_TO_TRANSL_HANDLER_X   ;Call the handler
+        ply                               ;Get the handler-to-try index back
+        iny                               ;Increment to try the next handler
+        bcs     LC3E4_TRY_NEXT_HANDLER    ;Keep trying until a handler returns carry clear
+
+        ply                               ;Pull whatever Y was on entry
         rts
 
 JMP_TO_TRANSL_HANDLER_X:
@@ -10384,18 +10403,39 @@ TRANSL_HANDLERS:
         .addr   TRANSL_HANDLER_X20
 
 TRANSL_HANDLER_OFFSETS:
-        .byte   $02,$04,$06,$08,$0A,$0C,$00,$02
-        .byte   $06,$08,$0A,$0C,$00,$02,$18,$06
-        .byte   $1E,$0A,$1C,$10,$00,$02,$16,$0E
-        .byte   $00,$02,$1A,$1C,$10,$00,$04,$06
-        .byte   $14,$00,$04,$12,$00,$04,$20,$00
-        .byte   $06,$14,$00,$12,$00,$20
+;Each is an offset to the TRANSL_HANDLERS table above
+;The handlers are called in order until one returns carry clear
+;Last handler is always TRANSL_HANDLER_X00 which just returns carry clear
+        .byte   $02,$04,$06,$08,$0A,$0C,0     ;$00-06  Outgoing char on Channel 1
+        .byte   $02,$06,$08,$0A,$0C,0         ;$07-0C  Outgoing char on Channel 2
+        .byte   $02,$18,$06,$1E,$0A,$1C,$10,0 ;$0D-14  Outgoing char on Channel 3
+        .byte   $02,$16,$0E,0                 ;$15-18  Outgoing char on Channel 4,5
+        .byte   $02,$1A,$1C,$10,0             ;$19-1D  Outgoing char on Channel 6
+        .byte   $04,$06,$14,0                 ;$1E-21  Incoming char on Channel 1
+        .byte   $04,$12,0                     ;$22-24  Incoming char on Channel 2
+        .byte   $04,$20,0                     ;$25-27  Incoming char on Channel 3
+        .byte   $06,$14,0                     ;$28-2A  Incoming char on Channel 4
+        .byte   $12,0                         ;$2B-2C  Incoming char on Channel 5
+        .byte   $20,0                         ;$2B-2E  Incoming char on Channel 6
 
-LC444_ACIA_TX_AND_CENTRONICS:
-        .byte   $00,$00,$07,$0D,$15,$15
+TRANSL_OUTGOING_CHAR_OFFSETS_TABLE_POS:
+;Each is a starting position in the TRANSL_HANDLER_OFFSETS table above
+        .byte   $00   ;Outgoing char on Channel 1
+        .byte   $07   ;Outgoing char on Channel 2
+        .byte   $0D   ;Outgoing char on Channel 3
+        .byte   $15   ;Outgoing char on Channel 4
+        .byte   $15   ;Outgoing char on Channel 5
+        .byte   $19   ;Outgoing char on Channel 6
 
-LC44A_ACIA_RX_ONLY:
-        .byte   $19,$1E,$22,$25,$28,$2B,$2D
+LC44A_INCOMING_CHAR_OFFSETS_TABLE_POS:
+;Each is a starting position in the TRANSL_HANDLER_OFFSETS table above
+        .byte   $1E   ;Incoming char on Channel 1
+        .byte   $22   ;Incoming char on Channel 2
+        .byte   $25   ;Incoming char on Channel 3
+        .byte   $28   ;Incoming char on Channel 4
+        .byte   $2B   ;Incoming char on Channel 5
+        .byte   $2D   ;Incoming char on Channel 6
+
 ; ----------------------------------------------------------------------------
 TRANSL_HANDLER_X20:
         cmp     #$5E
@@ -10421,22 +10461,22 @@ TRANSL_HANDLER_X00:
         rts
 ; ----------------------------------------------------------------------------
 TRANSL_HANDLER_X04:
-        cmp     #$41
+        cmp     #'A'
         bcc     LC494
-        cmp     #$5B
+        cmp     #'Z'+1
         bcs     LC494
-        eor     #$20
+        eor     #$20  ;swap upper/lower
         clc
         rts
 LC494:  sec
         rts
 ; ----------------------------------------------------------------------------
 TRANSL_HANDLER_X06:
-        cmp     #$61
+        cmp     #'a'
         bcc     LC4A2
-        cmp     #$7B
+        cmp     #'z'+1
         bcs     LC4A2
-        eor     #$20
+        eor     #$20  ;swap lower/upper
         clc
         rts
 LC4A2:  sec
@@ -10444,13 +10484,15 @@ LC4A2:  sec
 ; ----------------------------------------------------------------------------
 TRANSL_HANDLER_X14:
         ldx     #$04
-LC4A6:  cmp     LC4B5,x
-        beq     LC4B0
+LC4A6_LOOP:
+        cmp     LC4B5,x
+        beq     LC4B0_FOUND
         dex
-        bpl     LC4A6
+        bpl     LC4A6_LOOP
         sec
         rts
-LC4B0:  lda     LC4BD,x
+LC4B0_FOUND:
+        lda     LC4BD,x
         clc
         rts
 LC4B5:  .byte   $7B,$7D,$7E,$60,$5F,$7B,$7D,$60
