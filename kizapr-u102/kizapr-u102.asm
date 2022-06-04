@@ -305,15 +305,21 @@ fmode_a_append  = 'A'   ;Append
 fmode_m_modify  = 'M'   ;Modify
 
 ; ----------------------------------------------------------------------------
-; At offset 4: this byte tells the number of Kbytes to be checked by the ROM
-; checksum routine. I don't know the purpose of the other bytes though.
-        .byte   $00,$00,$FF,$FF,$10,$DD,$DD,$DD
+ROM_HEADER:
+;Every ROM starts with an 8-byte header followed by the magic string
+        .byte   $00 ;unknown
+        .byte   $00 ;unknown
+        .byte   $FF ;unknown
+        .byte   $FF ;unknown
+        .byte   16  ;number of kilobytes to be checked by RomCheckSum
+        .byte   $DD ;unknown
+        .byte   $DD ;unknown
+        .byte   $DD ;unknown
 
-; ----------------------------------------------------------------------------
-Commodore_LCD:
-; Every ROM images begins with this "identification" string. This one is also
-; used to compare with the searched ones by the ROM scanning routine.
+ROM_MAGIC:
+;ScanROMs routine looks for this magic string
         .byte   "Commodore LCD"
+ROM_MAGIC_SIZE = * - ROM_MAGIC
 
 ; ----------------------------------------------------------------------------
 ; Every ROM contains a "directory" with the "applications" to be found.
@@ -761,9 +767,9 @@ ScanROMs:
 L82DA:  lda     ROM_MMU_values,y
         sta     MMU_KERN_WINDOW
         phy
-        ldx     #$0C
-L82E3:  lda     $4008,x
-        cmp     Commodore_LCD,x
+        ldx     #ROM_MAGIC_SIZE-1
+L82E3:  lda     ROM_MAGIC-$4000,x
+        cmp     ROM_MAGIC,x
         bne     L8315
         dex
         bpl     L82E3
@@ -773,7 +779,7 @@ L82E3:  lda     $4008,x
 ; $4004 is the paged-in ROM, where the id string would be ($FF00 controls
 ; what can you see from $4000), it's compared with the kernal's image's id
 ; string ("Commodore LCD").
-        ldx     $4004
+        ldx     ROM_HEADER-$4000+4
         pha
         jsr     RomCheckSum
         ply
