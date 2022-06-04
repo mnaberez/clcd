@@ -2112,9 +2112,9 @@ L8C76:  STZ     V1541_CHAN_BUF,X
         dex
 L8C7A:  bpl     L8C76
         stz     V1541_CMD_LEN
-        inx
-        txa
-        tay
+        inx     ;A=0
+        txa     ;X=0
+        tay     ;Y=0
         sec
         jmp     L9964_STORE_XAY_CLEAR_0217
 ; ----------------------------------------------------------------------------
@@ -3796,7 +3796,8 @@ L97F5           := * + 2
         jsr     L89E2
 L9803:  bra     L97ED
 
-L9805_ERROR:  pla
+L9805_ERROR:
+        pla
         ldx     #$01
         ldy     #$00
         sec
@@ -3993,7 +3994,8 @@ L96A9 := *-1
         stz     $0217
         rts
 ; ----------------------------------------------------------------------------
-L9971:  .byte   "CHANNEL",0
+V1541_ERROR_WORDS:
+        .byte   "CHANNEL",0
         .byte   "COMMAND",0
         .byte   "DIRECTORY",0
         .byte   "DISK",0
@@ -4112,7 +4114,7 @@ L9B02_INNER_LOOP:
         dec     $E0
         beq     L9B19
         iny
-        lda     L9971-2,y
+        lda     V1541_ERROR_WORDS-2,y
         bne     L9B02_INNER_LOOP
         inx
         txa
@@ -4124,16 +4126,17 @@ L9B12:  lda     #$80
 L9B19:  sec
         rts
 ; ----------------------------------------------------------------------------
-L9B1B:  jmp     (L9B1E,x)
+L9B1B_JMP_L9B1E_X:
+        jmp     (L9B1E,x)
 L9B1F := *+1
-L9B1E:  .addr L9BF6
-        .addr L9BDA
+L9B1E:  .addr L9BF6_X00
+        .addr L9BDA_X02
 L9B23 := *+1
-        .addr LA473
-        .addr L9C6B
-        .addr L9BE0
-        .addr LA2D1
-        .addr L9CA4
+        .addr LA473_X04
+        .addr L9C6B_X06
+        .addr L9BE0_X08
+        .addr LA2D1_X0A
+        .addr L9CA4_X0C
         .addr L9CA7
         .addr L9CBB
         .addr L9CBE
@@ -4195,7 +4198,7 @@ L9B9B:  ldy     #$FF                            ; 9B9B A0 FF                    
 L9B9F:  jsr     LA02B                           ; 9B9F 20 2B A0                  +.
 L9BA2:  ldy     #$00                            ; 9BA2 A0 00                    ..
 L9BA4:  sty     $49                             ; 9BA4 84 49                    .I
-        jsr     L9BF6                           ; 9BA6 20 F6 9B                  ..
+        jsr     L9BF6_X00                           ; 9BA6 20 F6 9B                  ..
         lda     $2B                             ; 9BA9 A5 2B                    .+
         eor     $49                             ; 9BAB 45 49                    EI
         sta     $00                             ; 9BAD 85 00                    ..
@@ -4203,7 +4206,7 @@ L9BA4:  sty     $49                             ; 9BA4 84 49                    
         eor     $49                             ; 9BB1 45 49                    EI
         sta     $01                             ; 9BB3 85 01                    ..
         jsr     LA26B                           ; 9BB5 20 6B A2                  k.
-        jsr     L9BF6                           ; 9BB8 20 F6 9B                  ..
+        jsr     L9BF6_X00                           ; 9BB8 20 F6 9B                  ..
         lda     $2C                             ; 9BBB A5 2C                    .,
         eor     $49                             ; 9BBD 45 49                    EI
         and     $01                             ; 9BBF 25 01                    %.
@@ -4213,18 +4216,18 @@ L9BA4:  sty     $49                             ; 9BA4 84 49                    
         eor     $49                             ; 9BC6 45 49                    EI
         and     $00                             ; 9BC8 25 00                    %.
         eor     $49                             ; 9BCA 45 49                    EI
-        bra     L9BDA                           ; 9BCC 80 0C                    ..
-L9BCE:  jsr     L9BF6                           ; 9BCE 20 F6 9B                  ..
+        bra     L9BDA_X02                           ; 9BCC 80 0C                    ..
+L9BCE:  jsr     L9BF6_X00                           ; 9BCE 20 F6 9B                  ..
         lda     $2C                             ; 9BD1 A5 2C                    .,
         eor     #$FF                            ; 9BD3 49 FF                    I.
         tay                                     ; 9BD5 A8                       .
         lda     $2B                             ; 9BD6 A5 2B                    .+
         eor     #$FF                            ; 9BD8 49 FF                    I.
 ; ----------------------------------------------------------------------------
-L9BDA:  jsr     L9C60                           ; 9BDA 20 60 9C                  `.
+L9BDA_X02:  jsr     L9C60                           ; 9BDA 20 60 9C                  `.
 L9BDD:  jmp     LA2B3                           ; 9BDD 4C B3 A2                 L..
 ; ----------------------------------------------------------------------------
-L9BE0:  lda     $2D                             ; 9BE0 A5 2D                    .-
+L9BE0_X08:  lda     $2D                             ; 9BE0 A5 2D                    .-
         bmi     L9C05                           ; 9BE2 30 21                    0!
         lda     $25                             ; 9BE4 A5 25                    .%
         cmp     #$91                            ; 9BE6 C9 91                    ..
@@ -4237,7 +4240,7 @@ L9BEE := *+1
          STA    $07
 L9BF4:   rts
 ; ----------------------------------------------------------------------------
-L9BF6:  lda     $25                             ; 9BF6 A5 25                    .%
+L9BF6_X00:  lda     $25                             ; 9BF6 A5 25                    .%
         cmp     #$90                            ; 9BF8 C9 90                    ..
         bcc     L9C0A                           ; 9BFA 90 0E                    ..
         lda     #<L9C58                         ; 9BFC A9 58                    .X
@@ -4290,7 +4293,7 @@ L9C4E:  pha                                     ; 9C4E 48                       
         pla                                     ; 9C54 68                       h
         jmp     GO_RAM_STORE_GO_KERN            ; 9C55 4C 5C 03                 L\.
 ; ----------------------------------------------------------------------------
-L9C58:  bcc     L9BDA                           ; 9C58 90 80                    ..
+L9C58:  bcc     L9BDA_X02                           ; 9C58 90 80                    ..
         brk                                     ; 9C5A 00                       .
         brk                                     ; 9C5B 00                       .
         brk                                     ; 9C5C 00                       .
@@ -4306,7 +4309,7 @@ L9C63:  .byte   $02                             ; 9C63 02                       
         ldx     #$90                            ; 9C68 A2 90                    ..
         rts                                     ; 9C6A 60                       `
 ; ----------------------------------------------------------------------------
-L9C6B:  ldx     $3F                             ; 9C6B A6 3F                    .?
+L9C6B_X06:  ldx     $3F                             ; 9C6B A6 3F                    .?
         ldy     $40                             ; 9C6D A4 40                    .@
         stx     $3B                             ; 9C6F 86 3B                    .;
         sty     $3C                             ; 9C71 84 3C                    .<
@@ -4336,7 +4339,7 @@ L9C83:  stx     $0B                             ; 9C83 86 0B                    
         sty     $40                             ; 9CA1 84 40                    .@
 L9CA3:  rts                                     ; 9CA3 60                       `
 ; ----------------------------------------------------------------------------
-L9CA4:  jsr     LA02B                           ; 9CA4 20 2B A0                  +.
+L9CA4_X0C:  jsr     LA02B                           ; 9CA4 20 2B A0                  +.
 L9CA7:  lda     $2D                             ; 9CA7 A5 2D                    .-
         eor     #$FF                            ; 9CA9 49 FF                    I.
         sta     $2D                             ; 9CAB 85 2D                    .-
@@ -5211,7 +5214,7 @@ LA2CB = *+2
 LA2CD:  phy
         plx
         bra     LA2C4                           ; A2CF 80 F3                    ..
-LA2D1:  phy                                     ; A2D1 5A                       Z
+LA2D1_X0A:  phy                                     ; A2D1 5A                       Z
         plx                                     ; A2D2 FA                       .
         bra     LA2B8                           ; A2D3 80 E3                    ..
 LA2D5:  phy                                     ; A2D5 5A                       Z
@@ -5438,7 +5441,7 @@ LA45B:  .byte   $AF,$35,$E6,$20,$F4,$7F,$FF,$CC ; A45B AF 35 E6 20 F4 7F FF CC  
 LA463:  .byte   $B2,$63,$5F,$A9,$31,$9F,$FF,$E8 ; A463 B2 63 5F A9 31 9F FF E8  .c_.1...
 LA46B:  .byte   $B2,$63,$5F,$A9,$31,$9F,$FF,$FC ; A46B B2 63 5F A9 31 9F FF FC  .c_.1...
 ; ----------------------------------------------------------------------------
-LA473:  ldy     #$01
+LA473_X04:  ldy     #$01
 LA475:  lda     #$20
         bit     $2d
         bpl     $a47d
@@ -6204,19 +6207,19 @@ LA9BA:  stx     LB07D                           ; A9BA 8E 7D B0                 
 ; ----------------------------------------------------------------------------
 LA9C6:  jsr     LA02B
 ; ----------------------------------------------------------------------------
-LA9C9:  jsr     L9BF6
+LA9C9:  jsr     L9BF6_X00
         lda     $2C                             ; A9CC A5 2C                    .,
         sta     $00                             ; A9CE 85 00                    ..
         lda     $2B                             ; A9D0 A5 2B                    .+
         sta     $01                             ; A9D2 85 01                    ..
         jsr     LA26B                           ; A9D4 20 6B A2                  k.
-        jsr     L9BF6                           ; A9D7 20 F6 9B                  ..
+        jsr     L9BF6_X00                           ; A9D7 20 F6 9B                  ..
         lda     $2C                             ; A9DA A5 2C                    .,
         eor     $00                             ; A9DC 45 00                    E.
         tay                                     ; A9DE A8                       .
         lda     $2B                             ; A9DF A5 2B                    .+
 LA9E1:  eor     $01                             ; A9E1 45 01                    E.
-        jmp     L9BDA                           ; A9E3 4C DA 9B                 L..
+        jmp     L9BDA_X02                           ; A9E3 4C DA 9B                 L..
 ; ----------------------------------------------------------------------------
 LA9E6:  php                                     ; A9E6 08                       .
         sty     $03A0                           ; A9E7 8C A0 03                 ...
@@ -10336,23 +10339,26 @@ TRANSL_ACIA_TX_OR_CENTRONICS:
 
 TRANSLATE:
         cpx     #$00
-        bne     LC3DC
+        bne     LC3DC_NONZERO
         clc
-LC3DA:  pla
+LC3DA_DONE:
+        pla
         rts
 
-LC3DC:  cpx     #$07
-        bcs     LC3DA
+LC3DC_NONZERO:
+        cpx     #$07
+        bcs     LC3DA_DONE
         plx
         phy
         tay
         txa
-LC3E4:  phy
+LC3E4_LOOP:
+        phy
         ldx     TRANSL_HANDLER_OFFSETS,y
         jsr     JMP_TO_TRANSL_HANDLER_X
         ply
         iny
-        bcs     LC3E4
+        bcs     LC3E4_LOOP
         ply
         rts
 
@@ -10360,22 +10366,22 @@ JMP_TO_TRANSL_HANDLER_X:
         jmp     (TRANSL_HANDLERS,x)
 TRANSL_HANDLERS:
         .addr   TRANSL_HANDLER_X00
-        .addr   TRANSL_HANDLER_X01
         .addr   TRANSL_HANDLER_X02
-        .addr   TRANSL_HANDLER_X03
         .addr   TRANSL_HANDLER_X04
-        .addr   TRANSL_HANDLER_X05
         .addr   TRANSL_HANDLER_X06
-        .addr   TRANSL_HANDLER_X07
         .addr   TRANSL_HANDLER_X08
-        .addr   TRANSL_HANDLER_X09
         .addr   TRANSL_HANDLER_X0A
-        .addr   TRANSL_HANDLER_X0B
         .addr   TRANSL_HANDLER_X0C
-        .addr   TRANSL_HANDLER_X0D
         .addr   TRANSL_HANDLER_X0E
-        .addr   TRANSL_HANDLER_X0F
         .addr   TRANSL_HANDLER_X10
+        .addr   TRANSL_HANDLER_X12
+        .addr   TRANSL_HANDLER_X14
+        .addr   TRANSL_HANDLER_X16
+        .addr   TRANSL_HANDLER_X18
+        .addr   TRANSL_HANDLER_X1A
+        .addr   TRANSL_HANDLER_X1C
+        .addr   TRANSL_HANDLER_X1E
+        .addr   TRANSL_HANDLER_X20
 
 TRANSL_HANDLER_OFFSETS:
         .byte   $02,$04,$06,$08,$0A,$0C,$00,$02
@@ -10391,7 +10397,7 @@ LC444_ACIA_TX_AND_CENTRONICS:
 LC44A_ACIA_RX_ONLY:
         .byte   $19,$1E,$22,$25,$28,$2B,$2D
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X10:
+TRANSL_HANDLER_X20:
         cmp     #$5E
         bcc     LC462
         cmp     #$80
@@ -10414,7 +10420,7 @@ TRANSL_HANDLER_X00:
         clc
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X02:
+TRANSL_HANDLER_X04:
         cmp     #$41
         bcc     LC494
         cmp     #$5B
@@ -10425,7 +10431,7 @@ TRANSL_HANDLER_X02:
 LC494:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X03:
+TRANSL_HANDLER_X06:
         cmp     #$61
         bcc     LC4A2
         cmp     #$7B
@@ -10436,7 +10442,7 @@ TRANSL_HANDLER_X03:
 LC4A2:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X0A:
+TRANSL_HANDLER_X14:
         ldx     #$04
 LC4A6:  cmp     LC4B5,x
         beq     LC4B0
@@ -10450,7 +10456,7 @@ LC4B0:  lda     LC4BD,x
 LC4B5:  .byte   $7B,$7D,$7E,$60,$5F,$7B,$7D,$60
 LC4BD:  .byte   $A6,$A8,$5F,$BA,$A4,$E6,$E8,$FA
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X01:
+TRANSL_HANDLER_X02:
         cmp     #$80
         bcc     LC4D1
         cmp     #$A0
@@ -10461,7 +10467,7 @@ TRANSL_HANDLER_X01:
 LC4D1:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X0D:
+TRANSL_HANDLER_X1A:
         cmp     #$60
         bcc     LC4E4
         cmp     #$80
@@ -10486,7 +10492,7 @@ LC4F3:  .byte   $61,$73,$60,$61,$7A,$7A,$7B,$7C
         .byte   $63,$5E,$7B,$6B,$7C,$66,$77,$4F
         .byte   $7E,$7D,$6A,$62,$60,$60,$7F,$5F
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X0E:
+TRANSL_HANDLER_X1C:
         cmp     #$A0
         bcc     LC524
         cmp     #$C0
@@ -10511,7 +10517,7 @@ LC533:  .byte   $20,$7C,$7B,$7A,$7B,$7C,$74,$7D
         .byte   $66,$75,$73,$74,$7C,$7C,$7D,$7A
         .byte   $7A,$7B,$64,$6D,$6F,$64,$6E,$25
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X08:
+TRANSL_HANDLER_X10:
         cmp     #$FF
         bne     LC55B
         lda     #$7F
@@ -10520,7 +10526,7 @@ TRANSL_HANDLER_X08:
 LC55B:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X09:
+TRANSL_HANDLER_X12:
         cmp     #$5F
         bne     LC565
         lda     #$A4
@@ -10529,7 +10535,7 @@ TRANSL_HANDLER_X09:
 LC565:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X0C:
+TRANSL_HANDLER_X18:
         ldx     #$08
 LC569:  cmp     LC581,x
         beq     LC573
@@ -10543,7 +10549,7 @@ LC573:  lda     LC578,x
 LC578:  .byte   $5B,$5C,$5D,$2D,$27,$5F,$5B,$5D,$27
 LC581:  .byte   $A6,$7C,$A8,$5F,$BA,$A4,$E6,$E8,$FA
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X0B:
+TRANSL_HANDLER_X16:
         ldx     #$07
 LC58C:  cmp     LC4BD,x
         beq     LC596
@@ -10555,7 +10561,7 @@ LC596:  lda     LC4B5,x
         clc
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X0F:
+TRANSL_HANDLER_X1E:
         cmp     #$7B
         bcc     LC5AC
         cmp     #$80
@@ -10569,7 +10575,7 @@ TRANSL_HANDLER_X0F:
 LC5AC:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X05:
+TRANSL_HANDLER_X0A:
         cmp     #$C1
         bcc     LC5BA
         cmp     #$DB
@@ -10580,7 +10586,7 @@ TRANSL_HANDLER_X05:
 LC5BA:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X04:
+TRANSL_HANDLER_X08:
         ldx     #$0A
 LC5BE:  cmp     LC5CD,x
         beq     LC5C8
@@ -10594,7 +10600,7 @@ LC5C8:  lda     LC5D8,x
 LC5CD:  .byte   $A6,$A8,$BA,$5F,$A4,$E6,$E8,$FA,$7B,$7E,$7F
 LC5D8:  .byte   $7B,$7D,$60,$7E,$5F,$7B,$7D,$60,$20,$20,$20
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X06:
+TRANSL_HANDLER_X0C:
         cmp     #$A0
         bcc     LC5ED
         cmp     #$C0
@@ -10608,7 +10614,7 @@ LC5F1:  lda     #$20
 LC5F5:  sec
         rts
 ; ----------------------------------------------------------------------------
-TRANSL_HANDLER_X07:
+TRANSL_HANDLER_X0E:
         cmp     #$60
         bcc     LC601
         cmp     #$80
@@ -13267,7 +13273,7 @@ LD91A:  jsr     L977E                           ; D91A 20 7E 97                 
         bcs     LD993                           ; D91D B0 74                    .t
         cmp     #$2C                            ; D91F C9 2C                    .,
         beq     LD91A                           ; D921 F0 F7                    ..
-        jsr     L9971                           ; D923 20 71 99                  q.
+        jsr     V1541_ERROR_WORDS                           ; D923 20 71 99                  q.
         bcc     LD917                           ; D926 90 EF                    ..
         cmp     #$2E                            ; D928 C9 2E                    ..
         bne     LD934                           ; D92A D0 08                    ..
@@ -17733,7 +17739,7 @@ LFB37:  sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
 LFB41:  sta     MMU_MODE_KERN
-        jsr     L9B1B
+        jsr     L9B1B_JMP_L9B1E_X
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
