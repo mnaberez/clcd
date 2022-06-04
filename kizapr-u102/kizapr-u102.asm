@@ -818,8 +818,8 @@ PrintRomSumChkByPassed:
         jsr     PRIMM
         .byte   "ROMSUM CHECK BYPASSED, ROM #",0
         pla
-        ora     #$30
-        jsr     KR_ShowChar_
+        ora     #'0'          ;convert ROM number to PETSCII
+        jsr     KR_ShowChar_  ;print it
         jsr     PRIMM
         .byte   "  INSTALLED",$0d,0
         rts
@@ -1150,7 +1150,7 @@ L85C0:  jsr     L870F_CHECK_V1541_DISK_INTACT
         .byte   "YOUR DISK IS NOT INTACT",$0d,$07,0
 ; ----------------------------------------------------------------------------
 L85E2:  jsr     L82BE_CHECK_ROM_ENV
-        beq     L8607
+        beq     L8607 ;branch if no change
         jsr     PRIMM
         .byte   "ROM ENVIROMENT HAS CHANGED",$0d,$07,0
 ; ----------------------------------------------------------------------------
@@ -1415,14 +1415,14 @@ L87F3 := *+20
         jsr     PRIMM
         .byte   "ESTABLISHING SYSTEM PARAMETERS ",$07,$0D,0
 ; ----------------------------------------------------------------------------
-L8805           := * + 1
+L8805 := * + 1
         jsr     L82BE_CHECK_ROM_ENV
         lda     #$0F
-L880B           := * + 2
+L880B := * + 2
         sta     $020C
-L880E           := * + 2
+L880E := * + 2
         jsr     KL_RAMTAS
-L8811           := * + 2
+L8811 := * + 2
         sta     $0208
         stx     $0209
         sta     $020A
@@ -1432,7 +1432,7 @@ L8811           := * + 2
         ror     a
         lsr     $00
         ror     a
-        jsr     L8850
+        jsr     PRINT_BCD_NIBS ;Print the "128" in "128 KBYTE SYSTEM ESTABLISHED"
         jsr     L8E5C
 L882A := *+1
 L882D := *+4
@@ -1444,7 +1444,12 @@ L8844 := *+27
         jsr     L8644_CHECK_BUTTON
         jmp     L843F
 ; ----------------------------------------------------------------------------
-L8850:  jsr     L886A
+;Print BCD nibbles in YXA in PETSCII
+;Y=$00, X=$03, A=$02 -> Prints "32"
+;Y=$00, X=$06, A=$04 -> Prints "64"
+;Y=$01, X=$02, A=$08 -> Prints "128"
+PRINT_BCD_NIBS:
+        jsr     BIN_TO_BCD_NIBS
         pha
         phx
         tya
@@ -1456,21 +1461,28 @@ L885D:  jsr     L8865
         pla
 L8861:  jsr     L8865
 L8864:  pla
-L8865:  ora     #$30
+L8865:  ora     #'0'
         jmp     KR_ShowChar_
 ; ----------------------------------------------------------------------------
-L886A:  ldy     #$FF
+;Convert binary number A to BCD nibbles in YXA:
+;A=0   -> Y=$00, X=$00, A=$00
+;A=32  -> Y=$00, X=$03, A=$02
+;A=64  -> Y=$00, X=$06, A=$04
+;A=128 -> Y=$01, X=$02, A=$08
+;A=255 -> Y=$02, X=$05, A=$05
+BIN_TO_BCD_NIBS:
+        ldy     #$FF
         cld
         sec
 L886E:  iny
-        sbc     #$64
+        sbc     #100
         bcs     L886E
-        adc     #$64
+        adc     #100
         ldx     #$FF
 L8877:  inx
-        sbc     #$0A
+        sbc     #10
         bcs     L8877
-        adc     #$0A
+        adc     #10
         rts
 ; ----------------------------------------------------------------------------
 L887F:  clc
@@ -4061,7 +4073,7 @@ L9ACD:  bit     #$10
         and     #$03
 L9AD5:  tax
 L9AD6:  lda     $020F,x
-        jsr     L886A
+        jsr     BIN_TO_BCD_NIBS
         bit     $E0
         bmi     L9AE4
         txa
@@ -9061,7 +9073,7 @@ ERROR16:lda     #$0A  ;OUT OF MEMORY
         .byte   $0d,"I/O ERROR #",0
         pla
         pha
-        jsr     L8850
+        jsr     PRINT_BCD_NIBS
         jsr     PrintNewLine
 EREXIT: pla
         sec
