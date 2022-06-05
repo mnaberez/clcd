@@ -1,6 +1,43 @@
 ;Start of code from C128 ROM
 ;C128 ROM is $D480-$F6FF
 
+L0810 := $0810
+L0A00 := $0A00
+L1F0C := $1F0C
+L42D0 := $42D0
+L42E4 := $42E4
+L4307 := $4307
+L4825 := $4825
+L4AF3 := $4AF3
+L4D37 := $4D37
+L4D39 := $4D39
+L4DCA := $4DCA
+L4F4C := $4F4C
+L4F7F := $4F7F
+L5044 := $5044
+L5061 := $5061
+L509D := $509D
+L51D3 := $51D3
+L51F0 := $51F0
+L51F5 := $51F5
+L53DE := $53DE
+L5595 := $5595
+L5609 := $5609
+L5A79 := $5A79
+L5A93 := $5A93
+L5A9E := $5A9E
+L673E := $673E
+L77CB := $77CB
+L77DD := $77DD
+L78C5 := $78C5
+L792A := $792A
+L7944 := $7944
+L7947 := $7947
+L794A := $794A
+L794C := $794C
+L795A := $795A
+L7A73 := $7A73
+L7D16 := $7D16
 L81F7 := $81F7
 L8433 := $8433
 L84B0 := $84B0
@@ -24,6 +61,7 @@ L8C2B := $8C2B
 L8C77 := $8C77
 L8CEE := $8CEE
 L8E25 := $8E25
+L8E35 := $8E35
 L8FAA := $8FAA
 L8FB4 := $8FB4
 L8FED := $8FED
@@ -281,7 +319,7 @@ LD584:  cpy     $78                             ; D584 C4 78                    
 LD58C:  jsr     L98DE                           ; D58C 20 DE 98                  ..
         bne     LD57C                           ; D58F D0 EB                    ..
         beq     LD5BA                           ; D591 F0 27                    .'
-LD593:  jsr     L8E35_27_CHECKSUM_ERROR_IN_HEADER                           ; D593 20 35 8E                  5.
+LD593:  jsr     L8E35                           ; D593 20 35 8E                  5.
         ldy     #$FF                            ; D596 A0 FF                    ..
 LD598:  iny                                     ; D598 C8                       .
         lda     stack,y                         ; D599 B9 00 01                 ...
@@ -3974,7 +4012,7 @@ LF3DB:  jsr     LB983                           ; F3DB 20 83 B9                 
         ldy     #$00                            ; F3EC A0 00                    ..
 LF3EE:  lda     $60                             ; F3EE A5 60                    .`
         jsr     ESC_A_AUTOINSERT_ON             ; F3F0 20 2A B1                  *.
-        jsr     LFFE1_STOP                           ; F3F3 20 E1 FF                  ..
+        jsr     LFFE1_STOP                      ; F3F3 20 E1 FF                  ..
         beq     LF400                           ; F3F6 F0 08                    ..
         jsr     LB950                           ; F3F8 20 50 B9                  P.
         jsr     LB93C                           ; F3FB 20 3C B9                  <.
