@@ -5716,7 +5716,8 @@ LA6BA:
         brk                                     ; A6C0 00                       .
         brk                                     ; A6C1 00                       .
         brk                                     ; A6C2 00                       .
-        eor     LDE61,x                         ; A6C3 5D 61 DE                 ]a.
+        ;TODO probably data
+        eor     $DE61,x                         ; A6C3 5D 61 DE                 ]a.
         lda     ($87)                           ; A6C6 B2 87                    ..
 LA6C8:  sbc     ($4C,x)                         ; A6C8 E1 4C                    .L
         trb     $7461                           ; A6CA 1C 61 74                 .at
@@ -12001,10 +12002,8 @@ LCFF5:  lda     $03B4                           ; CFF5 AD B4 03                 
         cmp     #$E8                            ; CFF8 C9 E8                    ..
         lda     #$30                            ; CFFA A9 30                    .0
         bcs     LD02F                           ; CFFC B0 31                    .1
-;TODO this is probably a jsr
-        .byte   $20                             ; CFFE 20
-        .byte   $B1                             ; CFFF B1                       .
-LD000:  bne     LCF8B-1                         ; D000 D0 88                    ..
+        jsr     LD0B1
+        dey
         bne     LCFF5                           ; D002 D0 F1                    ..
 LD004:  asl     $03B4                           ; D004 0E B4 03                 ...
         bcc     LD01D                           ; D007 90 14                    ..
@@ -12012,15 +12011,12 @@ LD004:  asl     $03B4                           ; D004 0E B4 03                 
         cmp     $D0                             ; D00B C5 D0                    ..
         beq     LD022                           ; D00D F0 13                    ..
         lda     LCE12,x                         ; D00F BD 12 CE                 ...
-        .byte   $20                             ; D012 20
-LD013:  .byte   $B4                             ; D013 B4                       .
-LD014:  .byte   $D0                             ; D014 D0                       .
-LD015:  lda     LCE18,x                         ; D015 BD 18 CE                 ...
-        .byte   $F0                             ; D018 F0                       .
-LD019:  .byte   $03                             ; D019 03                       .
+        jsr     LD0B4
+        lda     LCE18,x                         ; D015 BD 18 CE                 ...
+        BEQ     LD01D
 LD01A:  jsr     LD0B4                           ; D01A 20 B4 D0                  ..
 LD01D:  dex                                     ; D01D CA                       .
-LD01E:  bne     LCFED                           ; D01E D0 CD                    ..
+        bne     LCFED                           ; D01E D0 CD                    ..
         bra     LD035                           ; D020 80 13                    ..
 LD022:  lda     LCE12,x                         ; D022 BD 12 CE                 ...
         jsr     LD0B4                           ; D025 20 B4 D0                  ..
