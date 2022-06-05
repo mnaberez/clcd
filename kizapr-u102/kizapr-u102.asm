@@ -12526,120 +12526,120 @@ LD3A9_CLC_JMP_LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT:
         jmp     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
 ; ----------------------------------------------------------------------------
 MEMBOT__:
-        rol     a                               ; D3AD 2A                       *
-        inc     a                               ; D3AE 1A                       .
-        ror     a                               ; D3AF 6A                       j
-        bcc     LD3E4                           ; D3B0 90 32                    .2
-        phx                                     ; D3B2 DA                       .
-        lda     #$FF                            ; D3B3 A9 FF                    ..
-        sta     MemBotLoByte                    ; D3B5 8D 98 03                 ...
-        lda     #$F7                            ; D3B8 A9 F7                    ..
-        sta     MemBotHiByte                    ; D3BA 8D 99 03                 ...
-        ldx     $020B                           ; D3BD AE 0B 02                 ...
-        bne     LD3CE                           ; D3C0 D0 0C                    ..
-        cmp     $020A                           ; D3C2 CD 0A 02                 ...
-        bcc     LD3CE                           ; D3C5 90 07                    ..
-        lda     $020A                           ; D3C7 AD 0A 02                 ...
-        dec     a                               ; D3CA 3A                       :
-        sta     MemBotHiByte                    ; D3CB 8D 99 03                 ...
-LD3CE:  plx                                     ; D3CE FA                       .
-        cpy     MemBotHiByte                    ; D3CF CC 99 03                 ...
-        bcc     LD3DD                           ; D3D2 90 09                    ..
-        bne     LD3E4                           ; D3D4 D0 0E                    ..
-        cpx     MemBotLoByte                    ; D3D6 EC 98 03                 ...
-        bcc     LD3DD                           ; D3D9 90 02                    ..
-        bne     LD3E4                           ; D3DB D0 07                    ..
-LD3DD:  stx     MemBotLoByte                    ; D3DD 8E 98 03                 ...
-        sty     MemBotHiByte                    ; D3E0 8C 99 03                 ...
-        clc                                     ; D3E3 18                       .
-LD3E4:  php                                     ; D3E4 08                       .
-        ldy     MemBotHiByte                    ; D3E5 AC 99 03                 ...
-        stz     $020D                           ; D3E8 9C 0D 02                 ...
-        sty     $020C                           ; D3EB 8C 0C 02                 ...
-        jsr     LD3F6                           ; D3EE 20 F6 D3                  ..
-        ldx     MemBotLoByte                    ; D3F1 AE 98 03                 ...
-        plp                                     ; D3F4 28                       (
-        rts                                     ; D3F5 60                       `
+        rol     a
+        inc     a
+        ror     a
+        bcc     LD3E4
+        phx
+        lda     #$FF
+        sta     MemBotLoByte
+        lda     #$F7
+        sta     MemBotHiByte
+        ldx     $020B
+        bne     LD3CE
+        cmp     $020A
+        bcc     LD3CE
+        lda     $020A
+        dec     a
+        sta     MemBotHiByte
+LD3CE:  plx
+        cpy     MemBotHiByte
+        bcc     LD3DD
+        bne     LD3E4
+        cpx     MemBotLoByte
+        bcc     LD3DD
+        bne     LD3E4
+LD3DD:  stx     MemBotLoByte
+        sty     MemBotHiByte
+        clc
+LD3E4:  php
+        ldy     MemBotHiByte
+        stz     $020D
+        sty     $020C
+        jsr     LD3F6
+        ldx     MemBotLoByte
+        plp
+        rts
 ; ----------------------------------------------------------------------------
-LD3F6:  cld                                     ; D3F6 D8                       .
-        sec                                     ; D3F7 38                       8
-        lda     $020A                           ; D3F8 AD 0A 02                 ...
-        sbc     $020C                           ; D3FB ED 0C 02                 ...
-        tax                                     ; D3FE AA                       .
-        lda     $020B                           ; D3FF AD 0B 02                 ...
-        sbc     $020D                           ; D402 ED 0D 02                 ...
-        bcs     LD409                           ; D405 B0 02                    ..
-        ldx     #$01                            ; D407 A2 01                    ..
-LD409:  beq     LD40D                           ; D409 F0 02                    ..
-        ldx     #$00                            ; D40B A2 00                    ..
-LD40D:  dex                                     ; D40D CA                       .
-        stx     $BC                             ; D40E 86 BC                    ..
-        rts                                     ; D410 60                       `
+LD3F6:  cld
+        sec
+        lda     $020A
+        sbc     $020C
+        tax
+        lda     $020B
+        sbc     $020D
+        bcs     LD409
+        ldx     #$01
+LD409:  beq     LD40D
+        ldx     #$00
+LD40D:  dex
+        stx     $BC
+        rts
 ; ----------------------------------------------------------------------------
-LD411:  clc                                     ; D411 18                       .
-        ldy     #$FF                            ; D412 A0 FF                    ..
-        jsr     MEMBOT__                        ; D414 20 AD D3                  ..
-        clc                                     ; D417 18                       .
-        ldy     #$00                            ; D418 A0 00                    ..
+LD411:  clc
+        ldy     #$FF
+        jsr     MEMBOT__
+        clc
+        ldy     #$00
 MEMTOP__:
-        bcs     LD42F                           ; D41A B0 13                    ..
-        cpy     #$10                            ; D41C C0 10                    ..
-        bcs     LD429                           ; D41E B0 09                    ..
-        ldx     #$00                            ; D420 A2 00                    ..
-        ldy     #$10                            ; D422 A0 10                    ..
-        jsr     LD429                           ; D424 20 29 D4                  ).
-        sec                                     ; D427 38                       8
-        rts                                     ; D428 60                       `
+        bcs     LD42F
+        cpy     #$10
+        bcs     LD429
+        ldx     #$00
+        ldy     #$10
+        jsr     LD429
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-LD429:  sty     MemTopHiByte                    ; D429 8C 9B 03                 ...
-        stx     MemTopLoByte                    ; D42C 8E 9A 03                 ...
-LD42F:  ldx     MemTopLoByte                    ; D42F AE 9A 03                 ...
-        ldy     MemTopHiByte                    ; D432 AC 9B 03                 ...
-        clc                                     ; D435 18                       .
-        rts                                     ; D436 60                       `
+LD429:  sty     MemTopHiByte
+        stx     MemTopLoByte
+LD42F:  ldx     MemTopLoByte
+        ldy     MemTopHiByte
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-LD437:  phx                                     ; D437 DA                       .
-        phy                                     ; D438 5A                       Z
-        cld                                     ; D439 D8                       .
-        stz     $E5                             ; D43A 64 E5                    d.
-        asl     a                               ; D43C 0A                       .
-        sta     $E4                             ; D43D 85 E4                    ..
-        asl     a                               ; D43F 0A                       .
-        rol     $E5                             ; D440 26 E5                    &.
-        adc     $E4                             ; D442 65 E4                    e.
-        pha                                     ; D444 48                       H
-        lda     $E5                             ; D445 A5 E5                    ..
-        adc     #$F7                            ; D447 69 F7                    i.
-        ldx     #$03                            ; D449 A2 03                    ..
-        jsr     L8A87                           ; D44B 20 87 8A                  ..
-        pla                                     ; D44E 68                       h
-        sta     $E4                             ; D44F 85 E4                    ..
-        ply                                     ; D451 7A                       z
-        plx                                     ; D452 FA                       .
-        stx     $DA                             ; D453 86 DA                    ..
-        sty     $D9                             ; D455 84 D9                    ..
-        lda     #$D9                            ; D457 A9 D9                    ..
-        sta     SINNER                          ; D459 8D 4E 03                 .N.
-        sta     $0360                           ; D45C 8D 60 03                 .`.
-        ldx     #$07                            ; D45F A2 07                    ..
-LD461:  lda     #$00                            ; D461 A9 00                    ..
-        cpx     #$06                            ; D463 E0 06                    ..
-        bcs     LD46B                           ; D465 B0 04                    ..
-        txa                                     ; D467 8A                       .
-        tay                                     ; D468 A8                       .
-        lda     ($E4),y                         ; D469 B1 E4                    ..
-LD46B:  ldy     #$07                            ; D46B A0 07                    ..
-LD46D:  asl     a                               ; D46D 0A                       .
-        pha                                     ; D46E 48                       H
-        jsr     GO_RAM_LOAD_GO_KERN             ; D46F 20 4A 03                  J.
-        ror     a                               ; D472 6A                       j
-        jsr     GO_RAM_STORE_GO_KERN            ; D473 20 5C 03                  \.
-        pla                                     ; D476 68                       h
-        dey                                     ; D477 88                       .
-        bpl     LD46D                           ; D478 10 F3                    ..
-        dex                                     ; D47A CA                       .
-        bpl     LD461                           ; D47B 10 E4                    ..
-        jmp     L8A81                           ; D47D 4C 81 8A                 L..
+LD437:  phx
+        phy
+        cld
+        stz     $E5
+        asl     a
+        sta     $E4
+        asl     a
+        rol     $E5
+        adc     $E4
+        pha
+        lda     $E5
+        adc     #$F7
+        ldx     #$03
+        jsr     L8A87
+        pla
+        sta     $E4
+        ply
+        plx
+        stx     $DA
+        sty     $D9
+        lda     #$D9
+        sta     SINNER
+        sta     $0360
+        ldx     #$07
+LD461:  lda     #$00
+        cpx     #$06
+        bcs     LD46B
+        txa
+        tay
+        lda     ($E4),y
+LD46B:  ldy     #$07
+LD46D:  asl     a
+        pha
+        jsr     GO_RAM_LOAD_GO_KERN
+        ror     a
+        jsr     GO_RAM_STORE_GO_KERN
+        pla
+        dey
+        bpl     LD46D
+        dex
+        bpl     LD461
+        jmp     L8A81                           
 
 ; ----------------------------------------------------------------------------
 
@@ -12670,25 +12670,26 @@ RESET:  sei
         sta     MMU_MODE_KERN
         jmp     KL_RESET
 ; ----------------------------------------------------------------------------
-; The IRQ routine, pointed by the IRQ hardware vector. Note about the usage
-; of $FC00 and $FA80 locations, seems to be dummy write, as with the RESET
-; routine, but different addresses ...
+; The IRQ routine, pointed by the IRQ hardware vector.
 IRQ:    pha
         phx
         phy
         sta     MMU_MODE_SAVE
         sta     MMU_MODE_APPL
         tsx
-        lda     stack+4,x
-        and     #$10
-        bne     LFA28
+
+        lda     stack+4,x             ;A = NV-BDIZC
+        and     #$10                  ;Test for BRK flag
+        bne     LFA28_BRK             ;Branch if BRK flag is set
+
         lda     #>(RETURN_FROM_IRQ-1)
         pha
         lda     #<(RETURN_FROM_IRQ-1)
         pha
         jmp     (RAMVEC_IRQ)
-; ----------------------------------------------------------------------------
-LFA28:  jmp     (RAMVEC_BRK)
+
+LFA28_BRK:
+        jmp     (RAMVEC_BRK)
 ; ----------------------------------------------------------------------------
 DEFVEC_BRK:
 ; Default BRK handler, drops into monitor
@@ -12701,7 +12702,7 @@ DEFVEC_IRQ:
 
         lda     ACIA_ST
         bpl     LFA3C               ;Branch if interrupt was not caused by ACIA
-        jsr     ACIA_IRQ      ;Service ACIA, then come back here for VIA1
+        jsr     ACIA_IRQ            ;Service ACIA, then come back here for VIA1
 
 LFA3C:  bit     VIA1_IFR
         bpl     LFA43               ;Branch if IRQ was not caused by VIA1
