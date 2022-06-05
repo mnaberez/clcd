@@ -14451,7 +14451,7 @@ LE14C:  iny                                     ; E14C C8                       
         cpy     #$6F                            ; E14D C0 6F                    .o
         beq     LE15D                           ; E14F F0 0C                    ..
         jsr     LA81A                           ; E151 20 1A A8                  ..
-        jsr     LFF5C                           ; E154 20 5C FF                  \.
+        jsr     C128_FF5C_LKUPSA                           ; E154 20 5C FF                  \.
         bcc     LE14C                           ; E157 90 F3                    ..
         sty     stack+29                        ; E159 8C 1D 01                 ...
         rts                                     ; E15C 60                       `
@@ -14470,7 +14470,7 @@ LE15D:  ldx     #$01                            ; E15D A2 01                    
 ; ----------------------------------------------------------------------------
 LE176:  lda     stack+28                        ; E176 AD 1C 01                 ...
         jsr     LA81A                           ; E179 20 1A A8                  ..
-        jmp     LFF4A                           ; E17C 4C 4A FF                 LJ.
+        jmp     C128_FF4A_CLALL                           ; E17C 4C 4A FF                 LJ.
 ; ----------------------------------------------------------------------------
         lda     #$66                            ; E17F A9 66                    .f
         jsr     LA398                           ; E181 20 98 A3                  ..
@@ -14629,7 +14629,7 @@ LE2B0:  jmp     L795A                           ; E2B0 4C 5A 79                 
         stx     stack+30                        ; E2D2 8E 1E 01                 ...
         lda     stack+27                        ; E2D5 AD 1B 01                 ...
         jsr     LA81A                           ; E2D8 20 1A A8                  ..
-        jsr     LFF59                           ; E2DB 20 59 FF                  Y.
+        jsr     C128_FF59_LKUPLA                           ; E2DB 20 59 FF                  Y.
         bcs     LE2F9                           ; E2DE B0 19                    ..
         sty     $11ED                           ; E2E0 8C ED 11                 ...
         stx     stack+28                        ; E2E3 8E 1C 01                 ...
@@ -15539,7 +15539,7 @@ LE9E4:  rts                                     ; E9E4 60                       
         pla                                     ; EA23 68                       h
         tay                                     ; EA24 A8                       .
         ldx     $03D5                           ; EA25 AE D5 03                 ...
-        jmp     LFF50                           ; EA28 4C 50 FF                 LP.
+        jmp     C128_FF50_DMACALL               ; EA28 4C 50 FF                 LP.
 ; ----------------------------------------------------------------------------
 LEA2B:  jmp     L7D16                           ; EA2B 4C 16 7D                 L.}
 ; ----------------------------------------------------------------------------
@@ -15838,7 +15838,7 @@ LEAEA:  .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF,$FF ; EAEA FF FF FF FF FF FF FF FF  
 ; ----------------------------------------------------------------------------
         jmp     LF0B2-$4000                     ; F006 4C B2 B0                 L..
 ; ----------------------------------------------------------------------------
-LF009:  jsr     LFF7D ;somehow PRIMMs
+LF009:  jsr     C128_FF7D_PRIMM
         .byte   $0d,"BREAK",$07,0
         pla                                     ; F014 68                       h
         sta     $02                             ; F015 85 02                    ..
@@ -15860,7 +15860,7 @@ LF021:  lda     #$00                            ; F021 A9 00                    
         sty     $03                             ; F034 84 03                    ..
         lda     #$0F                            ; F036 A9 0F                    ..
         sta     $02                             ; F038 85 02                    ..
-        jsr     LFF7D ;somehow PRIMMs
+        jsr     C128_FF7D_PRIMM
         .byte   $0d,"MONITOR",0
 LF046:  cld                                     ; F046 D8                       .
         tsx                                     ; F047 BA                       .
@@ -15871,7 +15871,7 @@ LF046:  cld                                     ; F046 D8                       
 ; ----------------------------------------------------------------------------
 ;Registers command
 LF050:
-        jsr     LFF7D ;somehow PRIMMs
+        jsr     C128_FF7D_PRIMM
         .byte   $0D,"    PC  SR AC XR YR SP"
         .byte   $0d,"; ",$1b,"Q",0
         lda     $02                             ; F070 A5 02                    ..
@@ -15909,7 +15909,7 @@ LF0B4:  cmp     LB0E7-1,x                       ; F0B4 DD E6 B0                 
         beq     LF0C5                           ; F0B7 F0 0C                    ..
         dex                                     ; F0B9 CA                       .
         bpl     LF0B4                           ; F0BA 10 F8                    ..
-LF0BC:  jsr     LFF7D ;somehow PRIMMs
+LF0BC:  jsr     C128_FF7D_PRIMM
         .byte   $1D,"?",0
         jmp     LF08B-$4000                     ; F0C2 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
@@ -15976,7 +15976,7 @@ LF11A:  stx     $0AB2
         ldx     $68
         lda     #$66                            ; F11F A9 66                    .f
         sei                                     ; F121 78                       x
-        jsr     LFF74                           ; F122 20 74 FF                  t.
+        jsr     C128_FF74_INDFET                           ; F122 20 74 FF                  t.
         cli                                     ; F125 58                       X
         ldx     $0AB2                           ; F126 AE B2 0A                 ...
         rts                                     ; F129 60                       `
@@ -15986,7 +15986,7 @@ LF12A:  stx     $0AB2                           ; F12A 8E B2 0A                 
         stx     $02B9                           ; F12F 8E B9 02                 ...
         ldx     $68                             ; F132 A6 68                    .h
         sei                                     ; F134 78                       x
-        jsr     LFF77 ; F135 20 77 FF                  w.
+        jsr     C128_FF77_INDSTA ; F135 20 77 FF                  w.
         cli                                     ; F138 58                       X
         ldx     $0AB2                           ; F139 AE B2 0A                 ...
         rts                                     ; F13C 60                       `
@@ -15996,7 +15996,7 @@ LF12A:  stx     $0AB2                           ; F12A 8E B2 0A                 
 LF142:  stx     $02C8                           ; F142 8E C8 02                 ...
         ldx     $68                             ; F145 A6 68                    .h
         sei                                     ; F147 78                       x
-        jsr     LFF7A                           ; F148 20 7A FF                  z.
+        jsr     C128_FF7A_INDCMP                           ; F148 20 7A FF                  z.
         cli                                     ; F14B 58                       X
         php                                     ; F14C 08                       .
         ldx     $0AB2                           ; F14D AE B2 0A                 ...
@@ -16063,7 +16063,7 @@ LF1B2:  jsr     LB7A7                           ; F1B2 20 A7 B7                 
         bcc     LF1B2                           ; F1C3 90 ED                    ..
 LF1C5:  cpy     #$08                            ; F1C5 C0 08                    ..
         bcc     LF1B2                           ; F1C7 90 E9                    ..
-LF1C9:  jsr     LFF7D ;somehow PRIMMs
+LF1C9:  jsr     C128_FF7D_PRIMM
         .byte   $1B,"O",$91,0
         jsr     LF1E8-$4000                     ; F1D0 20 E8 B1                  ..
         jmp     LF08B-$4000                     ; F1D3 4C 8B B0                 L..
@@ -16072,29 +16072,29 @@ LF1C9:  jsr     LFF7D ;somehow PRIMMs
 LF1D6:  jsr     LB974                           ; F1D6 20 74 B9                  t.
         ldx     $09                             ; F1D9 A6 09                    ..
         txs                                     ; F1DB 9A                       .
-        jmp     LFF71                           ; F1DC 4C 71 FF                 Lq.
+        jmp     C128_FF71_JMPFAR                ; F1DC 4C 71 FF                 Lq.
 ; ----------------------------------------------------------------------------
 ;Jump to subroutine command
 LF1DF:  jsr     LB974                           ; F1DF 20 74 B9                  t.
-        jsr     LFF6E                           ; F1E2 20 6E FF                  n.
+        jsr     C128_FF6E_JSRFAR               ; F1E2 20 6E FF                  n.
         jmp     LF08B-$4000                     ; F1E5 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
 LF1E8:  jsr     LF8B4-$4000                     ; F1E8 20 B4 B8                  ..
         lda     #$3E                            ; F1EB A9 3E                    .>
-        jsr     LFFD2_CHROUT                           ; F1ED 20 D2 FF                  ..
+        jsr     LFFD2_CHROUT                    ; F1ED 20 D2 FF                  ..
         jsr     LF892-$4000                     ; F1F0 20 92 B8                  ..
         ldy     #$00                            ; F1F3 A0 00                    ..
         beq     LF1FA                           ; F1F5 F0 03                    ..
-LF1F7:  jsr     LF8A8-$4000                           ; F1F7 20 A8 B8                  ..
+LF1F7:  jsr     LF8A8-$4000                     ; F1F7 20 A8 B8                  ..
 LF1FA:  jsr     LF11A-$4000                     ; F1FA 20 1A B1                  ..
-        jsr     LF8C2-$4000                           ; F1FD 20 C2 B8                  ..
+        jsr     LF8C2-$4000                     ; F1FD 20 C2 B8                  ..
         iny                                     ; F200 C8                       .
         cpy     #$08                            ; F201 C0 08                    ..
         bit     $D7                             ; F203 24 D7                    $.
         bpl     LF209                           ; F205 10 02                    ..
         cpy     #$10                            ; F207 C0 10                    ..
 LF209:  bcc     LF1F7                           ; F209 90 EC                    ..
-        jsr     LFF7D ;somehow PRIMMs
+        jsr     C128_FF7D_PRIMM
         .byte   ":",$12,0
         ldy     #$00                            ; F211 A0 00                    ..
 LF213:  jsr     LF11A-$4000                     ; F213 20 1A B1                  ..
@@ -16104,7 +16104,7 @@ LF213:  jsr     LF11A-$4000                     ; F213 20 1A B1                 
         pla                                     ; F21B 68                       h
         bcs     LF220                           ; F21C B0 02                    ..
         lda     #$2E                            ; F21E A9 2E                    ..
-LF220:  jsr     LFFD2_CHROUT                           ; F220 20 D2 FF                  ..
+LF220:  jsr     LFFD2_CHROUT                    ; F220 20 D2 FF                  ..
         iny                                     ; F223 C8                       .
         bit     $D7                             ; F224 24 D7                    $.
         bpl     LF22C                           ; F226 10 04                    ..
@@ -16169,9 +16169,9 @@ LF28F:  ldx     $62                             ; F28F A6 62                    
         sei                                     ; F291 78                       x
         bit     $93                             ; F292 24 93                    $.
         bpl     LF299                           ; F294 10 03                    ..
-        jsr     LFF77                           ; F296 20 77 FF                  w.
+        jsr     C128_FF77_INDSTA                           ; F296 20 77 FF                  w.
 LF299:  ldx     $62                             ; F299 A6 62                    .b
-        jsr     LFF7A                           ; F29B 20 7A FF                  z.
+        jsr     C128_FF7A_INDCMP                           ; F29B 20 7A FF                  z.
         cli                                     ; F29E 58                       X
         beq     LF2AA                           ; F29F F0 09                    ..
         jsr     LF892-$4000                     ; F2A1 20 92 B8                  ..
@@ -16310,7 +16310,7 @@ LF3B7:  jsr     LOAD                            ; F3B7 20 D5 FF                 
         beq     LF3A8                           ; F3BE F0 E8                    ..
         lda     $93                             ; F3C0 A5 93                    ..
         beq     LF370                           ; F3C2 F0 AC                    ..
-        jsr     LFF7D ;somehow PRIMMs
+        jsr     C128_FF7D_PRIMM
         .byte   " ERROR",0
         jmp     LF08B-$4000                           ; F3CE 4C 8B B0                 L..
 ; ----------------------------------------------------------------------------
@@ -16482,7 +16482,7 @@ LF524:  jsr     LF12A-$4000                     ; F524 20 2A B1                 
 LF52A:  lda     $0AB1                           ; F52A AD B1 0A                 ...
         jsr     LF12A-$4000                     ; F52D 20 2A B1                  *.
         jsr     LB8AD_8D_SHIFT_RETURN                           ; F530 20 AD B8                  ..
-        jsr     LFF7D ;somehow PRIMMs
+        jsr     C128_FF7D_PRIMM
         .byte   "A ",$1b,"Q",0
         jsr     LF5DC-$4000
         inc     $0AAB
@@ -16535,7 +16535,7 @@ LF5A3:  lda     #$14                            ; F5A3 A9 14                    
         bne     LF5AE                           ; F5A7 D0 05                    ..
 LF5A9:  jsr     LF90E-$4000                     ; F5A9 20 0E B9                  ..
         bcc     LF5D1                           ; F5AC 90 23                    .#
-LF5AE:  jsr     LFF7D ;somehow PRIMMs
+LF5AE:  jsr     C128_FF7D_PRIMM
         .byte   $0D,$1B,"Q",0
         jsr     LFFE1_STOP                      ; F5B5 20 E1 FF                  ..
         beq     LF5CE                           ; F5B8 F0 14                    ..
@@ -16563,7 +16563,7 @@ LF5DC:  jsr     LF892-$4000
         inx                                     ; F5EE E8                       .
 LF5EF:  dex                                     ; F5EF CA                       .
         bpl     LF5FC                           ; F5F0 10 0A                    ..
-        jsr     LFF7D ;somehow PRIMMs
+        jsr     C128_FF7D_PRIMM
         .byte   "   ",0
         jmp     LF602-$4000                     ; F5F9 4C 02 B6                 L..
 ; ----------------------------------------------------------------------------
@@ -18256,6 +18256,28 @@ UNUSED:
         .byte   $FF,$FF,$FF,$FF,$FF,$FF
 
 ; ----------------------------------------------------------------------------
+
+;All of these land mid-instruction in CLCD KERNAL jump table below, so
+;they don't make sense.  However, they match the C128 KERNAL jump table.
+;They are used by the second machine language monitor above at $F000,
+;which itself doesn't make sense because it was assembled for $4000.
+;That monitor may actually be the C128 monitor.
+C128_FF4A_CLALL   := $FF4A  ;CLALL
+C128_FF50_DMACALL := $FF50  ;DMACALL
+C128_FF59_LKUPLA  := $FF59  ;LKUPLA
+C128_FF5C_LKUPSA  := $FF5C  ;LKUPSA
+C128_FF6E_JSRFAR  := $FF6E  ;JSRFAR
+C128_FF71_JMPFAR  := $FF71  ;JMPFAR
+C128_FF74_INDFET  := $FF74  ;INDFET
+C128_FF77_INDSTA  := $FF77  ;INDSTA
+C128_FF7A_INDCMP  := $FF7A  ;INDCMP
+C128_FF7D_PRIMM   := $FF7D  ;PRIMM
+
+;
+;Start of CLCD KERNAL jump table
+;
+
+; ----------------------------------------------------------------------------
         jmp     LFAB5                           ; FF27 4C B5 FA                 L..
 ; ----------------------------------------------------------------------------
         jmp     LFABF                           ; FF2A 4C BF FA                 L..
@@ -18279,22 +18301,18 @@ UNUSED:
 ; ----------------------------------------------------------------------------
         jmp     LFB19                           ; FF45 4C 19 FB                 L..
 ; ----------------------------------------------------------------------------
-LFF4A           := * + 2
         jmp     LFB23                           ; FF48 4C 23 FB                 L#.
 ; ----------------------------------------------------------------------------
         jmp     LFB2D                           ; FF4B 4C 2D FB                 L-.
 ; ----------------------------------------------------------------------------
-LFF50           := * + 2
         jmp     LFB37                           ; FF4E 4C 37 FB                 L7.
 ; ----------------------------------------------------------------------------
         jmp     LFB41                           ; FF51 4C 41 FB                 LA.
 ; ----------------------------------------------------------------------------
         jmp     PRIMM00                ; FF54 4C 51 FB                 LQ.
 ; ----------------------------------------------------------------------------
-LFF59           := * + 2
         jmp     KR_LB758                           ; FF57 4C 92 FB                 L..
 ; ----------------------------------------------------------------------------
-LFF5C           := * + 2
         jmp     KR_LD230_JMP_LD233_PLUS_X          ; FF5A 4C 9C FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     KR_LB293                           ; FF5D 4C A6 FB                 L..
@@ -18307,22 +18325,16 @@ LFF5C           := * + 2
 ; ----------------------------------------------------------------------------
         jmp     KR_LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT                           ; FF69 4C D6 FB                 L..
 ; ----------------------------------------------------------------------------
-LFF6E := * + 2
         jmp     KR_ShowChar                        ; FF6C 4C E0 FB                 L..
 ; ----------------------------------------------------------------------------
-LFF71 := * + 2
         jmp     KR_LCDsetupGetOrSet                           ; FF6F 4C EA FB                 L..
 ; ----------------------------------------------------------------------------
-LFF74 := * + 2
         jmp     KR_LB684_STA_03F9                           ; FF72 4C F4 FB                 L..
 ; ----------------------------------------------------------------------------
-LFF77 := * + 2
         jmp     KR_LB688_GET_KEY_NONBLOCKING       ; FF75 4C FE FB                 L..
 ; ----------------------------------------------------------------------------
-LFF7A := * + 2
         jmp     KR_LFC08_JSR_LB4FB_RESET_KEYD_BUFFER                           ; FF78 4C 08 FC                 L..
 ; ----------------------------------------------------------------------------
-LFF7D := * + 2
         jmp     KR_PUT_KEY_INTO_KEYD_BUFFER        ; FF7B 4C 12 FC                 L..
 ; ----------------------------------------------------------------------------
 ;unused kernal jump table entry
