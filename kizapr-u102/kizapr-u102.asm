@@ -678,7 +678,6 @@ L81E0_PUT_CHAR_IN_FKEY_BAR:
         sta     ($BD),y
         rts
 
-L81F7 := *+4
 L81F3_FKEY_COLUMNS:
         ;      F1,F2,F3,F4,F5,F6,F7,F8
         .byte   0,10,20,30,40,50,60,70  ;Starting column on bottom screen line
@@ -1017,7 +1016,6 @@ L8426:  stz     $0202                           ; 8426 9C 02 02                 
         ldx     $0203                           ; 8429 AE 03 02                 ...
         stx     $0200                           ; 842C 8E 00 02                 ...
         stz     $0203                           ; 842F 9C 03 02                 ...
-L8433           := * + 1
         jsr     L840F                           ; 8432 20 0F 84                  ..
         bcc     L843A                           ; 8435 90 03                    ..
         jmp     L843F                           ; 8437 4C 3F 84                 L?.
@@ -1073,7 +1071,6 @@ L849B:  stx     $0202
         jsr     L8420_JSR_L8277_JMP_LFA67
         sei
         jsr     SWAP_RAMVEC     ;Swap the other vectors back in
-L84B0 := *+1
         stz     $0202
         ldx     $0200
         jsr     L840F
@@ -1095,7 +1092,6 @@ L84C5:  php
         ldx     $0202
         beq     L84DA
         jsr     SWAP_RAMVEC
-L84D0 := * +1
         jsr     L84ED
         jsr     SWAP_RAMVEC
         ldx     $0202
@@ -1477,19 +1473,12 @@ L87CA:  stz     $00,x
         bne     L87CA
         jsr     L8685
         cli
-L87F0 := *+17
-L87F3 := *+20
         jsr     PRIMM
         .byte   "ESTABLISHING SYSTEM PARAMETERS ",$07,$0D,0
-; ----------------------------------------------------------------------------
-L8805 := * + 1
         jsr     L82BE_CHECK_ROM_ENV
         lda     #$0F
-L880B := * + 2
         sta     $020C
-L880E := * + 2
         jsr     KL_RAMTAS
-L8811 := * + 2
         sta     $0208
         stx     $0209
         sta     $020A
@@ -1501,10 +1490,6 @@ L8811 := * + 2
         ror     a
         jsr     PRINT_BCD_NIBS ;Print the "128" in "128 KBYTE SYSTEM ESTABLISHED"
         jsr     L8E5C
-L882A := *+1
-L882D := *+4
-L8841 := *+24
-L8844 := *+27
         jsr PRIMM
         .byte   " KBYTE SYSTEM ESTABLISHED",$0d,0
         jsr     LD411
@@ -1668,7 +1653,6 @@ L894F:  cmp     #$93 ;CHR$(147) Clear Screen
         beq     L8922
         cmp     #$0D ;CHR$(13) Carriage Return
         bne     L897C
-L8959 := *+2
         jsr     L897C
         lda     $03e7
         cmp     #$04
@@ -1774,9 +1758,7 @@ L8A14:  pha
 L8A1A:  pha
         txa
         sta     ($D9),y
-L8A20 := *+2
         lda     $0216
-L8A23 := *+2
         sta     MMU_KERN_WINDOW
         pla
         sta     ($e4),y
@@ -1940,10 +1922,8 @@ L8B31_STORE_0207_0219_THEN_72_DISK_FULL:
         rts
 ; ----------------------------------------------------------------------------
 ;CHRIN to Virtual 1541
-L8B3C := *+2
 V1541_CHRIN:
         jsr     L8B40_V1541_INTERNAL_CHRIN
-L8B3F := *+2
         jmp     V1541_KERNAL_CALL_DONE
 
 L8B40_V1541_INTERNAL_CHRIN:
@@ -2095,7 +2075,6 @@ L8C27_71_DIR_ERROR:
         rts
 
 ; ----------------------------------------------------------------------------
-L8C2B := *+1
 L8C2A_JSR_V1541_SELECT_CHAN_17_JMP_L8C8B_CLEAR_ACTIVE_CHANNEL:
         jsr     V1541_SELECT_CHAN_17
         jmp     L8C8B_CLEAR_ACTIVE_CHANNEL
@@ -2168,8 +2147,7 @@ L8C6F_V1541_I_INITIALIZE:
         lda     #doschan_14_cmd_app
         jsr     V1541_SELECT_CHANNEL_A
         ldx     #$47
-L8C77 := *+1
-L8C76:  STZ     V1541_CHAN_BUF,X
+L8C76:  stz     V1541_CHAN_BUF,X
         dex
 L8C7A:  bpl     L8C76
         stz     V1541_CMD_LEN
@@ -2247,7 +2225,6 @@ L8CD1:  ldx     V1541_ACTIV_EA
 L8CE6:  ldx     V1541_ACTIV_EA
         ldy     V1541_ACTIV_E9
         stx     $03A7
-L8CEE := *+1
         sty     $03a6
         stz     $02D8
         ldx     #$FF
@@ -2429,7 +2406,6 @@ L8E10:  lda     V1541_DATA_BUF+1
 ; ----------------------------------------------------------------------------
 L8E20_MAYBE_CHECKS_HEADER:
         lda     V1541_DATA_BUF+1
-L8E25 := *+2
         jsr     L8E5E
         cmp     V1541_DATA_BUF+2
         bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER
@@ -2653,7 +2629,6 @@ L8F9B:  cld
         cmp     $03A2
         lda     #doserr_33_syntax_err ;33 syntax error
         bcc     L8FAC_RTS
-L8FAA := *+1
         lda     $03a5
 L8FAC_RTS:  rts
 ; ----------------------------------------------------------------------------
@@ -2665,7 +2640,6 @@ L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME:
         jsr     GO_RAM_LOAD_GO_KERN  ;get the char
         iny
 L8FB1:  ldx     #$03
-L8FB4 := *+1
 L8FB3_LOOP:
         cmp L8FBF_DIASLLOWED_FNAME_CHARS,X
         bne L8FBA_NOT_EQU
@@ -2708,7 +2682,6 @@ L8FDD_ANY_ONE_CHAR:
 L8FE9_SUCCESS_FILENAME_MATCHES:
         sec
         rts
-L8FED := *+2
 L8FEB:  inx
         lda     V1541_DATA_BUF+5,X
         bne     L8FCD_LOOP
@@ -2783,7 +2756,6 @@ L905E:  lda     #V1541_FNADR ;ZP-address
         cpx     #$14
         bcs     L9077
         stz     $0238,x
-L9079 := *+2
 L9077:  LDA     V1541_FILE_TYPE
         sta     $024C
 L907D_SEC_RTS:
@@ -2827,17 +2799,14 @@ L90A7:  jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
         cmp     #$40 ;'@'
         bne     L90DA_33_SYNTAX_ERROR
 
-L90C3 := *+1
 L90C2:  jsr     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
         bcc     L90EC_ERROR ;branch if error (file not found)
 
         lda     $03A0
-L90CB := *+1
         bne     L90D0_03A0_NOT_ZERO
         lda     #doserr_63_file_exists ;63 file exists
         bra     L90DF_ERROR
 
-L90D2 := *+2
 L90D0_03A0_NOT_ZERO:
         lda     V1541_DATA_BUF
         and     #$80
@@ -2870,12 +2839,10 @@ L90F2:  bcc     L90DF_ERROR ;branch if error
         beq     L9106
         lda     #$40
         sta     V1541_DATA_BUF
-L9108:=*+2
 L9106:  jsr     L8E91
         bcc     L90DF_ERROR
         eor     #$01
 L910D:  pha                         ;push number of blocks used
-L9110:=*+2
         jsr     L91A4
         sty     V1541_DATA_BUF+2
         pla                         ;pull number of blocks used
@@ -2912,7 +2879,6 @@ L9150:  jsr     L91A4
         cpy     #$00
         beq     L91A1
         dey
-L915A := *+2
         sty     V1541_DATA_BUF+2
         sta     V1541_DATA_BUF+3
         lda     #$E0 ;ZP-address
@@ -3031,7 +2997,6 @@ L9221:  lda     V1541_DEFAULT_CHAN
         bne     L9240_RTS
         lda     V1541_ACTIV_E8
         beq     L9240_RTS
-L9236 := *+1
         jsr     L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR
         bcc     L9240_RTS ;branch if error
         jsr     L8D17
@@ -3039,12 +3004,10 @@ L9236 := *+1
 L9240_RTS:
         jmp     V1541_SELECT_CHANNEL_AND_CLEAR_IT
 ; ----------------------------------------------------------------------------
-L9244 := *+1
 L9243_OPEN_V1541:
         jsr     L9249_V1541_INTERNAL_OPEN
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L924A := *+1
 L9249_V1541_INTERNAL_OPEN:
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
         lda     V1541_DEFAULT_CHAN
@@ -3054,25 +3017,19 @@ L9250:  bne     L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN
 
         ;not the command channel
 
-L9256 := *+1
 L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN:
         jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
         jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
-L925C := *+1
-        BCC     L9287_ERROR
+        bcc     L9287_ERROR
         bit     #$20
         bne     L9282
-L9262 := *+1
         LDX     $03a0
         beq     L928C
         cpx     #'$'
 L9268:  bne     L927B_NOT_DOLLAR
         ldx     V1541_FILE_MODE
-L926E := *+1
-        BNE     L9287_ERROR
+        bne     L9287_ERROR
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-L2973 := *+1
-L9274 := *+2
         jsr     L9041
         lda     #$50
         sta     V1541_ACTIV_FLAGS
@@ -3085,7 +3042,6 @@ L927E:  cpy     #fmode_w_write
         beq     L9289
 L9282:  lda     #$21 ;33 syntax error (invalid filename)
         .byte   $2C ;skip next two bytes
-L9286 := *+1
 L9285:  lda #$21 ;33 syntax error (invalid filename)
 L9287_ERROR:  clc
         rts
@@ -3132,7 +3088,6 @@ L92C9:  lda     V1541_DATA_BUF+1
         beq     L92DB
         lda     #doserr_60_write_file_open ;60 write file open
         bra     L92C7_ERROR
-L92DD := *+2
 L92DB:  ldy     V1541_FILE_MODE
         cpy     #fmode_r_read
         beq     L92F8
@@ -3197,7 +3152,6 @@ L9358_ERROR:
 
 L935A:  jsr     V1541_SELECT_CHANNEL_GIVEN_SA
         jsr     L902D
-L9361 := *+1
         lda     #$10
         tsb     V1541_ACTIV_FLAGS
         ldy     V1541_FILE_MODE
@@ -3308,7 +3262,6 @@ L941F_GET_DIRPART_ONLY:
 
 L942B_GET_V1541_DIR_PART:
         ldx     V1541_02D6
-L942F           := * + 1
         jmp     (L942F,x)
         .addr   L9457_GET_V1541_HEADER
         .addr   L94A8_GET_V1541_FILE
@@ -3318,7 +3271,6 @@ L9437_V1541_HEADER:
         .word $1001   ;load address
         .word $1001   ;pointer to next basic line
         .word 0       ;basic line number
-L944C := * + 15
         .byte $12,$22,"VIRTUAL 1541    ",$22," ID 00" ;basic line text
         .byte 0       ;end of basic line
 
@@ -3357,7 +3309,6 @@ L948A_LOOP:
         sta     V1541_DATA_BUF+2  ;basic line number low byte
         lda     $0209
         sbc     $020B
-L94A6           := * + 2
         sta     V1541_DATA_BUF+3  ;basic line number high byte
         rts
 
@@ -3524,7 +3475,6 @@ L95AF:  lda     VERCHK
         beq     L9588_CLSEI_OR_ERROR16_OOM
 L95D4:  lda     SA
         bne     L95F0
-L95DA := *+2
         LDA     $03a0
         cmp     #$40 ;'@'
         bne     L95F0
@@ -3533,7 +3483,6 @@ L95DA := *+2
 ; ----------------------------------------------------------------------------
 L95E4_VERIFY:
         jsr     PRIMM80
-L95ED := *+6
         .byte   $0d,"VERIFY ",0
 L95F0:  lda     #$02
         trb     SATUS
@@ -3602,7 +3551,6 @@ V1541_OPEN:
 ; ----------------------------------------------------------------------------
 L9671_V1541_INTERNAL_OPEN:
         jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
-L9675 := *+1
         BCC     L969A_ERROR ;branch if error
         BIT     #$20
         BNE     L969A_ERROR
@@ -3639,7 +3587,6 @@ L969C_03A0_NOT_DOLLAR:
         bcc     L969A_ERROR ;branch if error (file not found)
 
         lda     V1541_DATA_BUF
-L96A5 := *+1
         bit     #$20
         bne     L9695_ERROR_60_WRITE_FILE_OPEN
         bit     #$80
@@ -3702,15 +3649,12 @@ L9703:  iny
 L9712:  ply
         cpy     $E0
         bne     L9703
-L9718 := *+1
         bra     L96DA_LOOP
 ; ----------------------------------------------------------------------------
-L971A := *+1
 L9719:  jsr     L89E2
         jmp     L8D17
 
 L971F:  jsr     L9725 ;maybe returns a cbm dos error code
-L9724 := *+2
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
 L9725:  jsr     V1541_SELECT_CHAN_17 ;maybe returns a cbm dos error code
@@ -3756,7 +3700,6 @@ L975D_V1541_CHROUT_CMD_CHAN:
         bcs     L9766_STORE_CHR_IF_0D_INTERP_CMD ;branch if no error
         rts
 ; ----------------------------------------------------------------------------
-L9767 :=  *+1
 L9766_STORE_CHR_IF_0D_INTERP_CMD:
         sta     V1541_CMD_BUF,Y
         inc     V1541_CMD_LEN
@@ -3771,7 +3714,6 @@ L9775:  ldx     #(4*2)-1 ;4 cmds in table, two chars each
 L9777:  cmp     L978E_V1541_CMDS,x
         beq     L9783_FOUND_CMD_IN_TABLE
         dex
-L977E := *+1
         bpl     L9777
         lda     #doserr_31_invalid_cmd
         clc
@@ -3784,7 +3726,6 @@ L9783_FOUND_CMD_IN_TABLE:
         jsr     L979E
         plx
         jmp     (L9796_V1541_CMD_HANDLERS,x)
-L9792 := *+4
 
 L978E_V1541_CMDS:
         .byte "Ii", "Rr", "Ss", "Vv"
@@ -3798,7 +3739,6 @@ L979E:  ldy     V1541_CMD_LEN
         dey
         lda     #$96 ;TODO probably an address, see L8EB6
         ldx     #$02
-L97A7 := *+1
         jmp     L8EB6
 
 ;Called twice from rename, not used anywhere else
@@ -3844,11 +3784,9 @@ L97DC:  bit     #$80
         lda     #$00
         pha
 L97ED:
-L97EE           := * + 1
         jsr     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
         bcc     L9805_ERROR
 L97F2:  tsx
-L97F5           := * + 2
         inc     stack+1,x
         jsr     L8D17  ;maybe returns cbm dos error in a
         lda     V1541_DATA_BUF
@@ -3865,7 +3803,6 @@ L9805_ERROR:
         jmp     L9964_STORE_XAY_CLEAR_0217
 
 ; ----------------------------------------------------------------------------
-L980F := *+1
 L980E_V1541_R_RENAME:
         bcc     L9840_RENAME_ERROR
         bit     #$80
@@ -3873,7 +3810,6 @@ L980E_V1541_R_RENAME:
         and     #$40
         ora     $03A0
         ora     V1541_FILE_MODE
-L981D := *+1
         ORA     V1541_FILE_TYPE
         bne     L983E_RENAME_INVALID_FILENAME
 
@@ -3936,13 +3872,10 @@ L9882:  inc     V1541_ACTIV_E9
 L988B:  bit     SXREG
         bpl     L9871
 L9890:  jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-L9894 := *+1
         bcc     L98D0
         bra     L98AB
 L9897:  jsr     L8CC3
-L989B :=*+1
         BCC     L98D0 ;branch if error
-L989E := *+2
         jsr     L8C2A_JSR_V1541_SELECT_CHAN_17_JMP_L8C8B_CLEAR_ACTIVE_CHANNEL
         LDA     V1541_DATA_BUF
         bit     #$80
@@ -3967,7 +3900,6 @@ L98B9:  inc     V1541_ACTIV_E9
         sta     V1541_ACTIV_E9 ;store number of blocks used
         pla
         cmp     V1541_ACTIV_E9
-L98CD := *+1
         BNE     L98B4
         BRA     L9897
 L98D0:  ldx     #$3F
@@ -4049,7 +3981,6 @@ L9962:  clc
 L9964_STORE_XAY_CLEAR_0217:
         stx     $0210
         sta     $0211
-L96A9 := *-1
         sty     $0212
 
         stz     $0217
@@ -4062,10 +3993,9 @@ V1541_ERROR_WORDS:
         .byte   "DISK",0
         .byte   "DOS",0
         .byte   "ERROR",0
-L999A:  .byte   "EXISTS",0
-L99A2 := *+1
+        .byte   "EXISTS",0
         .byte   "FILE",0
-L99A6:  .byte   "FILES",0
+        .byte   "FILES",0
         .byte   "FOUND",0
         .byte   "FULL",0
         .byte   "ILLEGAL",0
@@ -4126,7 +4056,6 @@ L9AB8_FOUND_IN_L9A8E:
         bne     L9ACD
         tax
         tay
-L9AC1 := *+2
         JSR     L9964_STORE_XAY_CLEAR_0217
         SEC
         ROR     $039d
@@ -4148,7 +4077,6 @@ L9AD6:  lda     $020F,x
         txa
         bvs     L9AE4
         tya
-L9AE5 := *+1
 L9AE4:  ora #$30
         sec
         rts
@@ -4169,7 +4097,6 @@ L9AF0_LOOP:
 L9AFB_OUTER_LOOP:
         lda     #$20
         ldy     L9A2B,x
-L9B01 := *+1
         beq     L9B12
 L9B02_INNER_LOOP:
         dec     $E0
@@ -4189,10 +4116,8 @@ L9B19:  sec
 ; ----------------------------------------------------------------------------
 L9B1B_JMP_L9B1E_X:
         jmp     (L9B1E,x)
-L9B1F := *+1
 L9B1E:  .addr L9BF6_X00
         .addr L9BDA_X02
-L9B23 := *+1
         .addr LA473_X04
         .addr L9C6B_X06
         .addr L9BE0_X08
@@ -4294,12 +4219,11 @@ L9BE0_X08:  lda     $2D                             ; 9BE0 A5 2D                
         cmp     #$91                            ; 9BE6 C9 91                    ..
         bcs     L9C05                           ; 9BE8 B0 1B                    ..
         jsr     LA338                           ; 9BEA 20 38 A3                  8.
-L9BEE := *+1
-         LDA    $2b
-         LDY    $2c
-         STY    $06
-         STA    $07
-L9BF4:   rts
+        lda    $2b
+        ldy    $2c
+        sty    $06
+        sta    $07
+L9BF4:  rts
 ; ----------------------------------------------------------------------------
 L9BF6_X00:  lda     $25                             ; 9BF6 A5 25                    .%
         cmp     #$90                            ; 9BF8 C9 90                    ..
@@ -4311,7 +4235,6 @@ L9BF6_X00:  lda     $25                             ; 9BF6 A5 25                
 L9C05:  ldx     #$0E                            ; 9C05 A2 0E                    ..
         jmp     LFB4B                           ; 9C07 4C 4B FB                 LK.
 ; ----------------------------------------------------------------------------
-L9C0C := *+2
 L9C0A:  jmp     LA338
 L9C0D:  inc     $3F                             ; 9C0D E6 3F                    .?
         bne     L9C13                           ; 9C0F D0 02                    ..
@@ -4338,7 +4261,6 @@ L9C2E:  lda     #$3F ;ZP-address                ; 9C2E A9 3F                    
 ; ----------------------------------------------------------------------------
 L9C36:  lda     #$08 ;ZP-address                ; 9C36 A9 08                    ..
         sta     SINNER                          ; 9C38 8D 4E 03                 .N.
-L9C3C := *+1
         jmp     GO_RAM_LOAD_GO_KERN
 L9C3E:  lda     #$08                            ; 9C3E A9 08                    ..
         sta     $0357                           ; 9C40 8D 57 03                 .W.
@@ -4411,7 +4333,6 @@ L9CA7:  lda     $2D                             ; 9CA7 A5 2D                    
 ; ----------------------------------------------------------------------------
 L9CB6:  jsr     L9E56                           ; 9CB6 20 56 9E                  V.
         bcc     L9CF7                           ; 9CB9 90 3C                    .<
-L9CBD := *+2 ;todo this is code; entry in table
 L9CBB:  jsr     LA02B
 L9CBE:  bne     L9CC3                           ; 9CBE D0 03                    ..
         jmp     LA26B                           ; 9CC0 4C 6B A2                 Lk.
@@ -4733,7 +4654,6 @@ L9EF0:  jsr     LA29A                           ; 9EF0 20 9A A2                 
         bpl     L9EFA                           ; 9EF5 10 03                    ..
 L9EF7:  jmp     L9C05                           ; 9EF7 4C 05 9C                 L..
 ; ----------------------------------------------------------------------------
-L9EFB := *+1
 L9EFA:  lda     $25
         sbc     #$7f
         pha
@@ -4747,12 +4667,9 @@ L9F07:  jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE
         jsr     L9F54_JSR_INDIRECT_STUFF_AND_JMP_LA0F9
 L9F11:  lda     #<L9E7F
         ldy     #>L9E7F
-L9F17 := *+2
         jsr     L9F48_JSR_INDIRECT_STUFF_AND_JMP_L9CA7
 L9F18:  lda     #<L9E87
-L9F1B := *+1
         ldy     #>L9E87
-L9F1D := *+1
 L9F1C:  jsr     LA77E_UNKNOWN_OTHER_INDIRECT_STUFF
         lda     #<L9EE0
         ldy     #>L9EE0
@@ -4762,7 +4679,6 @@ L9F1C:  jsr     LA77E_UNKNOWN_OTHER_INDIRECT_STUFF
         lda     #<L9EE8
         ldy     #>L9EE8
 L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF:
-L9F30 := *+2
         jsr     L9FF1_INDIRECT_STUFF
 L9F31:  bra     L9F63                           ; 9F31 80 30                    .0
 L9F33:  jsr     LA06D                           ; 9F33 20 6D A0                  m.
@@ -4928,7 +4844,6 @@ LA055:  jsr     L9C36                           ; A055 20 36 9C                 
         ora     #$80                            ; A060 09 80                    ..
         sta     $31                             ; A062 85 31                    .1
         dey                                     ; A064 88                       .
-LA067 := *+2
         jsr     L9C36
 LA068:  sta     $30                             ; A068 85 30                    .0
         lda     $25                             ; A06A A5 25                    .%
@@ -4936,7 +4851,6 @@ LA068:  sta     $30                             ; A068 85 30                    
 ; ----------------------------------------------------------------------------
 LA06D:  sta     $08                             ; A06D 85 08                    ..
         sty     $09                             ; A06F 84 09                    ..
-LA072 := *+1
         ldy     #$07
 LA073:  jsr     L9C3E                           ; A073 20 3E 9C                  >.
         sta     $30,y                           ; A076 99 30 00                 .0.
@@ -5006,7 +4920,6 @@ LA0D8:  sty     $20                             ; A0D8 84 20                    
 LA0E0:  ldx     #$14                            ; A0E0 A2 14                    ..
         jmp     LFB4B                           ; A0E2 4C 4B FB                 LK.
 ; ----------------------------------------------------------------------------
-LA0E6 := *+1
 LA0E5:  jsr     LA27B
         lda     #<LA0D8
         ldy     #>LA0D8                         ; A0EA A0 A0                    ..
@@ -5023,11 +4936,10 @@ LA0F9:  beq     LA0E0                           ; A0F9 F0 E5                    
         sbc     $25                             ; A101 E5 25                    .%
         sta     $25                             ; A103 85 25                    .%
         jsr     LA096
-LA107 := *-1
         inc     $25
-        BEQ     LA0BE
-        LDX     #$f9
-        LDA     #$01
+        beq     LA0BE
+        ldx     #$f9
+        lda     #$01
 LA110:  ldy     $31                             ; A110 A4 31                    .1
         cpy     $26                             ; A112 C4 26                    .&
         bne     LA138                           ; A114 D0 22                    ."
@@ -5081,7 +4993,6 @@ LA15C:  tay                                     ; A15C A8                       
         lda     $34                             ; A16F A5 34                    .4
         sbc     $29                             ; A171 E5 29                    .)
         sta     $34                             ; A173 85 34                    .4
-LA176 := *+1
         lda     $33
         sbc     $28                             ; A177 E5 28                    .(
         sta     $33                             ; A179 85 33                    .3
@@ -5179,7 +5090,6 @@ LA21A:  tax                                     ; A21A AA                       
 LA21D:  ldx     #$1D                            ; A21D A2 1D                    ..
         .byte   $2C                             ; A21F 2C                       ,
 LA220:  ldx     #$15                            ; A220 A2 15                    ..
-LA223 := *+1
         LDY     #$00
         beq     LA227                           ; A224 F0 01                    ..
 LA226:  tax                                     ; A226 AA                       .
@@ -5369,7 +5279,6 @@ LA369:  lda     $25                             ; A369 A5 25                    
         cmp     #$B8                            ; A36B C9 B8                    ..
         bcs     LA395                           ; A36D B0 26                    .&
         jsr     LA338                           ; A36F 20 38 A3                  8.
-LA373 := *+1
         sty     $3a
         lda     $2D                             ; A374 A5 2D                    .-
         sty     $2D                             ; A376 84 2D                    .-
@@ -5385,7 +5294,6 @@ LA386:  sta     $26                             ; A386 85 26                    
         sta     $27                             ; A388 85 27                    .'
         sta     $28                             ; A38A 85 28                    .(
         sta     $29                             ; A38C 85 29                    .)
-LA38F := *+1
         sta     $2a
         sta     $2B                             ; A390 85 2B                    .+
         sta     $2C                             ; A392 85 2C                    .,
@@ -5491,7 +5399,6 @@ LA443:  asl     a                               ; A443 0A                       
         ldy     #$00                            ; A44A A0 00                    ..
         sta     $22                             ; A44C 85 22                    ."
         jsr     L9C2E                           ; A44E 20 2E 9C                  ..
-LA452 := *+1
         adc     $22
         sec                                     ; A453 38                       8
         sbc     #$30                            ; A454 E9 30                    .0
@@ -5545,7 +5452,6 @@ LA4BE:  jsr     LA0E5                           ; A4BE 20 E5 A0                 
 LA4C5:  jsr     L9F38                           ; A4C5 20 38 9F                  8.
 LA4C8:  jsr     LA338                           ; A4C8 20 38 A3                  8.
         ldx     #$01                            ; A4CB A2 01                    ..
-LA4CE := *+1
         lda     $21
         clc
         adc     #$10                            ; A4D0 69 10                    i.
@@ -5603,7 +5509,6 @@ LA500:  lda     $2C                             ; A500 A5 2C                    
 LA539:  bmi     LA500                           ; A539 30 C5                    0.
 LA53B:  txa                                     ; A53B 8A                       .
         bcc     LA542                           ; A53C 90 04                    ..
-LA53F := *+1
         eor     #$ff
         adc     #$0a
 LA542:  adc     #$2F                            ; A542 69 2F                    i/
@@ -5621,7 +5526,6 @@ LA54B:  sty     $3D                             ; A54B 84 3D                    
         and     #$7F                            ; A551 29 7F                    ).
         sta     $FF,y                           ; A553 99 FF 00                 ...
         dec     $21                             ; A556 C6 21                    .!
-LA559 := *+1
         BNE     LA560
         LDA     #$2e
         INY
@@ -5636,10 +5540,8 @@ LA564:  txa                                     ; A564 8A                       
         beq     LA572                           ; A56C F0 04                    ..
         cpy     #$93                            ; A56E C0 93                    ..
         bne     LA500                           ; A570 D0 8E                    ..
-LA574 := *+2
 LA572:  ldy     $3B                             ; A572 A4 3B                    .;
-LA575 := *+1
-        lda     $00ff,Y
+LA574:  lda     $00ff,Y
         dey
         cmp     #$30                            ; A578 C9 30                    .0
         beq     LA574                           ; A57A F0 F8                    ..
@@ -5654,7 +5556,6 @@ LA581:  lda     #$2B                            ; A581 A9 2B                    
         sec                                     ; A58B 38                       8
         sbc     $22                             ; A58C E5 22                    ."
         tax                                     ; A58E AA                       .
-LA590 := *+1
         lda     #$2d
 LA591:  sta     stack+1,y                       ; A591 99 01 01                 ...
         lda     #$45                            ; A594 A9 45                    .E
@@ -5696,7 +5597,7 @@ LA5CC:  .byte   $C0                             ; A5CC C0                       
 LA5CD:  brk                                     ; A5CD 00                       .
         brk                                     ; A5CE 00                       .
         ora     #$18                            ; A5CF 09 18                    ..
-        lsr     LA072                           ; A5D1 4E 72 A0                 Nr.
+        lsr     $A072                           ; A5D1 4E 72 A0                 Nr.
         brk                                     ; A5D4 00                       .
         bbs7    $FF,LA5EF                       ; A5D5 FF FF 17                 ...
         .byte   $2B                             ; A5D8 2B                       +
@@ -5896,7 +5797,7 @@ LA6F4:  and     ($84,x)                         ; A6F4 21 84                    
         lsr     SAL                             ; A70E 46 B8                    F.
         and     $05                             ; A710 25 05                    %.
         sed                                     ; A712 F8                       .
-        ror     LFD75,x                         ; A713 7E 75 FD                 ~u.
+        ror     $FD75,x                         ; A713 7E 75 FD                 ~u.
         bbs6    $FC,LA72F                       ; A716 EF FC 16                 ...
         bit     L8074                           ; A719 2C 74 80                 ,t.
         and     ($72),y                         ; A71C 31 72                    1r
@@ -6071,7 +5972,6 @@ LA84F:  jsr     LA27B                           ; A84F 20 7B A2                 
         sta     $39                             ; A863 85 39                    .9
         jsr     L9CA7                           ; A865 20 A7 9C                  ..
         lda     #<LA8D4                         ; A868 A9 D4                    ..
-LA86B := *+1
         ldy     #>LA8D4
         jsr     L9F48_JSR_INDIRECT_STUFF_AND_JMP_L9CA7                           ; A86C 20 48 9F                  H.
         lda     $2D                             ; A86F A5 2D                    .-
@@ -6116,7 +6016,7 @@ LA8C0:  pha                                     ; A8C0 48                       
         jmp     LA881                           ; A8C1 4C 81 A8                 L..
 ; ----------------------------------------------------------------------------
 LA8C4:  sta     ($49,x)                         ; A8C4 81 49                    .I
-        bbr0    $DA,LA86B                       ; A8C6 0F DA A2                 ...
+        bbr0    $DA,$A86B                       ; A8C6 0F DA A2                 ...
         and     ($68,x)                         ; A8C9 21 68                    !h
         iny                                     ; A8CB C8                       .
         .byte   $83                             ; A8CC 83                       .
@@ -6237,7 +6137,7 @@ LA97E:  jmp     ($1734,x)                       ; A97E 7C 34 17                 
         adc     ($16,x)                         ; A991 61 16                    a.
         nop                                     ; A993 EA                       .
         tsx                                     ; A994 BA                       .
-        eor     LB97D                           ; A995 4D 7D B9                 M}.
+        eor     $B97D                           ; A995 4D 7D B9                 M}.
         rts                                     ; A998 60                       `
 ; ----------------------------------------------------------------------------
 ;TODO probably data
@@ -6353,8 +6253,8 @@ LAA53:  stx     V1541_FILE_MODE                 ; AA53 8E A3 03                 
         bit     #$F8                            ; AA65 89 F8                    ..
         beq     LAA7F                           ; AA67 F0 16                    ..
 LAA6A := *+1
-        ORA     #$07
-        STA     MON_MMU_MODE
+        ora     #$07
+        sta     MON_MMU_MODE
         ldy     #$00                            ; AA6E A0 00                    ..
         ldx     #$00                            ; AA70 A2 00                    ..
 LAA72:  jsr     GO_APPL_LOAD_GO_KERN            ; AA72 20 53 03                  S.
@@ -8333,8 +8233,7 @@ LB7C3:  lda     ($B0),y
         cmp     $0401
         beq     LB7CF
         iny
-LB7CE := *+1
-        BNE     LB7C3
+        bne     LB7C3
 LB7CF:  pha
         jsr     LB8B3
         ldx     $0402
@@ -8563,11 +8462,9 @@ LB948_NOT_RS232:
         jmp     V1541_CHRIN
 
 LB94D:  cmp     #$03 ;Screen
-LB950 := * + 1
         bne     LB954_NOT_SCREEN
 
         ;Device 3 Screen
-LB952 := * + 1
         jmp     LB319_CHRIN_DEV_3_SCREEN
 
 LB954_NOT_SCREEN:
@@ -8617,8 +8514,6 @@ LB974:  pha ;Push byte to write
         tax
 
         pla ;Pull byte to write
-
-LB97D := * + 1
         cpx     #$01  ;1 = Virtual 1541
         bne     LB983
         jmp     V1541_CHROUT ;CHROUT to Virtual 1541
@@ -9749,7 +9644,6 @@ DTMF_CHAR_TO_T1CL_VALUE_INDEX:
 DTMF_T1CL_VALUES:
         .byte   $9D,$76,$51
 
-LC033 := *+6
 DTMF_DIGIT_TO_LOOP_COUNTS_INDEX:
         ;Ordered by chars: "0123456789#*"
         ;Each entry is an offset to the two loop iteration tables
@@ -11902,7 +11796,7 @@ LCE25:  ora     ($48),y                         ; CE25 11 48                    
         .byte   $23                             ; CE45 23                       #
         .byte   $54                             ; CE46 54                       T
         .byte   $23                             ; CE47 23                       #
-        ror     LA223                           ; CE48 6E 23 A2                 n#.
+        ror     $A223                           ; CE48 6E 23 A2                 n#.
         bit     $72                             ; CE4B 24 72                    $r
         bit     $74                             ; CE4D 24 74                    $t
         and     #$88                            ; CE4F 29 88                    ).
@@ -12717,10 +12611,7 @@ LD3F6:  cld                                     ; D3F6 D8                       
         lda     $020A                           ; D3F8 AD 0A 02                 ...
         sbc     $020C                           ; D3FB ED 0C 02                 ...
         tax                                     ; D3FE AA                       .
-LD400           := * + 1
-LD401           := * + 2
         lda     $020B                           ; D3FF AD 0B 02                 ...
-LD404           := * + 2
         sbc     $020D                           ; D402 ED 0D 02                 ...
         bcs     LD409                           ; D405 B0 02                    ..
         ldx     #$01                            ; D407 A2 01                    ..
@@ -13345,7 +13236,6 @@ LOAD_:  stx     $B4
         jmp     (RAMVEC_LOAD)
 ; ----------------------------------------------------------------------------
 DEFVEC_LOAD:
-LFD75           := * + 1
         sta     MMU_MODE_KERN
         jsr     LOAD__
 LFD7A:  sta     MMU_MODE_APPL
@@ -13470,22 +13360,6 @@ UNUSED:
         .byte   $FF,$FF,$FF,$FF,$FF,$FF
 
 ; ----------------------------------------------------------------------------
-
-;All of these land mid-instruction in CLCD KERNAL jump table below, so
-;they don't make sense.  However, they match the C128 KERNAL jump table.
-;They are used by the second machine language monitor above at $F000,
-;which itself doesn't make sense because it was assembled for $4000.
-;That monitor may actually be the C128 monitor.
-C128_FF4A_CLALL   := $FF4A  ;CLALL
-C128_FF50_DMACALL := $FF50  ;DMACALL
-C128_FF59_LKUPLA  := $FF59  ;LKUPLA
-C128_FF5C_LKUPSA  := $FF5C  ;LKUPSA
-C128_FF6E_JSRFAR  := $FF6E  ;JSRFAR
-C128_FF71_JMPFAR  := $FF71  ;JMPFAR
-C128_FF74_INDFET  := $FF74  ;INDFET
-C128_FF77_INDSTA  := $FF77  ;INDSTA
-C128_FF7A_INDCMP  := $FF7A  ;INDCMP
-C128_FF7D_PRIMM   := $FF7D  ;PRIMM
 
 ;
 ;Start of CLCD KERNAL jump table
