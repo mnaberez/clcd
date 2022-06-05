@@ -4493,15 +4493,12 @@ L9E36:  ldy     $07,x                           ; 9E36 B4 07                    
         ldy     $06,x                           ; 9E3A B4 06                    ..
         sty     $07,x                           ; 9E3C 94 07                    ..
         ldy     $05,x                           ; 9E3E B4 05                    ..
-;TODO code
-        .byte   $94                             ; 9E40 94                       .
-        asl     $B4                             ; 9E41 06 B4                    ..
-        tsb     $94                             ; 9E43 04 94                    ..
-        ora     $B4                             ; 9E45 05 B4                    ..
-        .byte   $03                             ; 9E47 03                       .
-        sty     $04,x                           ; 9E48 94 04                    ..
-        .byte   $B4                             ; 9E4A B4                       .
-        .byte   $02                             ; 9E4B 02                       .
+        sty     $06,X
+        ldy     $04,X
+        sty     $05,X
+        ldy     $03,X
+        sty     $04,X
+        ldy     $02,X
         sty     $03,x                           ; 9E4C 94 03                    ..
         ldy     $01,x                           ; 9E4E B4 01                    ..
         sty     $02,x                           ; 9E50 94 02                    ..
@@ -4513,10 +4510,8 @@ L9E56:  adc     #$08                            ; 9E56 69 08                    
         sbc     #$08                            ; 9E5C E9 08                    ..
         tay                                     ; 9E5E A8                       .
         lda     $3A                             ; 9E5F A5 3A                    .:
-;TODO code
-        .byte   $B0                             ; 9E61 B0                       .
-L9E62:  inc     a                               ; 9E62 1A                       .
-L9E63:  asl     $01,x                           ; 9E63 16 01                    ..
+        bcs     L9E7D
+L9E63:  asl     $01,x
         bcc     L9E69                           ; 9E65 90 02                    ..
         inc     $01,x                           ; 9E67 F6 01                    ..
 L9E69:  ror     $01,x                           ; 9E69 76 01                    v.
@@ -4594,7 +4589,7 @@ L9ED8:  sta     ($35,x)                         ; 9ED8 81 35                    
         .byte   $33                             ; 9EDC 33                       3
         sbc     $68DE,y                         ; 9EDD F9 DE 68                 ..h
 ; ----------------------------------------------------------------------------
-L9EE0:  bra     L9E62                           ; 9EE0 80 80                    ..
+L9EE0:  bra     $9E62 ;todo branches mid-instruction, probably data ; 9EE0 80 80                    ..
         brk                                     ; 9EE2 00                       .
         brk                                     ; 9EE3 00                       .
         brk                                     ; 9EE4 00                       .
@@ -12639,7 +12634,7 @@ LD46D:  asl     a
         bpl     LD46D
         dex
         bpl     LD461
-        jmp     L8A81                           
+        jmp     L8A81
 
 ; ----------------------------------------------------------------------------
 
