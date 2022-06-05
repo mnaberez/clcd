@@ -3224,7 +3224,8 @@ L941F_GET_DIRPART_ONLY:
 
 L942B_GET_V1541_DIR_PART:
         ldx     V1541_02D6
-        jmp     (L942F,x)
+        jmp     (L942F_V1541_DIR_PART_HANDLERS-2,x)
+L942F_V1541_DIR_PART_HANDLERS:
         .addr   L9457_GET_V1541_HEADER
         .addr   L94A8_GET_V1541_FILE
         .addr   L9488_GET_V1541_BLOCKS_USED
@@ -4551,10 +4552,11 @@ L9E87:  php                                     ; 9E87 08                       
         stz     $DB                             ; 9E8B 64 DB                    d.
         lda     ($F8,x)                         ; 9E8D A1 F8                    ..
         pla                                     ; 9E8F 68                       h
-        ror     LF944,x                         ; 9E90 7E 44 F9                 ~D.
+        ror     $F944,x                         ; 9E90 7E 44 F9                 ~D.
         cld                                     ; 9E93 D8                       .
         ldy     WIN_BTM_RGHT_Y,x                ; 9E94 B4 A6                    ..
-        bbr7    $F4,L9F17                       ; 9E96 7F F4 7E                 ..~
+        ;TODO probably data
+        bbr7    $F4,$9F17                       ; 9E96 7F F4 7E                 ..~
         .byte   $63                             ; 9E99 63                       c
         rmb4    $AB                             ; 9E9A 47 AB                    G.
         lsr     $98                             ; 9E9C 46 98                    F.
@@ -4605,7 +4607,7 @@ L9EE0:  bra     L9E62                           ; 9EE0 80 80                    
         brk                                     ; 9EE6 00                       .
         brk                                     ; 9EE7 00                       .
 ; ----------------------------------------------------------------------------
-L9EE8:  bra     L9F1B                           ; 9EE8 80 31                    .1
+L9EE8:  bra     $9F1B ;todo branches mid-instruction, probably data ; 9EE8 80 31                    .1
         adc     ($17)                           ; 9EEA 72 17                    r.
         smb7    $D1                             ; 9EEC F7 D1                    ..
         .byte   $CF                             ; 9EEE CF                       .
@@ -6091,7 +6093,8 @@ LA97E:  jmp     ($1734,x)                       ; A97E 7C 34 17                 
         dec     a                               ; A982 3A                       :
         .byte   $DC                             ; A983 DC                       .
         eor     ($78,x)                         ; A984 41 78                    Ax
-        jmp     (L81F7,x)                       ; A986 7C F7 81                 |..
+        ;TODO probably data
+        jmp     ($81F7,x)                       ; A986 7C F7 81                 |..
         .byte   $A3                             ; A989 A3                       .
         cmp     ($36,x)                         ; A98A C1 36                    .6
         rmb2    $00                             ; A98C 27 00                    '.
