@@ -4247,9 +4247,7 @@ L9C58:  bcc     L9BDA_X02                           ; 9C58 90 80                
         brk                                     ; 9C5E 00                       .
         brk                                     ; 9C5F 00                       .
 L9C60:  ldx     #$00                            ; 9C60 A2 00                    ..
-;TODO probably code
-        .byte   $86                             ; 9C62 86                       .
-L9C63:  .byte   $02                             ; 9C63 02                       .
+        stx     $02
         sta     $26                             ; 9C64 85 26                    .&
         sty     $27                             ; 9C66 84 27                    .'
         ldx     #$90                            ; 9C68 A2 90                    ..
@@ -4310,9 +4308,8 @@ L9CCB:  tay                                     ; 9CCB A8                       
         sbc     $25                             ; 9CCF E5 25                    .%
         beq     L9CF7                           ; 9CD1 F0 24                    .$
         bcc     L9CE7                           ; 9CD3 90 12                    ..
-        .byte   $84                             ; 9CD5 84                       .
-L9CD6:  and     WIN_BTM_RGHT_X                  ; 9CD6 25 A4                    %.
-        sec                                     ; 9CD8 38                       8
+        sty     $25
+        ldy     $38
         sty     $2D                             ; 9CD9 84 2D                    .-
 L9CDB:  eor     #$FF                            ; 9CDB 49 FF                    I.
         adc     #$00                            ; 9CDD 69 00                    i.
@@ -4340,18 +4337,17 @@ L9D03:  sec                                     ; 9D03 38                       
         sta     $3A                             ; 9D08 85 3A                    .:
         lda     $07,y                           ; 9D0A B9 07 00                 ...
         sbc     $07,x                           ; 9D0D F5 07                    ..
-L9D0F:  sta     $2C                             ; 9D0F 85 2C                    .,
+        sta     $2C                             ; 9D0F 85 2C                    .,
         lda     $06,y                           ; 9D11 B9 06 00                 ...
         sbc     $06,x                           ; 9D14 F5 06                    ..
-        .byte   $85                             ; 9D16 85                       .
-L9D17:  .byte   $2B                             ; 9D17 2B                       +
+        sta     $2b
         lda     $05,y                           ; 9D18 B9 05 00                 ...
         sbc     $05,x                           ; 9D1B F5 05                    ..
         sta     $2A                             ; 9D1D 85 2A                    .*
         lda     $04,y                           ; 9D1F B9 04 00                 ...
         sbc     $04,x                           ; 9D22 F5 04                    ..
         sta     $29                             ; 9D24 85 29                    .)
-L9D26:  lda     $03,y                           ; 9D26 B9 03 00                 ...
+        lda     $03,y                           ; 9D26 B9 03 00                 ...
         sbc     $03,x                           ; 9D29 F5 03                    ..
         sta     $28                             ; 9D2B 85 28                    .(
         lda     $02,y                           ; 9D2D B9 02 00                 ...
@@ -4361,7 +4357,7 @@ L9D26:  lda     $03,y                           ; 9D26 B9 03 00                 
         sbc     $01,x                           ; 9D37 F5 01                    ..
         sta     $26                             ; 9D39 85 26                    .&
 L9D3B:  bcs     L9D40                           ; 9D3B B0 03                    ..
-L9D3D:  jsr     L9DDA                           ; 9D3D 20 DA 9D                  ..
+        jsr     L9DDA                           ; 9D3D 20 DA 9D                  ..
 L9D40:  ldy     #$00                            ; 9D40 A0 00                    ..
         tya                                     ; 9D42 98                       .
         clc                                     ; 9D43 18                       .
@@ -4369,8 +4365,7 @@ L9D44:  ldx     $26                             ; 9D44 A6 26                    
         bne     L9DB6                           ; 9D46 D0 6E                    .n
         ldx     $27                             ; 9D48 A6 27                    .'
         stx     $26                             ; 9D4A 86 26                    .&
-        .byte   $A6                             ; 9D4C A6                       .
-L9D4D:  plp                                     ; 9D4D 28                       (
+        ldx     $28
         stx     $27                             ; 9D4E 86 27                    .'
         ldx     $29                             ; 9D50 A6 29                    .)
         stx     $28                             ; 9D52 86 28                    .(
@@ -4387,8 +4382,7 @@ L9D60:  ldx     $3A                             ; 9D60 A6 3A                    
         cmp     #$38                            ; 9D68 C9 38                    .8
         bne     L9D44                           ; 9D6A D0 D8                    ..
 L9D6C:  lda     #$00                            ; 9D6C A9 00                    ..
-L9D6E:  .byte   $85                             ; 9D6E 85                       .
-L9D6F:  .byte   $25                             ; 9D6F 25                       %
+L9D6E:  sta     $25
 L9D70:  sta     $2D                             ; 9D70 85 2D                    .-
         rts                                     ; 9D72 60                       `
 ; ----------------------------------------------------------------------------
@@ -4399,17 +4393,15 @@ L9D73:  adc     $14                             ; 9D73 65 14                    
         sta     $2C                             ; 9D7B 85 2C                    .,
         lda     $2B                             ; 9D7D A5 2B                    .+
         adc     $36                             ; 9D7F 65 36                    e6
-        .byte   $85                             ; 9D81 85                       .
-L9D82:  .byte   $2B                             ; 9D82 2B                       +
+        sta     $2b
         lda     $2A                             ; 9D83 A5 2A                    .*
         adc     $35                             ; 9D85 65 35                    e5
         sta     $2A                             ; 9D87 85 2A                    .*
         lda     $29                             ; 9D89 A5 29                    .)
-        .byte   $65                             ; 9D8B 65                       e
-L9D8C:  bit     $85,x                           ; 9D8C 34 85                    4.
-        .byte   $29                             ; 9D8E 29                       )
-L9D8F:  lda     $28                             ; 9D8F A5 28                    .(
-L9D91:  adc     $33                             ; 9D91 65 33                    e3
+        adc     $34
+        sta     $29
+        lda     $28                             ; 9D8F A5 28                    .(
+        adc     $33                             ; 9D91 65 33                    e3
         sta     $28                             ; 9D93 85 28                    .(
         lda     $27                             ; 9D95 A5 27                    .'
         adc     $32                             ; 9D97 65 32                    e2
@@ -4417,7 +4409,7 @@ L9D91:  adc     $33                             ; 9D91 65 33                    
         lda     $26                             ; 9D9B A5 26                    .&
         adc     $31                             ; 9D9D 65 31                    e1
         sta     $26                             ; 9D9F 85 26                    .&
-L9DA1:  jmp     L9DC3                           ; 9DA1 4C C3 9D                 L..
+        jmp     L9DC3                           ; 9DA1 4C C3 9D                 L..
 ; ----------------------------------------------------------------------------
 L9DA4:  adc     #$01                            ; 9DA4 69 01                    i.
         asl     $3A                             ; 9DA6 06 3A                    .:
@@ -4457,7 +4449,7 @@ L9DE0:  lda     $26                             ; 9DE0 A5 26                    
         lda     $27                             ; 9DE6 A5 27                    .'
         eor     #$FF                            ; 9DE8 49 FF                    I.
         sta     $27                             ; 9DEA 85 27                    .'
-L9DEC:  lda     $28                             ; 9DEC A5 28                    .(
+        lda     $28                             ; 9DEC A5 28                    .(
         eor     #$FF                            ; 9DEE 49 FF                    I.
         sta     $28                             ; 9DF0 85 28                    .(
         lda     $29                             ; 9DF2 A5 29                    .)
@@ -4475,8 +4467,7 @@ L9DEC:  lda     $28                             ; 9DEC A5 28                    
         lda     $3A                             ; 9E0A A5 3A                    .:
         eor     #$FF                            ; 9E0C 49 FF                    I.
         sta     $3A                             ; 9E0E 85 3A                    .:
-        .byte   $E6                             ; 9E10 E6                       .
-L9E11:  dec     a                               ; 9E11 3A                       :
+        inc     $3a
         bne     L9E2E                           ; 9E12 D0 1A                    ..
 L9E14:  inc     $2C                             ; 9E14 E6 2C                    .,
         bne     L9E2E                           ; 9E16 D0 16                    ..
@@ -4502,14 +4493,15 @@ L9E36:  ldy     $07,x                           ; 9E36 B4 07                    
         ldy     $06,x                           ; 9E3A B4 06                    ..
         sty     $07,x                           ; 9E3C 94 07                    ..
         ldy     $05,x                           ; 9E3E B4 05                    ..
+;TODO code
         .byte   $94                             ; 9E40 94                       .
-L9E41:  asl     $B4                             ; 9E41 06 B4                    ..
+        asl     $B4                             ; 9E41 06 B4                    ..
         tsb     $94                             ; 9E43 04 94                    ..
         ora     $B4                             ; 9E45 05 B4                    ..
         .byte   $03                             ; 9E47 03                       .
         sty     $04,x                           ; 9E48 94 04                    ..
         .byte   $B4                             ; 9E4A B4                       .
-L9E4B:  .byte   $02                             ; 9E4B 02                       .
+        .byte   $02                             ; 9E4B 02                       .
         sty     $03,x                           ; 9E4C 94 03                    ..
         ldy     $01,x                           ; 9E4E B4 01                    ..
         sty     $02,x                           ; 9E50 94 02                    ..
@@ -4521,6 +4513,7 @@ L9E56:  adc     #$08                            ; 9E56 69 08                    
         sbc     #$08                            ; 9E5C E9 08                    ..
         tay                                     ; 9E5E A8                       .
         lda     $3A                             ; 9E5F A5 3A                    .:
+;TODO code
         .byte   $B0                             ; 9E61 B0                       .
 L9E62:  inc     a                               ; 9E62 1A                       .
 L9E63:  asl     $01,x                           ; 9E63 16 01                    ..
@@ -4579,10 +4572,12 @@ L9EA1:  asl     $4D                             ; 9EA1 06 4D                    
         .byte   $BB                             ; 9EBA BB                       .
         .byte   $62                             ; 9EBB 62                       b
         smb0    $7C                             ; 9EBC 87 7C                    .|
-        bbs5    $EE,L9E41                       ; 9EBE DF EE 80                 ...
+        ;TODO probably data
+        bbs5    $EE,$9E41                       ; 9EBE DF EE 80                 ...
         ror     $38,x                           ; 9EC1 76 38                    v8
         lsr     $D0E1                           ; 9EC3 4E E1 D0                 N..
-        bbr1    $E8,L9E4B                       ; 9EC6 1F E8 82                 ...
+        ;TODO probably data
+        bbr1    $E8,$9E4B                       ; 9EC6 1F E8 82                 ...
         sec                                     ; 9EC9 38                       8
         tax                                     ; 9ECA AA                       .
         .byte   $3B                             ; 9ECB 3B                       ;
@@ -11796,7 +11791,8 @@ LCE25:  ora     ($48),y                         ; CE25 11 48                    
         adc     ($8B)                           ; CE7A 72 8B                    r.
         stz     $9C,x                           ; CE7C 74 9C                    t.
         inc     a                               ; CE7E 1A                       .
-        stz     L9D26                           ; CE7F 9C 26 9D                 .&.
+        ;TODO probably data
+        stz     $9D26                           ; CE7F 9C 26 9D                 .&.
         .byte   $54                             ; CE82 54                       T
         sta     LA068,x                         ; CE83 9D 68 A0                 .h.
         iny                                     ; CE86 C8                       .
@@ -13217,7 +13213,7 @@ SAVE_:  stx     EAL
         sty     EAH
         tax
         lda     $00,x
-        sta     $B6
+        sta     STAL
         lda     $01,x
         sta     STAH
         sta     MMU_MODE_APPL
@@ -13297,10 +13293,10 @@ LFE07:  ldy     CursorX
 ; ----------------------------------------------------------------------------
 ; IOBASE. Fetch VIA #1 base address.
 ; Input: -
-; Output: X/Y = VIA #1 base address .
+; Output: X/Y = VIA #1 base address.
 ; Used registers: X, Y.
-IOBASE_:ldx     #<$F800
-        ldy     #>$F800
+IOBASE_:ldx     #<VIA1_PORTB
+        ldy     #>VIA1_PORTB
         rts
 ; ----------------------------------------------------------------------------
 

@@ -59,6 +59,11 @@ C128_8B3C := $8B3C
 C128_8B3F := $8B3F
 C128_8C2B := $8C2B
 C128_8C77 := $8C77
+C128_9D8C := $9D8C
+C128_9D8F := $9D8F
+C128_9D91 := $9D91
+C128_9DA1 := $9DA1
+C128_9DEC := $9DEC
 C128_8CEE := $8CEE
 C128_8E25 := $8E25
 C128_8E35 := $8E35
@@ -114,7 +119,17 @@ C128_9B23 := $9B23
 C128_9BEE := $9BEE
 C128_9C0C := $9C0C
 C128_9C3C := $9C3C
+C128_9C63 := $9C63
+C128_9CD6 := $9CD6
 C128_9CBD := $9CBD
+C128_9CDB := $9CDB
+C128_9D0F := $9D0F
+C128_9D17 := $9D17
+C128_9D3D := $9D3D
+C128_9D4D := $9D4D
+C128_9D6F := $9D6F
+C128_9D82 := $9D82
+C128_9E11 := $9E11
 C128_9EFB := $9EFB
 C128_9F17 := $9F17
 C128_9F1B := $9F1B
@@ -906,7 +921,7 @@ LDA47:  lda     #$00                            ; DA47 A9 00                    
         tay                                     ; DA63 A8                       .
         jmp     C128_84D0                           ; DA64 4C D0 84                 L..
 ; ----------------------------------------------------------------------------
-        jsr     L9D82                           ; DA67 20 82 9D                  ..
+        jsr     C128_9D82                           ; DA67 20 82 9D                  ..
         ldx     #$00                            ; DA6A A2 00                    ..
 LDA6C:  inx                                     ; DA6C E8                       .
         sec                                     ; DA6D 38                       8
@@ -966,17 +981,17 @@ LDAC7:  lda     $1149                           ; DAC7 AD 49 11                 
         lsr     a                               ; DACC 4A                       J
         lsr     a                               ; DACD 4A                       J
         php                                     ; DACE 08                       .
-        jsr     L9D82                           ; DACF 20 82 9D                  ..
+        jsr     C128_9D82                           ; DACF 20 82 9D                  ..
         cpy     #$FF                            ; DAD2 C0 FF                    ..
         bcc     LDADD                           ; DAD4 90 07                    ..
         txa                                     ; DAD6 8A                       .
         tay                                     ; DAD7 A8                       .
-        jsr     L9D82   ; Read Current X Position to A/Y                        ; DAD8 20 82 9D                  ..
+        jsr     C128_9D82   ; Read Current X Position to A/Y                        ; DAD8 20 82 9D                  ..
         bcs     LDAE0                           ; DADB B0 03                    ..
-LDADD:  jsr     L9DA1   ; Read Current X Position to A/Y                        ; DADD 20 A1 9D                  ..
+LDADD:  jsr     C128_9DA1   ; Read Current X Position to A/Y                        ; DADD 20 A1 9D                  ..
 LDAE0:  plp                                     ; DAE0 28                       (
         bcs     LDAFE                           ; DAE1 B0 1B                    ..
-        jmp     L9D91                           ; DAE3 4C 91 9D                 L..
+        jmp     C128_9D91                           ; DAE3 4C 91 9D                 L..
 ; ----------------------------------------------------------------------------
 
 ; ?
@@ -1022,7 +1037,7 @@ LDB20:  jmp     C128_792A     ; Fixed-Float                      ; DB20 4C 2A 79
 LDB27:  lda     #$00                            ; DB27 A9 00                    ..
         sta     $113D,x                         ; DB29 9D 3D 11                 .=.
         sta     $113E,x                         ; DB2C 9D 3E 11                 .>.
-        jsr     L9D8C                           ; DB2F 20 8C 9D                  ..
+        jsr     C128_9D8C                           ; DB2F 20 8C 9D                  ..
         bpl     LDB3C                           ; DB32 10 08                    ..
         dec     $113D,x                         ; DB34 DE 3D 11                 .=.
         dec     $113E,x                         ; DB37 DE 3E 11                 .>.
@@ -1046,7 +1061,7 @@ LDB47:  sta     $1139,x                         ; DB47 9D 39 11                 
         beq     LDB27                           ; DB5C F0 C9                    ..
         ldx     #$0A                            ; DB5E A2 0A                    ..
         ldy     #$08                            ; DB60 A0 08                    ..
-        jsr     L9D6F                           ; DB62 20 6F 9D                  o.
+        jsr     C128_9D6F                           ; DB62 20 6F 9D                  o.
         lda     #$00                            ; DB65 A9 00                    ..
         rol     a                               ; DB67 2A                       *
         rol     a                               ; DB68 2A                       *
@@ -1060,7 +1075,7 @@ LDB47:  sta     $1139,x                         ; DB47 9D 39 11                 
         pha                                     ; DB78 48                       H
         eor     #$02                            ; DB79 49 02                    I.
         tax                                     ; DB7B AA                       .
-        jsr     L9D6F                           ; DB7C 20 6F 9D                  o.
+        jsr     C128_9D6F                           ; DB7C 20 6F 9D                  o.
         sta     $1131,x                         ; DB7F 9D 31 11                 .1.
         tya                                     ; DB82 98                       .
         sta     $1132,x                         ; DB83 9D 32 11                 .2.
@@ -1070,7 +1085,7 @@ LDB47:  sta     $1139,x                         ; DB47 9D 39 11                 
         lda     #$08                            ; DB89 A9 08                    ..
         adc     $1148                           ; DB8B 6D 48 11                 mH.
         tax                                     ; DB8E AA                       .
-        jsr     L9D6F                           ; DB8F 20 6F 9D                  o.
+        jsr     C128_9D6F                           ; DB8F 20 6F 9D                  o.
         sta     $1145                           ; DB92 8D 45 11                 .E.
         sty     $1146                           ; DB95 8C 46 11                 .F.
 LDB98:  jsr     C128_9BEE                           ; DB98 20 EE 9B                  ..
@@ -1125,10 +1140,10 @@ LDBFE:  jsr     C128_9C0C                           ; DBFE 20 0C 9C             
 LDC09:  dec     $1131                           ; DC09 CE 31 11                 .1.
 
 ; Examine Pixel
-LDC0C:  jsr     L9D17   ;Position Pixel                         ; DC0C 20 17 9D                  ..
+LDC0C:  jsr     C128_9D17   ;Position Pixel                         ; DC0C 20 17 9D                  ..
         bcs     LDC35                           ; DC0F B0 24                    .$
-        jsr     L9C63                           ; DC11 20 63 9C                  c.
-        jsr     L9CDB                           ; DC14 20 DB 9C                  ..
+        jsr     C128_9C63                           ; DC11 20 63 9C                  c.
+        jsr     C128_9CDB                           ; DC14 20 DB 9C                  ..
         sta     $116D                           ; DC17 8D 6D 11                 .m.
         lda     ($8C),y                         ; DC1A B1 8C                    ..
         ora     $116D                           ; DC1C 0D 6D 11                 .m.
@@ -1147,7 +1162,7 @@ LDC35:  rts                                     ; DC35 60                       
 LDC36:  ldx     $83                             ; DC36 A6 83                    ..
         bne     LDC33                           ; DC38 D0 F9                    ..
         beq     LDC30                           ; DC3A F0 F4                    ..
-        jsr     L9CD6                           ; DC3C 20 D6 9C                  ..
+        jsr     C128_9CD6                       ; DC3C 20 D6 9C                  ..
         bcs     LDC62                           ; DC3F B0 21                    .!
         sta     $116D                           ; DC41 8D 6D 11                 .m.
         lda     ($8C),y                         ; DC44 B1 8C                    ..
@@ -1265,11 +1280,11 @@ LDCF4:  ora     ($29),y                         ; DCF4 11 29                    
         asl     a                               ; DD00 0A                       .
 LDD01:  and     #$07                            ; DD01 29 07                    ).
         tax                                     ; DD03 AA                       .
-        lda     L9D0F,x                         ; DD04 BD 0F 9D                 ...
+        lda     C128_9D0F,x                         ; DD04 BD 0F 9D                 ...
         plp                                     ; DD07 28                       (
         bpl     LDD0E     ; Bit Masks                      ; DD08 10 04                    ..
         inx                                     ; DD0A E8                       .
-        ora     L9D0F,x   ; Bit Masks                      ; DD0B 1D 0F 9D                 ...
+        ora     C128_9D0F,x   ; Bit Masks                      ; DD0B 1D 0F 9D                 ...
 LDD0E:  rts                                     ; DD0E 60                       `
 ; ----------------------------------------------------------------------------
 
@@ -1310,12 +1325,12 @@ LDD3B:  sec                                     ; DD3B 38                       
         beq     LDD59                           ; DD40 F0 17                    ..
         lda     $87                             ; DD42 A5 87                    ..
         ldy     $88                             ; DD44 A4 88                    ..
-        jsr     L9D4D                           ; DD46 20 4D 9D                  M.
+        jsr     C128_9D4D                           ; DD46 20 4D 9D                  M.
         lda     $89                             ; DD49 A5 89                    ..
         ldy     $8A                             ; DD4B A4 8A                    ..
 
 ; Add Graphics Coordinate
-        jsr     L9DA1   ; Read Current X Position to A/Y                        ; DD4D 20 A1 9D                  ..
+        jsr     C128_9DA1   ; Read Current X Position to A/Y                        ; DD4D 20 A1 9D                  ..
 ;TODO incorrect disassembly
         .byte   $9D                             ; DD50 9D                       .
 LDD51:  and     ($11),y                         ; DD51 31 11                    1.
@@ -1330,7 +1345,7 @@ LDD59:  rts                                     ; DD59 60                       
         bcc     LDD63                           ; DD5A 90 07                    ..
         bcs     LDD72                           ; DD5C B0 14                    ..
         bcs     LDD6F                           ; DD5E B0 0F                    ..
-        jsr     L9D82                           ; DD60 20 82 9D                  ..
+        jsr     C128_9D82                           ; DD60 20 82 9D                  ..
 LDD63:  clc                                     ; DD63 18                       .
         adc     $1131,x                         ; DD64 7D 31 11                 }1.
         pha                                     ; DD67 48                       H
@@ -1340,7 +1355,7 @@ LDD63:  clc                                     ; DD63 18                       
         pla                                     ; DD6D 68                       h
         rts                                     ; DD6E 60                       `
 ; ----------------------------------------------------------------------------
-LDD6F:  jsr     L9D82  ; Read Current X Position to A/Y                         ; DD6F 20 82 9D                  ..
+LDD6F:  jsr     C128_9D82  ; Read Current X Position to A/Y                         ; DD6F 20 82 9D                  ..
 LDD72:  sec                                     ; DD72 38                       8
         sbc     $1131,x                         ; DD73 FD 31 11                 .1.
         sta     $59                             ; DD76 85 59                    .Y
@@ -1363,7 +1378,7 @@ LDD72:  sec                                     ; DD72 38                       
 ; ----------------------------------------------------------------------------
 
 ; ?
-        jsr     L9D6F   ; Subtract Graphics Coordinate                        ; DD8C 20 6F 9D                  o.
+        jsr     C128_9D6F   ; Subtract Graphics Coordinate                        ; DD8C 20 6F 9D                  o.
         bpl     LDDA0                           ; DD8F 10 0F                    ..
         php                                     ; DD91 08                       .
         clc                                     ; DD92 18                       .
@@ -1385,7 +1400,7 @@ LDDA0:  rts                                     ; DDA0 60                       
         lda     $1131,x                         ; DDA5 BD 31 11                 .1.
         ldy     $1132,x                         ; DDA8 BC 32 11                 .2.
         php                                     ; DDAB 08                       .
-        jsr     L9D8F                           ; DDAC 20 8F 9D                  ..
+        jsr     C128_9D8F                           ; DDAC 20 8F 9D                  ..
         sta     $1131,x                         ; DDAF 9D 31 11                 .1.
         tya                                     ; DDB2 98                       .
         sta     $1132,x                         ; DDB3 9D 32 11                 .2.
@@ -1411,12 +1426,12 @@ LDDD2:  lsr     $1177                           ; DDD2 4E 77 11                 
         bcc     LDDE1                           ; DDDE 90 01                    ..
         iny                                     ; DDE0 C8                       .
 LDDE1:  plp                                     ; DDE1 28                       (
-        jmp     L9D8F                           ; DDE2 4C 8F 9D                 L..
+        jmp     C128_9D8F                           ; DDE2 4C 8F 9D                 L..
 ; ----------------------------------------------------------------------------
 
 ; Restore Pixel Cursor
         ldy     #$00                            ; DDE5 A0 00                    ..
-        jsr     L9DEC                           ; DDE7 20 EC 9D                  ..
+        jsr     C128_9DEC                           ; DDE7 20 EC 9D                  ..
         ldy     #$02                            ; DDEA A0 02                    ..
         lda     $1135,y                         ; DDEC B9 35 11                 .5.
         sta     $1131,y                         ; DDEF 99 31 11                 .1.
@@ -1511,7 +1526,7 @@ LDE77:  jsr     L0380     ; CHRGET                      ; DE77 20 80 03         
         sta     $1133,x                         ; DE8B 9D 33 11                 .3.
         lda     $1132,x                         ; DE8E BD 32 11                 .2.
         sta     $1134,x                         ; DE91 9D 34 11                 .4.
-        jsr     L9D3D                           ; DE94 20 3D 9D                  =.
+        jsr     C128_9D3D                           ; DE94 20 3D 9D                  =.
         lda     #$0E                            ; DE97 A9 0E                    ..
         sta     $1179                           ; DE99 8D 79 11                 .y.
         clc                                     ; DE9C 18                       .
@@ -1543,7 +1558,7 @@ LDEC6:  jsr     L0380    ; CHRGET                       ; DEC6 20 80 03         
         ldx     $1178                           ; DED2 AE 78 11                 .x.
         dex                                     ; DED5 CA                       .
         dex                                     ; DED6 CA                       .
-        jsr     L9D3D                           ; DED7 20 3D 9D                  =.
+        jsr     C128_9D3D                           ; DED7 20 3D 9D                  =.
         ldy     #$02                            ; DEDA A0 02                    ..
         ldx     $1178                           ; DEDC AE 78 11                 .x.
         inx                                     ; DEDF E8                       .
@@ -2087,7 +2102,7 @@ LE2B0:  jmp     C128_795A                           ; E2B0 4C 5A 79             
         stx     stack+27                        ; E2BF 8E 1B 01                 ...
         jsr     C128_880B                           ; E2C2 20 0B 88                  ..
         ldx     #$01                            ; E2C5 A2 01                    ..
-        jsr     L9E11                           ; E2C7 20 11 9E                  ..
+        jsr     C128_9E11                           ; E2C7 20 11 9E                  ..
         cpx     #$00                            ; E2CA E0 00                    ..
         beq     LE2F6                           ; E2CC F0 28                    .(
         cpx     #$FF                            ; E2CE E0 FF                    ..
