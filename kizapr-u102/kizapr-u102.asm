@@ -6120,7 +6120,7 @@ LA9A4:  sta     $B4                             ; A9A4 85 B4                    
         tax                                     ; A9B7 AA                       .
         tax                                     ; A9B8 AA                       .
         tax                                     ; A9B9 AA                       .
-LA9BA:  stx     LB07D                           ; A9BA 8E 7D B0                 .}.
+LA9BA:  stx     $B07D                           ; A9BA 8E 7D B0                 .}.
         cpy     #$80                            ; A9BD C0 80                    ..
         .byte   $7F                             ; A9BF 7F                       .
         .byte   $FF                             ; A9C0 FF                       .
@@ -7127,17 +7127,15 @@ LB06F:  bcc     LB07B
         sta     $036A,x
         rts
 ; ----------------------------------------------------------------------------
-LB07B:  .byte   $20                             ; B07B 20
-        .byte   $30                             ; B07C 30                       0
-LB07D:  bcs     LB0C8                           ; B07D B0 49                    .I
-        bbs7    $3D,LB0ED-1                     ; B07F FF 3D 6A                 .=j
-        .byte   $03                             ; B082 03                       .
-        sta     $036A,x                         ; B083 9D 6A 03                 .j.
-        rts                                     ; B086 60                       `
+LB07B:  jsr     LB030
+        eor     #$ff
+        and     $036A,x
+        sta     $036A,x
+        rts
 ; ----------------------------------------------------------------------------
-LB087:  stz     $036A                           ; B087 9C 6A 03                 .j.
-        stz     $036B                           ; B08A 9C 6b 03
-        rts                                     ; B08D 60                       `
+LB087:  stz     $036A
+        stz     $036B
+        rts
 ; ----------------------------------------------------------------------------
 LB08E:  cmp     #$22
         bne     LB09A
