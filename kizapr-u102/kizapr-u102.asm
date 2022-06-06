@@ -6197,6 +6197,7 @@ LAA47:  dec     $ED                             ; AA47 C6 ED                    
         cpy     $03A0                           ; AA4C CC A0 03                 ...
         bcs     LAA25                           ; AA4F B0 D4                    ..
         bra     LAA0C                           ; AA51 80 B9                    ..
+; ----------------------------------------------------------------------------
 LAA53:  stx     V1541_FILE_MODE                 ; AA53 8E A3 03                 ...
         sty     $03A7                           ; AA56 8C A7 03                 ...
         sty     $0357                           ; AA59 8C 57 03                 .W.
@@ -6221,7 +6222,7 @@ LAA7C:  iny                                     ; AA7C C8                       
         bne     LAA72                           ; AA7D D0 F3                    ..
 LAA7F:  sec                                     ; AA7F 38                       8
         rts                                     ; AA80 60                       `
-; ----------------------------------------------------------------------------
+
 LAA81:  cpx     #$0F                            ; AA81 E0 0F                    ..
         bcs     LAA7F                           ; AA83 B0 FA                    ..
         stx     V1541_FILE_TYPE                           ; AA85 8E A4 03                 ...
@@ -7473,8 +7474,14 @@ EDITOR_LOCS:
         .word   TABMAP+3,TABMAP+4,TABMAP+5,TABMAP+6
         .word   TABMAP+7,TABMAP+8,TABMAP+9,$00A0
         .word   SETUP_LCD_A,SETUP_LCD_X,SETUP_LCD_Y
+EDITOR_LOCS_SIZE = * - EDITOR_LOCS
 ; ----------------------------------------------------------------------------
-LB293:  stx     $F1
+;Given a pointer to a 62-byte area in MMU RAM mode, swap the state
+;of the screen editor (the locations in EDITOR_LOCS) with values in
+;that area.  If called twice, the first call will swap in a new editor
+;state and the second call will restore the original state.
+LB293_SWAP_EDITOR_STATE:
+        stx     $F1
         sty     $F2
         jsr     LB2E4_HIDE_CURSOR
         stz     $0382
@@ -7489,16 +7496,17 @@ LB2A9_LOOP:
         lda     EDITOR_LOCS+1,x
         sta     VidPtrHi
 
-        lda     (VidPtrLo)
-        pha
-        jsr     GO_RAM_LOAD_GO_KERN
-        sta     (VidPtrLo)
-        pla
-        jsr     GO_RAM_STORE_GO_KERN
-        iny
-        inx
-        inx
-        cpx     #$3E
+        lda     (VidPtrLo)              ;A = value in editor location (in MMU KERNAL mode)
+        pha                             ;Push it onto the stack
+        jsr     GO_RAM_LOAD_GO_KERN     ;Load value from MMU RAM mode
+        sta     (VidPtrLo)              ;Store it in the editor location (in MMU KERNAL mode)
+        pla                             ;Pop value that was there originally
+        jsr     GO_RAM_STORE_GO_KERN    ;Save value in MMU RAM mode
+
+        iny                             ;Increment indirect pointer
+        inx                             ;Increment index to editor locations table
+        inx                             ;  twice because each is a 16-bin address
+        cpx     #EDITOR_LOCS_SIZE
         bne     LB2A9_LOOP
 LB2C6_SEC_JMP_LCDsetupGetOrSet:
         sec
@@ -8149,12 +8157,13 @@ LB780:  iny
         lda     ($B0),y
         sta     $0400
         ldx     #$00
-LB788:  lda     LINE_INPUT_BUF,x
+LB788_LOOP:
+        lda     LINE_INPUT_BUF,x
         beq     LB799
         cpx     $03FE
         beq     LB795
         inx
-        bne     LB788
+        bne     LB788_LOOP
 LB795:  sec
         lda     #$00
         rts
@@ -12731,7 +12740,7 @@ LFA67:  jsr     LFA6D
 ; ----------------------------------------------------------------------------
 LFA6D:  phy
         pha
-        jmp     LFD7A
+        jmp     RTS_IN_APPL_MODE
 ; ----------------------------------------------------------------------------
 GO_APPL_STORE_GO_KERN:
         sta     MMU_MODE_APPL
@@ -12924,8 +12933,9 @@ KR_LD230_JMP_LD233_PLUS_X:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-KR_LB293:  sta     MMU_MODE_KERN
-        jsr     LB293
+KR_LB293_SWAP_EDITOR_STATE:
+        sta     MMU_MODE_KERN
+        jsr     LB293_SWAP_EDITOR_STATE
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
@@ -12941,15 +12951,17 @@ KR_JMP_BELL_RELATED_X:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-LFBC4:  sta     MMU_MODE_KERN
+LFBC4_SHOW_OR_HIDE_CURSOR:
+        sta     MMU_MODE_KERN
         pha
-        bcs     LFBCF
+        bcs     LFBCF_SHOW
         jsr     LB2E4_HIDE_CURSOR
-        bra     LFBD2
-
-LFBCF:  jsr     LB2D6_SHOW_CURSOR
-LFBD2:  pla
-        jmp     LFD7A
+        bra     LFBD2_DONE
+LFBCF_SHOW:
+        jsr     LB2D6_SHOW_CURSOR
+LFBD2_DONE:
+        pla
+        jmp     RTS_IN_APPL_MODE
 ; ----------------------------------------------------------------------------
 KR_LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT:
         sta     MMU_MODE_KERN
@@ -13188,7 +13200,8 @@ LOAD_:  stx     $B4
 DEFVEC_LOAD:
         sta     MMU_MODE_KERN
         jsr     LOAD__
-LFD7A:  sta     MMU_MODE_APPL
+RTS_IN_APPL_MODE:
+        sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
         sta     MMU_MODE_RAM
@@ -13318,26 +13331,26 @@ UNUSED:
 ; ----------------------------------------------------------------------------
         jmp     LFAB5                           ; FF27 4C B5 FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFABF                           ; FF2A 4C BF FA                 L..
+        jmp     LFABF  ;check modifier keys and unknown timer   ; FF2A 4C BF FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFAC9                           ; FF2D 4C C9 FA                 L..
+        jmp     LFAC9  ;get key blocking                         ; FF2D 4C C9 FA                 L..
 ; ----------------------------------------------------------------------------
         jmp     LFAD3                           ; FF30 4C D3 FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFADD                           ; FF33 4C DD FA                 L..
+        jmp     LFADD  ;L8426 monitor calls here to exit too; might go back to menu   ; FF33 4C DD FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFAE7                           ; FF36 4C E7 FA                 L..
+        jmp     LFAE7  ;draw f-key bar and wait for k-key or return   ; FF36 4C E7 FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFAF1                           ; FF39 4C F1 FA                 L..
+        jmp     LFAF1  ;v1541, cursor key, f-key so maybe file navigation ; FF39 4C F1 FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFAFB                           ; FF3C 4C FB FA                 L..
+        jmp     LFAFB  ;seems to use v1541 and screen ; FF3C 4C FB FA                 L..
 ; ----------------------------------------------------------------------------
 ; Power off with saving the state.
         jmp     LFB05                           ; FF3F 4C 05 FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFB0F                           ; FF42 4C 0F FB                 L..
+        jmp     LFB0F  ;possibly f-key related  ; FF42 4C 0F FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFB19                           ; FF45 4C 19 FB                 L..
+        jmp     LFB19  ;LB09B maybe convert char for quote mode? ; FF45 4C 19 FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     LFB23                           ; FF48 4C 23 FB                 L#.
 ; ----------------------------------------------------------------------------
@@ -13345,21 +13358,21 @@ UNUSED:
 ; ----------------------------------------------------------------------------
         jmp     LFB37                           ; FF4E 4C 37 FB                 L7.
 ; ----------------------------------------------------------------------------
-        jmp     LFB41                           ; FF51 4C 41 FB                 LA.
+        jmp     LFB41  ;giant table of indirect access stuff  ; FF51 4C 41 FB                 LA.
 ; ----------------------------------------------------------------------------
-        jmp     PRIMM00                ; FF54 4C 51 FB                 LQ.
+        jmp     PRIMM00   ;print immediate      ; FF54 4C 51 FB                 LQ.
 ; ----------------------------------------------------------------------------
-        jmp     KR_LB758                           ; FF57 4C 92 FB                 L..
+        jmp     KR_LB758 ;screen and LINE_INPUT_BUF related   ; FF57 4C 92 FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     KR_LD230_JMP_LD233_PLUS_X          ; FF5A 4C 9C FB                 L..
+        jmp     KR_LD230_JMP_LD233_PLUS_X ;f-key, maybe menu related  ; FF5A 4C 9C FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     KR_LB293                           ; FF5D 4C A6 FB                 L..
+        jmp     KR_LB293_SWAP_EDITOR_STATE                           ; FF5D 4C A6 FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     WaitXticks                      ; FF60 4C B0 FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     KR_JMP_BELL_RELATED_X                           ; FF63 4C BA FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFBC4                           ; FF66 4C C4 FB                 L..
+        jmp     LFBC4_SHOW_OR_HIDE_CURSOR                           ; FF66 4C C4 FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     KR_LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT                           ; FF69 4C D6 FB                 L..
 ; ----------------------------------------------------------------------------
@@ -13367,7 +13380,7 @@ UNUSED:
 ; ----------------------------------------------------------------------------
         jmp     KR_LCDsetupGetOrSet                           ; FF6F 4C EA FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     KR_LB684_STA_03F9                           ; FF72 4C F4 FB                 L..
+        jmp     KR_LB684_STA_03F9 ;Keyboard related           ; FF72 4C F4 FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     KR_LB688_GET_KEY_NONBLOCKING       ; FF75 4C FE FB                 L..
 ; ----------------------------------------------------------------------------
