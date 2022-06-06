@@ -3002,7 +3002,7 @@ L927B_NOT_DOLLAR:
         ldy     V1541_FILE_MODE
 L927E:  cpy     #fmode_w_write
         beq     L9289
-L9282:  lda     #$21 ;33 syntax error (invalid filename)
+L9282:  lda     #doserr_33_syntax_err ;33 syntax error (invalid filename)
         .byte   $2C ;skip next two bytes
 L9285:  lda #$21 ;33 syntax error (invalid filename)
 L9287_ERROR:  clc
@@ -5698,7 +5698,7 @@ LA6A7_X22:  lda     $25                             ; A6A7 A5 25                
 LA6B1:  rts                                     ; A6B1 60                       `
 ; ----------------------------------------------------------------------------
 ;TODO probably data
-        sta     ($38,x)                         ; A6B2 81 38                    .8
+LA6B2:  sta     ($38,x)                         ; A6B2 81 38                    .8
         tax                                     ; A6B4 AA                       .
         .byte   $3B                             ; A6B5 3B                       ;
         and     #$5C                            ; A6B6 29 5C                    )\
@@ -5765,14 +5765,13 @@ LA725:  brk                                     ; A725 00                       
         brk                                     ; A728 00                       .
         brk                                     ; A729 00                       .
         brk                                     ; A72A 00                       .
-LA72B_X28:  lda     #$B2                            ; A72B A9 B2                    ..
-        ldy     #$A6                            ; A72D A0 A6                    ..
-LA72F:  .byte   $20                             ; A72F 20
-LA730:  rol     $A59F                           ; A730 2E 9F A5                 ...
-        dec     a                               ; A733 3A                       :
-        .byte   $69                             ; A734 69                       i
-LA735:  bvc     LA6C8-1                         ; A735 50 90                    P.
-        .byte   $03                             ; A737 03                       .
+LA72B_X28:
+        lda     #<LA6B2                            ; A72B A9 B2                    ..
+        ldy     #>LA6B2                            ; A72D A0 A6                    ..
+LA72F:  jsr L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF
+        lda     $3a
+        adc     #$50
+        bcc     LA73B
         jsr     LA292                           ; A738 20 92 A2                  ..
 LA73B:  sta     $14                             ; A73B 85 14                    ..
         jsr     LA27E                           ; A73D 20 7E A2                  ~.
@@ -5780,9 +5779,8 @@ LA73B:  sta     $14                             ; A73B 85 14                    
         cmp     #$88                            ; A742 C9 88                    ..
 LA744:  bcc     LA749                           ; A744 90 03                    ..
 LA746:  jsr     LA0B3                           ; A746 20 B3 A0                  ..
-LA749:  jsr     LA369_X1E                           ; A749 20 69 A3                  i.
-        .byte   $A5                             ; A74C A5                       .
-LA74D:  brk                                     ; A74D 00                       .
+LA749:  jsr     LA369_X1E                       ; A749 20 69 A3                  i.
+        lda     $00
         clc                                     ; A74E 18                       .
         adc     #$81                            ; A74F 69 81                    i.
         beq     LA746                           ; A751 F0 F3                    ..
@@ -5824,7 +5822,7 @@ LA794:  sta     $3B                             ; A794 85 3B                    
         sty     $3C                             ; A796 84 3C                    .<
 LA798:  jsr     LA21D                           ; A798 20 1D A2                  ..
         lda     ($3B),y                         ; A79B B1 3B                    .;
-LA79D:  sta     $2E                             ; A79D 85 2E                    ..
+        sta     $2E                             ; A79D 85 2E                    ..
         ldy     $3B                             ; A79F A4 3B                    .;
         iny                                     ; A7A1 C8                       .
         tya                                     ; A7A2 98                       .
@@ -5837,9 +5835,9 @@ LA7AB:  jsr     L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF                           ;
         ldy     $3C                             ; A7B0 A4 3C                    .<
         clc                                     ; A7B2 18                       .
         adc     #$08                            ; A7B3 69 08                    i.
-        .byte   $90                             ; A7B5 90                       .
-LA7B6:  ora     ($C8,x)                         ; A7B6 01 C8                    ..
-LA7B8:  sta     $3B                             ; A7B8 85 3B                    .;
+        BCC     $a7b8
+        iny
+        sta     $3B                             ; A7B8 85 3B                    .;
         sty     $3C                             ; A7BA 84 3C                    .<
         jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12                           ; A7BC 20 3C 9F                  <.
         lda     #$1D                            ; A7BF A9 1D                    ..
@@ -5866,7 +5864,7 @@ LA7D8_X5C:  jsr     LA29A_X36                           ; A7D8 20 9A A2         
 LA7DB_X3A:  bmi     LA81A                           ; A7DB 30 3D                    0=
         bne     LA805                           ; A7DD D0 26                    .&
         lda     VIA1_T1CL                       ; A7DF AD 04 F8                 ...
-LA7E2:  sta     $26                             ; A7E2 85 26                    .&
+        sta     $26                             ; A7E2 85 26                    .&
         lda     VIA1_T1CH                       ; A7E4 AD 05 F8                 ...
         sta     $2B                             ; A7E7 85 2B                    .+
         lda     VIA1_T2CL                       ; A7E9 AD 08 F8                 ...
@@ -5970,6 +5968,7 @@ LA898_X2E:  jsr     LA220                           ; A898 20 20 A2             
 LA8C0:  pha                                     ; A8C0 48                       H
         jmp     LA881                           ; A8C1 4C 81 A8                 L..
 ; ----------------------------------------------------------------------------
+;TODO probably data
 LA8C4:  sta     ($49,x)                         ; A8C4 81 49                    .I
         bbr0    $DA,$A86B                       ; A8C6 0F DA A2                 ...
         and     ($68,x)                         ; A8C9 21 68                    !h
@@ -6143,7 +6142,7 @@ LA9E6:  php                                     ; A9E6 08                       
         cpx     #$50                            ; A9EA E0 50                    .P
         bcs     LAA17                           ; A9EC B0 29                    .)
         stx     V1541_FNLEN                     ; A9EE 8E 9F 03                 ...
-LA9F1:  tax                                     ; A9F1 AA                       .
+        tax                                     ; A9F1 AA                       .
         and     #$0F                            ; A9F2 29 0F                    ).
         sta     SXREG                           ; A9F4 8D 9D 03                 ...
         txa                                     ; A9F7 8A                       .
