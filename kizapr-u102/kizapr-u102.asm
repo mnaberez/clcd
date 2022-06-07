@@ -118,6 +118,7 @@ V1541_ACTIV_E8    := $00E8  ;  Active Channel
 V1541_ACTIV_E9    := $00E9  ;  4 bytes
 V1541_ACTIV_EA    := $00EA  ; /
 BLNCT             := $00EF  ;Counter for cursor blink
+CHAR_UNDER_CURSOR := $00F0  ;Character under the cursor; used with blinking
 stack             := $0100
 ROM_ENV_A         := $0204
 ROM_ENV_X         := $0205
@@ -6849,6 +6850,7 @@ LAE5B:  ldx     L0380
 LAE68:  sty     WIN_TOP_LEFT_Y
         ldy     CurMaxY
         sty     WIN_BTM_RGHT_Y
+; ----------------------------------------------------------------------------
 ;CHR$(19) Home
 CODE_13_HOME:
         jsr     LB393_SET_LSXP_FF_SET_CARRY
@@ -6948,15 +6950,18 @@ PutCharAtCursorXY:
         ldx     CursorX
         ldy     CursorY
         pha
-        jsr     XYregsToVidPtrStuff
+        jsr     RegistersXY_to_VidPtr
         pla
         sta     (VidPtrLo)
         rts
 ; ----------------------------------------------------------------------------
-CursorXYtoVidPtrStuff:
+;Set VidPtr to point to cursor position (CursorX, CursorY)
+CursorXY_to_VidPtr:
         ldy     CursorY
         ldx     CursorX
-XYregsToVidPtrStuff:
+
+;Set VidPtr to point to cursor position (X, Y)
+RegistersXY_to_VidPtr:
         cld
         txa
         asl     a
@@ -6977,7 +6982,7 @@ LAF3A:  cld
 GetCharAtCursorXY:
         ldx     CursorX
         ldy     CursorY
-        jsr     XYregsToVidPtrStuff
+        jsr     RegistersXY_to_VidPtr
         lda     (VidPtrLo)
         rts
 ; ----------------------------------------------------------------------------
@@ -6987,7 +6992,7 @@ SCROLL_WIN_UP:
         cpy     CursorY
         beq     LAF7C
         ldx     WIN_TOP_LEFT_X
-        jsr     XYregsToVidPtrStuff
+        jsr     RegistersXY_to_VidPtr
         jsr     LAF3A
         sta     $F3
         ldx     WIN_TOP_LEFT_Y
@@ -7024,7 +7029,7 @@ SCROLL_WIN_DOWN:
         ldy     WIN_BTM_RGHT_Y
 LAF96:  phy
         ldx     WIN_TOP_LEFT_X
-        jsr     XYregsToVidPtrStuff
+        jsr     RegistersXY_to_VidPtr
         lda     VidPtrLo
         ldy     VidPtrHi
         eor     #$80
@@ -7049,7 +7054,7 @@ LAFAB:  lda     ($F1),y
 ESC_D_DELETE_LINE:
         ldy     CursorY
         ldx     WIN_TOP_LEFT_X
-        jsr     XYregsToVidPtrStuff
+        jsr     RegistersXY_to_VidPtr
         jsr     LAF3A
         tay
         lda     #' '
@@ -7564,18 +7569,18 @@ ESC_F_CRSR_BLINK_ON:
 ; ----------------------------------------------------------------------------
 LB2D6_SHOW_CURSOR:
         jsr     LB2E4_HIDE_CURSOR
-        jsr     CursorXYtoVidPtrStuff
+        jsr     CursorXY_to_VidPtr
         lda     (VidPtrLo)
-        sta     $F0
+        sta     CHAR_UNDER_CURSOR
         sec
-        ror     $EF
+        ror     BLNCT
         rts
 ; ----------------------------------------------------------------------------
 LB2E4_HIDE_CURSOR:
         lda     #$FF
-        trb     $EF
+        trb     BLNCT
         beq     LB2EE
-        lda     $F0
+        lda     CHAR_UNDER_CURSOR
         sta     (VidPtrLo)
 LB2EE:  rts
 ; ----------------------------------------------------------------------------
@@ -7596,7 +7601,7 @@ BLINK:  lda     $0384
         lda     #$A0
         sta     BLNCT
 
-LB305:  lda     $F0
+LB305:  lda     CHAR_UNDER_CURSOR
         cmp     (VidPtrLo)
         bne     BLINK_STORE_AS_IS
         bit     CAPS_FLAGS
@@ -10805,8 +10810,7 @@ LC6CE_LOOP:
 ; ----------------------------------------------------------------------------
 
 ;
-; Start of the first machine language monitor
-; (There is a second one at $F000.)
+; Start of the machine language monitor
 ;
 
 ; ----------------------------------------------------------------------------
@@ -12345,7 +12349,7 @@ LD22E:  ply
 ; ----------------------------------------------------------------------------
 
 ;
-; End of the first machine language monitor
+; End of the machine language monitor
 ;
 
 ; ----------------------------------------------------------------------------
