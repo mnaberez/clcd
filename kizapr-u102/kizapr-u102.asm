@@ -82,7 +82,6 @@
 ; ----------------------------------------------------------------------------
 L0015           := $0015
 L0041           := $0041
-L004E           := $004E
 L0081           := $0081
 VidMemHi        := $00A0
 CursorX         := $00A1
@@ -224,12 +223,7 @@ RTC_IDX         := $0411
 HULP            := $0450
 LINE_INPUT_BUF  := $0470  ;Buffer used for a line of input in the monitor and menu
 L04C0           := $04C0
-L066A           := $066A
 L11A0           := $11A0
-L2020           := $2020
-L2E6A           := $2E6A
-L6E6E           := $6E6E
-L7E6A           := $7E6A
 
 ;VIA #1 Registers
 VIA1_PORTB    := $F800
@@ -4809,7 +4803,7 @@ LA055:  jsr     L9C36                           ; A055 20 36 9C                 
         sta     $31                             ; A062 85 31                    .1
         dey                                     ; A064 88                       .
         jsr     L9C36
-LA068:  sta     $30                             ; A068 85 30                    .0
+        sta     $30                             ; A068 85 30                    .0
         lda     $25                             ; A06A A5 25                    .%
         rts                                     ; A06C 60                       `
 ; ----------------------------------------------------------------------------
@@ -6856,7 +6850,7 @@ LAE5B:  ldx     L0380
         ldx     CurMaxX
         stx     WIN_BTM_RGHT_X
         ldy     $037F
-LAE68:  sty     WIN_TOP_LEFT_Y
+        sty     WIN_TOP_LEFT_Y
         ldy     CurMaxY
         sty     WIN_BTM_RGHT_Y
 ; ----------------------------------------------------------------------------
@@ -11799,173 +11793,48 @@ NMODE:  .byte   $40,$22,$45,$33,$D8,$2F,$45,$39 ; CDBF 40 22 45 33 D8 2F 45 39  
         .byte   $10,$22,$44,$33,$D8,$0F,$44,$09 ; CDEF 10 22 44 33 D8 0F 44 09  ."D3..D.
         .byte   $10,$22,$44,$33,$D8,$0F,$44,$09 ; CDF7 10 22 44 33 D8 0F 44 09  ."D3..D.
         .byte   $62,$13,$7F,$A9                 ; CDFF 62 13 7F A9              b...
-NMODE2:  .byte   $00,$21,$81,$82,$00,$00,$59,$4D ; CE03 00 21 81 82 00 00 59 4D  .!....YM
+NMODE2: .byte   $00,$21,$81,$82,$00,$00,$59,$4D ; CE03 00 21 81 82 00 00 59 4D  .!....YM
         .byte   $49,$92,$86,$4A,$85,$9D,$4E     ; CE0B 49 92 86 4A 85 9D 4E     I..J..N
 CHAR1:  .byte   $91,$2C,$29,$2C,$23,$28         ; CE12 91 2C 29 2C 23 28        .,),#(
 LCE18:  .byte   $24,$59,$00,$58,$24,$24         ; CE18 24 59 00 58 24 24        $Y.X$$
 CHAR2:  .byte   $00,$58,$00,$58,$24,$24,$00     ; CE1E 00 58 00 58 24 24 00     .X.X$$.
-; ----------------------------------------------------------------------------
-;TODO this is probably data
-LCE25_PRNME:  ora     ($48),y                         ; CE25 11 48                    .H
-        .byte   $13                             ; CE27 13                       .
-        dex                                     ; CE28 CA                       .
-        ora     $1A,x                           ; CE29 15 1A                    ..
-        ora     $1908,y                         ; CE2B 19 08 19                 ...
-        plp                                     ; CE2E 28                       (
-        ora     $1AA4,y                         ; CE2F 19 A4 1A                 ...
-        tax                                     ; CE32 AA                       .
-        .byte   $1B                             ; CE33 1B                       .
-        sty     $1B,x                           ; CE34 94 1B                    ..
-        cpy     $5A1C                           ; CE36 CC 1C 5A                 ..Z
-        trb     $1CC4                           ; CE39 1C C4 1C                 ...
-        cld                                     ; CE3C D8                       .
-        ora     $1DC8,x                         ; CE3D 1D C8 1D                 ...
-        inx                                     ; CE40 E8                       .
-        .byte   $23                             ; CE41 23                       #
-        pha                                     ; CE42 48                       H
-        .byte   $23                             ; CE43 23                       #
-        lsr     a                               ; CE44 4A                       J
-        .byte   $23                             ; CE45 23                       #
-        .byte   $54                             ; CE46 54                       T
-        .byte   $23                             ; CE47 23                       #
-        ror     $A223                           ; CE48 6E 23 A2                 n#.
-        bit     $72                             ; CE4B 24 72                    $r
-        bit     $74                             ; CE4D 24 74                    $t
-        and     #$88                            ; CE4F 29 88                    ).
-        and     #$B2                            ; CE51 29 B2                    ).
-        and     #$B4                            ; CE53 29 B4                    ).
-        bit     $26,x                           ; CE55 34 26                    4&
-        .byte   $53                             ; CE57 53                       S
-        iny                                     ; CE58 C8                       .
-        .byte   $53                             ; CE59 53                       S
-        sbc     ($53)                           ; CE5A F2 53                    .S
-        .byte   $F4                             ; CE5C F4                       .
-        .byte   $5B                             ; CE5D 5B                       [
-        ldx     #$5D                            ; CE5E A2 5D                    .]
-        rol     $69                             ; CE60 26 69                    &i
-        .byte   $44                             ; CE62 44                       D
-        adc     #$72                            ; CE63 69 72                    ir
-        adc     #$74                            ; CE65 69 74                    it
-        adc     $7C26                           ; CE67 6D 26 7C                 m&|
-        .byte   $22                             ; CE6A 22                       "
-        sty     SA                      ; CE6B 84 C4                    ..
-        txa                                     ; CE6D 8A                       .
-        .byte   $44                             ; CE6E 44                       D
-        txa                                     ; CE6F 8A                       .
-        .byte   $62                             ; CE70 62                       b
-        txa                                     ; CE71 8A                       .
-        adc     ($8A)                           ; CE72 72 8A                    r.
-        stz     $8B,x                           ; CE74 74 8B                    t.
-        .byte   $44                             ; CE76 44                       D
-        .byte   $8B                             ; CE77 8B                       .
-        .byte   $62                             ; CE78 62                       b
-        .byte   $8B                             ; CE79 8B                       .
-        adc     ($8B)                           ; CE7A 72 8B                    r.
-        stz     $9C,x                           ; CE7C 74 9C                    t.
-        inc     a                               ; CE7E 1A                       .
-        ;TODO probably data
-        stz     $9D26                           ; CE7F 9C 26 9D                 .&.
-        .byte   $54                             ; CE82 54                       T
-        sta     LA068,x                         ; CE83 9D 68 A0                 .h.
-        iny                                     ; CE86 C8                       .
-        lda     ($88,x)                         ; CE87 A1 88                    ..
-        lda     ($8A,x)                         ; CE89 A1 8A                    ..
-        lda     ($94,x)                         ; CE8B A1 94                    ..
-        lda     $44                             ; CE8D A5 44                    .D
-        lda     $72                             ; CE8F A5 72                    .r
-        lda     $74                             ; CE91 A5 74                    .t
-        lda     $76                             ; CE93 A5 76                    .v
-        tay                                     ; CE95 A8                       .
-        lda     ($A8)                           ; CE96 B2 A8                    ..
-        ldy     $AC,x                           ; CE98 B4 AC                    ..
-        dec     MODKEY                     ; CE9A C6 AD                    ..
-        asl     MODKEY                     ; CE9C 06 AD                    ..
-        and     (FNADR)                      ; CE9E 32 AE                    2.
-        .byte   $44                             ; CEA0 44                       D
-        ldx     LAE68                           ; CEA1 AE 68 AE                 .h.
-        sty     $00                             ; CEA4 84 00                    ..
-        brk                                     ; CEA6 00                       .
-LCEA7_PRNME:  asl     $00,x                           ; CEA7 16 00                    ..
-        ror     $04,x                           ; CEA9 76 04                    v.
-        lsr     a                               ; CEAB 4A                       J
-        tsb     $76                             ; CEAC 04 76                    .v
-        tsb     $12                             ; CEAE 04 12                    ..
-        lsr     $74                             ; CEB0 46 74                    Ft
-        tsb     $1C                             ; CEB2 04 1C                    ..
-        and     ($74)                           ; CEB4 32 74                    2t
-        tsb     $3A                             ; CEB6 04 3A                    .:
-        brk                                     ; CEB8 00                       .
-        tsb     $5258                           ; CEB9 0C 58 52                 .XR
-        cli                                     ; CEBC 58                       X
-        tsb     $0E58                           ; CEBD 0C 58 0E                 .X.
-        .byte   $02                             ; CEC0 02                       .
-        tsb     $6258                           ; CEC1 0C 58 62                 .Xb
-        rol     a                               ; CEC4 2A                       *
-        tsb     $5C58                           ; CEC5 0C 58 5C                 .X\
-        brk                                     ; CEC8 00                       .
-        brk                                     ; CEC9 00                       .
-        .byte   $42                             ; CECA 42                       B
-        pha                                     ; CECB 48                       H
-        .byte   $42                             ; CECC 42                       B
-        sec                                     ; CECD 38                       8
-        .byte   $42                             ; CECE 42                       B
-        clc                                     ; CECF 18                       .
-        bmi     $CED2                           ; CED0 30 00                    0.
-  .byte   $42                             ; CED2 42                       B
-        jsr     L004E                           ; CED3 20 4E 00                  N.
-        .byte   $42                             ; CED6 42                       B
-        lsr     $6E00,x                         ; CED7 5E 00 6E                 ^.n
-        phy                                     ; CEDA 5A                       Z
-        bvc     $CF37                           ; CEDB 50 5A                    PZ
-        sec                                     ; CEDD 38                       8
-        phy                                     ; CEDE 5A                       Z
-        inc     a                               ; CEDF 1A                       .
-        brk                                     ; CEE0 00                       .
-        ror     $665A                           ; CEE1 6E 5A 66                 nZf
-        lsr     $38,x                           ; CEE4 56 38                    V8
-        phy                                     ; CEE6 5A                       Z
-        trb     $00                             ; CEE7 14 00                    ..
-        jmp     (L2E6A)                         ; CEE9 6C 6A 2E                 lj.
-        ply                                     ; CEEC 7A                       z
-        jmp     (L066A)                         ; CEED 6C 6A 06                 lj.
-        pla                                     ; CEF0 68                       h
-        jmp     (L7E6A)                         ; CEF1 6C 6A 7E                 lj~
-        jmp     (L6E6E,x)                       ; CEF4 7C 6E 6E                 |nn
-        rti                                     ; CEF7 40                       @
-        rol     $3E40,x                         ; CEF8 3E 40 3E                 >@>
-        adc     ($70)                           ; CEFB 72 70                    rp
-        rti                                     ; CEFD 40                       @
-        rol     $3C08,x                         ; CEFE 3E 08 3C                 >.<
-        rti                                     ; CF01 40                       @
-        rol     $7822,x                         ; CF02 3E 22 78                 >"x
-        rti                                     ; CF05 40                       @
-        rol     a:$28,x                         ; CF06 3E 28 00                 >(.
-        plp                                     ; CF09 28                       (
-        rol     a                               ; CF0A 2A                       *
-        rol     $2C,x                           ; CF0B 36 2C                    6,
-        plp                                     ; CF0D 28                       (
-        rol     a                               ; CF0E 2A                       *
-        bpl     $CF35                           ; CF0F 10 24                    .$
-        brk                                     ; CF11 00                       .
-        rol     a                               ; CF12 2A                       *
-        asl     a:$4C,x                         ; CF13 1E 4C 00                 .L.
-        rol     a                               ; CF16 2A                       *
-        rol     $00                             ; CF17 26 00                    &.
-        rol     $32                             ; CF19 26 32                    &2
-        bit     $44,x                           ; CF1B 34 44                    4D
-        rol     $32                             ; CF1D 26 32                    &2
-        asl     a                               ; CF1F 0A                       .
-        rts                                     ; CF20 60                       `
-        brk                                     ; CF21 00                       .
-        and     ($64)                           ; CF22 32 64                    2d
-        .byte   $54                             ; CF24 54                       T
-        rol     $32                             ; CF25 26 32                    &2
-        lsr     $02                             ; CF27 46 02                    F.
-        bmi     $CF2B                           ; CF29 30 00                    0.
-        pla                                     ; CF2B 68                       h
-        bit     $6024,x                         ; CF2C 3C 24 60                 <$`
-        bra     LCF3E                           ; CF2F 80 0D                    ..
-        jsr     L2020                           ; CF31 20 20 20
+LCE25_PRNME:
+        .byte   $11, $48, $13, $ca, $15, $1a, $19, $08
+        .byte   $19, $28, $19, $a4, $1a, $aa, $1b, $94
+        .byte   $1b, $cc, $1c, $5a, $1c, $c4, $1c, $d8
+        .byte   $1d, $c8, $1d, $e8, $23, $48, $23, $4a
+        .byte   $23, $54, $23, $6e, $23, $a2, $24, $72
+        .byte   $24, $74, $29, $88, $29, $b2, $29, $b4
+        .byte   $34, $26, $53, $c8, $53, $f2, $53, $f4
+        .byte   $5b, $a2, $5d, $26, $69, $44, $69, $72
+        .byte   $69, $74, $6d, $26, $7c, $22, $84, $c4
+        .byte   $8a, $44, $8a, $62, $8a, $72, $8a, $74
+        .byte   $8b, $44, $8b, $62, $8b, $72, $8b, $74
+        .byte   $9c, $1a, $9c, $26, $9d, $54, $9d, $68
+        .byte   $a0, $c8, $a1, $88, $a1, $8a, $a1, $94
+        .byte   $a5, $44, $a5, $72, $a5, $74, $a5, $76
+        .byte   $a8, $b2, $a8, $b4, $ac, $c6, $ad, $06
+        .byte   $ad, $32, $ae, $44, $ae, $68, $ae, $84
+        .byte   $00, $00
+LCEA7_PRNME:
+        .byte   $16, $00, $76, $04, $4a, $04, $76, $04
+        .byte   $12, $46, $74, $04, $1c, $32, $74, $04
+        .byte   $3a, $00, $0c, $58, $52, $58, $0c, $58
+        .byte   $0e, $02, $0c, $58, $62, $2a, $0c, $58
+        .byte   $5c, $00, $00, $42, $48, $42, $38, $42
+        .byte   $18, $30, $00, $42, $20, $4e, $00, $42
+        .byte   $5e, $00, $6e, $5a, $50, $5a, $38, $5a
+        .byte   $1a, $00, $6e, $5a, $66, $56, $38, $5a
+        .byte   $14, $00, $6c, $6a, $2e, $7a, $6c, $6a
+        .byte   $06, $68, $6c, $6a, $7e, $7c, $6e, $6e
+        .byte   $40, $3e, $40, $3e, $72, $70, $40, $3e
+        .byte   $08, $3c, $40, $3e, $22, $78, $40, $3e
+        .byte   $28, $00, $28, $2a, $36, $2c, $28, $2a
+        .byte   $10, $24, $00, $2a, $1e, $4c, $00, $2a
+        .byte   $26, $00, $26, $32, $34, $44, $26, $32
+        .byte   $0a, $60, $00, $32, $64, $54, $26, $32
+        .byte   $46, $02, $30, $00, $68, $3c, $24, $60
+        .byte   $80, $0d, $20, $20, $20
 ; ----------------------------------------------------------------------------
 ;ASSEM
 MON_CMD_ASSEMBLE:
@@ -11973,7 +11842,7 @@ MON_CMD_ASSEMBLE:
         jmp     MON_BAD_COMMAND
 AS005:  jsr     T0TOT2
 AS010:  ldx     #$00
-LCF3E:  stx     HULP+1
+        stx     HULP+1
 AS020:  jsr     GNC
         bne     AS025
         cpx     #$00

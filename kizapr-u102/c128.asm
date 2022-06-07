@@ -2589,7 +2589,7 @@ LE60B:  cmp     ($3A)                           ; E60B D2 3A                    
         sbc     ($2C)                           ; E611 F2 2C                    .,
         cmp     ($3A),y                         ; E613 D1 3A                    .:
         sbc     ($2C),y                         ; E615 F1 2C                    .,
-        eor     (L004E,x)                       ; E617 41 4E                    AN
+        eor     ($004E,x)                       ; E617 41 4E                    AN
         cmp     ($3A),y                         ; E619 D1 3A                    .:
         sbc     ($2C),y                         ; E61B F1 2C                    .,
         bne     LE675                           ; E61D D0 56                    .V
