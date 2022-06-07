@@ -9100,8 +9100,8 @@ ISOUR:  sei
         bcs     NODEV         ;Branch to device not present error
         jsr     CLKHI         ;Set clock line high
 
-        bit     VIA1_PORTB    ;XXX different from c64
-        bvs     NODEV         ;XXX
+        bit     VIA1_PORTB    ;XXX The C64 KERNAL does not have this
+        bvs     NODEV         ;XXX but the TED-series KERNAL does.
 
         bit     R2D2          ;EOI flag test
         bpl     NOEOI
