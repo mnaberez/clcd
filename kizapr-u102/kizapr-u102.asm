@@ -158,6 +158,7 @@ SINNER                    := $034E  ; "SINNER" name is from TED-series KERNAL,
 GO_APPL_LOAD_GO_KERN      := $0353  ; where similar RAM-resident code is
 GO_RAM_STORE_GO_KERN      := $035C  ; modified at runtime.
 GO_NOWHERE_STORE_GO_KERN  := $035F  ;
+LSTCHR          := $036E  ;Last char typed; used to test for ESC sequence
 REVERSE         := $036C  ;0=Reverse Off, 0x80=Reverse On
 BLNOFF          := $036F  ;0=Cursor Blink On, 0x80=Cursor Blink Off
 TABMAP          := $0370
@@ -6088,7 +6089,7 @@ LA97E:  jmp     ($1734,x)                       ; A97E 7C 34 17                 
         .byte   $A3                             ; A989 A3                       .
         cmp     ($36,x)                         ; A98A C1 36                    .6
         rmb2    $00                             ; A98C 27 00                    '.
-        adc     LAE19,x                         ; A98E 7D 19 AE                 }..
+        adc     $AE19,x                         ; A98E 7D 19 AE                 }..
         adc     ($16,x)                         ; A991 61 16                    a.
         nop                                     ; A993 EA                       .
         tsx                                     ; A994 BA                       .
@@ -6234,8 +6235,7 @@ LAA8C:  ldx     V1541_FILE_TYPE                           ; AA8C AE A4 03       
         cpx     V1541_FILE_MODE                           ; AA94 EC A3 03                 ...
         bcs     LAA9D                           ; AA97 B0 04                    ..
         lda     #$00                            ; AA99 A9 00                    ..
-;TODO code
-        .byte   $24                             ; AA9B 24                       $
+        .byte   $24  ;skip 1 byte               ; AA9B 24                       $
 LAA9C:  txa                                     ; AA9C 8A                       .
 LAA9D:  sta     V1541_FILE_MODE                           ; AA9D 8D A3 03                 ...
         jsr     LAAF7                           ; AAA0 20 F7 AA                  ..
@@ -6276,11 +6276,13 @@ LAAD9:  and     MON_MMU_MODE                    ; AAD9 2D A1 03                 
         clc                                     ; AAED 18                       .
         rts                                     ; AAEE 60                       `
 ; ----------------------------------------------------------------------------
+        ;TODO probably data
         brk                                     ; AAEF 00                       .
         .byte   $02                             ; AAF0 02                       .
         tsb     $06                             ; AAF1 04 06                    ..
         ora     ($03,x)                         ; AAF3 01 03                    ..
         ora     $07                             ; AAF5 05 07                    ..
+
 LAAF7:  stz     $03A5                           ; AAF7 9C A5 03                 ...
         lda     #$FF                            ; AAFA A9 FF                    ..
         sta     $03A6                           ; AAFC 8D A6 03                 ...
@@ -6392,17 +6394,19 @@ LABD7:  php
         jsr     WaitXticks_
         bra     LABD7
 LABED:  pla
-        ldx     $036E
-        sta     $036E
-        cmp     #$0D ;Return
+        ldx     LSTCHR        ;X = last char
+        sta     LSTCHR        ;Store this char as the last one for next time
+
+        cmp     #$0D          ;Char = Return?
         beq     LAC2F
-        cmp     #$8D ;Shift-Return
+        cmp     #$8D          ;Char = Shift-Return?
         beq     LAC2F
-        cpx     #$1B ;Escape
+
+        cpx     #$1B          ;Last char = ESC?
         bne     LAC03
-        jmp     LB10E
+        jmp     LB10E_ESC
 ; ----------------------------------------------------------------------------
-LAC03:  cmp     #$1B ;Escape
+LAC03:  cmp     #$1B          ;Char = Escape?
         bne     LAC08
         rts
 ; ----------------------------------------------------------------------------
@@ -6410,7 +6414,7 @@ LAC08:  bit     $AA
         bpl     LAC24
         ldy     INSRT
         beq     LAC19
-        cmp     #$94 ;Insert
+        cmp     #$94          ;Char = Insert?
         beq     LAC2F
         dec     INSRT
         jmp     LAC3A
@@ -6418,11 +6422,11 @@ LAC08:  bit     $AA
 LAC19:  jsr     LB08E
         ldy     QTSW
         beq     LAC24
-        cmp     #$14 ;Delete
+        cmp     #$14          ;Char = Delete?
         bne     LAC3A
-LAC24:  cmp     #$13 ;Home
+LAC24:  cmp     #$13          ;Char = Home?
         bne     LAC2F
-        cpx     #$13
+        cpx     #$13          ;Last char = Home?
         bne     LAC2F
         jmp     LAE5B
 ; ----------------------------------------------------------------------------
@@ -6434,25 +6438,35 @@ LAC2F:  bit     #$20
 ; ----------------------------------------------------------------------------
 LAC3A:  jsr     LB09B
         ldx     REVERSE
-        beq     LAC44
+        beq     LAC4D_RVS_OFF
+
+        ;Reverse is on
         ora     #$80
-LAC44:  ldx     INSFLG
-        beq     LAC4D
+
+LAC4D_RVS_OFF:
+        ldx     INSFLG
+        beq     LAC4D_AUTO_INSRT_OFF
+
+        ;Auto-insert (ESC-A) is on
         pha
         jsr     CODE_94_INSERT
         pla
-LAC4D:  jsr     PutCharAtCursorXY
+
+LAC4D_AUTO_INSRT_OFF:
+        jsr     PutCharAtCursorXY
 LAC50:  ldx     CursorX
         cpx     WIN_BTM_RGHT_X
-        beq     LAC59
+        beq     LAC59_EOL_REACHED
         inc     CursorX
-LAC58:  rts
-; ----------------------------------------------------------------------------
-LAC59:  lda     $AA
+LAC58_RTS:
+        rts
+
+LAC59_EOL_REACHED:
+        lda     $AA
         bit     #$04
         beq     JMP_CTRL_1D_CRSR_RIGHT
         bit     #$20
-        beq     LAC58
+        beq     LAC58_RTS
         ldy     CursorY
         jsr     LB059
         bcs     JMP_CTRL_1D_CRSR_RIGHT
@@ -6470,16 +6484,16 @@ LAC59:  lda     $AA
         beq     LAC88
         dec     LSXP
         bra     LAC8B
-LAC88:  jsr     LB393
-LAC8B:  jmp     LAF4B
-; ----------------------------------------------------------------------------
+LAC88:  jsr     LB393_SET_LSXP_FF_SET_CARRY
+LAC8B:  jmp     SCROLL_WIN_UP
+
 LAC8E:  inc     CursorY
-        jmp     LAF89
-; ----------------------------------------------------------------------------
+        jmp     SCROLL_WIN_DOWN
+
 JMP_CTRL_1D_CRSR_RIGHT:
         jmp     CTRL_1D_CRSR_RIGHT
 ; ----------------------------------------------------------------------------
-CTRL_CODES:
+CTRL_CODES_AND_HANDLERS:
         .byte   $07 ;CHR$(7) Bell
         .addr   CODE_07_BELL
 
@@ -6542,16 +6556,17 @@ CTRL_CODES:
 ; ----------------------------------------------------------------------------
 DO_CTRL_CODE:
         ldx     #$39
-LACD4:  cmp     CTRL_CODES,x
+LACD4_LOOP:
+        cmp     CTRL_CODES_AND_HANDLERS,x
         beq     JMP_TO_CTRL_CODE
         dex
         dex
         dex
-        bpl     LACD4
+        bpl     LACD4_LOOP
         rts
 ; ----------------------------------------------------------------------------
 JMP_TO_CTRL_CODE:
-        jmp     (CTRL_CODES+1,x)
+        jmp     (CTRL_CODES_AND_HANDLERS+1,x)
 ; ----------------------------------------------------------------------------
 ;CHR$(25) CTRL-Y Lock
 ;Disables switching uppercase/lowercase mode when Shift-Commodore is pressed
@@ -6692,22 +6707,22 @@ CODE_91_CRSR_UP:
         dey
         jsr     LB059
         bcs     LAD89
-        jsr     LB393
+        jsr     LB393_SET_LSXP_FF_SET_CARRY
 LAD89:  rts
-; ----------------------------------------------------------------------------
+
 LAD8A:  lda     #$10
         bit     $AA
         bne     LAD91
         rts
-; ----------------------------------------------------------------------------
-LAD91:  jsr     LB393
+
+LAD91:  jsr     LB393_SET_LSXP_FF_SET_CARRY
         bit     $AA
         bvc     LADA0
-        jsr     LAF89
+        jsr     SCROLL_WIN_DOWN
         ldy     WIN_TOP_LEFT_Y
         sty     CursorY
         rts
-; ----------------------------------------------------------------------------
+
 LADA0:  ldy     WIN_BTM_RGHT_Y
         sty     CursorY
         rts
@@ -6721,23 +6736,23 @@ CODE_11_CRSR_DOWN:
         beq     LADB6
         jsr     LB059
         bcs     LADB3
-        jsr     LB393
+        jsr     LB393_SET_LSXP_FF_SET_CARRY
 LADB3:  inc     CursorY
         rts
-; ----------------------------------------------------------------------------
+
 LADB6:  lda     #$08
         bit     $AA
         bne     LADBD
         rts
-; ----------------------------------------------------------------------------
-LADBD:  jsr     LB393
+
+LADBD:  jsr     LB393_SET_LSXP_FF_SET_CARRY
         bit     $AA
         bvc     LADCC
-        jsr     LAF4B
+        jsr     SCROLL_WIN_UP
         ldy     WIN_BTM_RGHT_Y
         sty     CursorY
         rts
-; ----------------------------------------------------------------------------
+
 LADCC:  ldy     WIN_TOP_LEFT_Y
         sty     CursorY
         rts
@@ -6749,32 +6764,31 @@ CTRL_1D_CRSR_RIGHT:
         beq     LADDA
         inc     CursorX
         rts
-; ----------------------------------------------------------------------------
+
 LADDA:  ldy     CursorY
         cpy     WIN_BTM_RGHT_Y
         beq     LADEF
         jsr     LB059
         bcs     LADE8
-        jsr     LB393
+        jsr     LB393_SET_LSXP_FF_SET_CARRY
 LADE8:  inc     CursorY
         ldx     WIN_TOP_LEFT_X
         stx     CursorX
         rts
-; ----------------------------------------------------------------------------
+
 LADEF:  lda     $AA
         bit     #$08
         bne     LADF6
         rts
-; ----------------------------------------------------------------------------
 LADF6:  ldx     WIN_TOP_LEFT_X
         stx     CursorX
-        jsr     LB393
+        jsr     LB393_SET_LSXP_FF_SET_CARRY
         bit     #$40
         bne     LAE04
         jmp     CODE_13_HOME
-; ----------------------------------------------------------------------------
+
 LAE04:  ldy     CursorY
-        jmp     LAF4B
+        jmp     SCROLL_WIN_UP
 ; ----------------------------------------------------------------------------
 ;CHR$(157) Cursor Left
 CODE_9D_CRSR_LEFT:
@@ -6787,13 +6801,13 @@ CODE_9D_CRSR_LEFT:
 LAE12:  ldy     CursorY
         cpy     WIN_TOP_LEFT_Y
         beq     LAE28
-        .byte   $C6
-LAE19:  ldx     #$A6
-        ldy     $86
-        lda     ($88,x)
+        dec     CursorY
+        ldx     WIN_BTM_RGHT_X
+        stx     CursorX
+        dey
         jsr     LB059
         bcs     LAE27
-        jsr     LB393
+        jsr     LB393_SET_LSXP_FF_SET_CARRY
 LAE27:  rts
 ; ----------------------------------------------------------------------------
 LAE28:  lda     $AA
@@ -6801,12 +6815,12 @@ LAE28:  lda     $AA
         bne     LAE2F
         rts
 ; ----------------------------------------------------------------------------
-LAE2F:  jsr     LB393
+LAE2F:  jsr     LB393_SET_LSXP_FF_SET_CARRY
         ldx     WIN_BTM_RGHT_X
         stx     CursorX
         bit     $AA
         bvc     LAE42
-        jsr     LAF89
+        jsr     SCROLL_WIN_DOWN
         ldy     WIN_TOP_LEFT_Y
         sty     CursorY
         rts
@@ -6837,7 +6851,7 @@ LAE68:  sty     WIN_TOP_LEFT_Y
         sty     WIN_BTM_RGHT_Y
 ;CHR$(19) Home
 CODE_13_HOME:
-        jsr     LB393
+        jsr     LB393_SET_LSXP_FF_SET_CARRY
         ldx     WIN_TOP_LEFT_X
         stx     CursorX
         ldy     WIN_TOP_LEFT_Y
@@ -6967,7 +6981,9 @@ GetCharAtCursorXY:
         lda     (VidPtrLo)
         rts
 ; ----------------------------------------------------------------------------
-LAF4B:  ldy     WIN_TOP_LEFT_Y
+;Scroll the current window up one line
+SCROLL_WIN_UP:
+        ldy     WIN_TOP_LEFT_Y
         cpy     CursorY
         beq     LAF7C
         ldx     WIN_TOP_LEFT_X
@@ -6998,7 +7014,9 @@ LAF7C:  jsr     LAFD3
         ldy     CursorY
         jmp     ESC_D_DELETE_LINE
 ; ----------------------------------------------------------------------------
-LAF89:  ldy     CursorY
+;Scroll the current window down one line
+SCROLL_WIN_DOWN:
+        ldy     CursorY
         cpy     WIN_BTM_RGHT_Y
         beq     ESC_D_DELETE_LINE
         jsr     LAF3A
@@ -7142,25 +7160,33 @@ LB08E:  cmp     #$22
 LB09A:  rts
 ; ----------------------------------------------------------------------------
 LB09B:  cmp     #$FF
-        bne     LB0A2
-        lda     #$5E
+        bne     LB0A2_NOT_FF
+        lda     #$5E    ;PETSCII up-arrow
         rts
-; ----------------------------------------------------------------------------
-LB0A2:  phx
+
+LB0A2_NOT_FF:
+        phx
         pha
-        lsr     a
-        lsr     a
-        lsr     a
-        lsr     a
-        lsr     a
+        lsr     a       ;
+        lsr     a       ;Shift bits 7-5 into bits 2-0
+        lsr     a       ;   %11111111 -> %00000111
+        lsr     a       ;To make index for LB0B0_BITS_TO_FLIP
+        lsr     a       ;
         tax
         pla
-        eor     LB0B0,x
+        eor     LB0B0_BITS_TO_FLIP,x
         plx
         rts
-; ----------------------------------------------------------------------------
-LB0B0:  .byte   $80,$00                         ; B0B0 80 00                    ..
-        .byte   $40,$20,$40,$C0,$80,$80         ; B0B2 40 20 40 C0 80 80        @ @...
+
+LB0B0_BITS_TO_FLIP:
+        .byte   $80     ;%000xxxxx  $00-1F
+        .byte   $00     ;%001xxxxx  $20-3F
+        .byte   $40     ;%010xxxxx  $40-5F
+        .byte   $20     ;%011xxxxx  $60-7F
+        .byte   $40     ;%100xxxxx  $80-9F
+        .byte   $C0     ;%101xxxxx  $A0-BF
+        .byte   $80     ;%110xxxxx  $C0-DF
+        .byte   $80     ;%111xxxxx  $E0-EF
 ; ----------------------------------------------------------------------------
 LB0B8:  sta     $F1
         and     #$3F
@@ -7192,7 +7218,8 @@ LB0D4:  rts
 ;  ESC-U (Change to underline cursor)
 ;  ESC-X (Swap 40/80 column output device)
 ;
-LB0D5:  .byte   "A"
+ESC_KEYS_AND_HANDLERS:
+        .byte   "A"
         .addr   ESC_A_AUTOINSERT_ON
 
         .byte   "B"
@@ -7213,13 +7240,13 @@ LB0D5:  .byte   "A"
         ;ESC-G (Enable Bell) and ESC-H (Disable Bell)
         ;from C128 are missing
 
-LB0E7:  .byte   "I"
+        .byte   "I"
         .addr   ESC_I_INSERT_LINE
 
         .byte   "J"
         .addr   ESC_J_MOVE_TO_START_OF_LINE
 
-LB0ED:  .byte   "K"
+        .byte   "K"
         .addr   ESC_K_MOVE_TO_END_OF_LINE
 
         .byte   "L"
@@ -7237,7 +7264,7 @@ LB0ED:  .byte   "K"
         .byte   "P"
         .addr   ESC_P_ERASE_TO_START_OF_LINE
 
-LB0FC:  .byte   "Q"
+        .byte   "Q"
         .addr   ESC_Q_ERASE_TO_END_OF_LINE
 
         ;ESC-S (Block cursor) and ESC-U (Underline cursor)
@@ -7261,21 +7288,24 @@ LB0FC:  .byte   "Q"
         .byte   "Z"
         .addr   ESC_Z_CLEAR_ALL_TABS
 ; ----------------------------------------------------------------------------
-LB10E:  bit     $036E
-        bmi     LB126
-        bvc     LB126
-        lda     $036E
+LB10E_ESC:
+        bit     LSTCHR
+        bmi     LB126_RTS
+        bvc     LB126_RTS
+        lda     LSTCHR
         and     #$DF
         ldx     #$36
-LB11C:  cmp     LB0D5,x
-        beq     LB127
+LB11C_LOOP:
+        cmp     ESC_KEYS_AND_HANDLERS,x
+        beq     LB127_JMP_TO_HANDLER
         dex
         dex
         dex
-        bpl     LB11C
-LB126:  rts
-; ----------------------------------------------------------------------------
-LB127:  jmp     (LB0D5+1,x)
+        bpl     LB11C_LOOP
+LB126_RTS:
+        rts
+LB127_JMP_TO_HANDLER:
+        jmp     (ESC_KEYS_AND_HANDLERS+1,x)
 ; ----------------------------------------------------------------------------
 ;ESC-A Enable auto-insert mode
 ESC_A_AUTOINSERT_ON:
@@ -7298,7 +7328,7 @@ ESC_C_AUTOINSERT_OFF:
 ; ----------------------------------------------------------------------------
 ;ESC-I Insert line
 ESC_I_INSERT_LINE:
-        jsr     LAF89
+        jsr     SCROLL_WIN_DOWN
         ldy     CursorY
         dey
         jsr     LB059
@@ -7385,15 +7415,17 @@ ESC_V_SCROLL_UP:
         jsr     SaveCursorXY
         ldy     WIN_BTM_RGHT_Y
         sty     CursorY
-        jsr     LAF4B
+        jsr     SCROLL_WIN_UP
         bra     LB1D4
+
 ;ESC-W Scroll down
 ESC_W_SCROLL_DOWN:
         jsr     SaveCursorXY
         ldy     WIN_TOP_LEFT_Y
         sty     CursorY
-        jsr     LAF89
-LB1D4:  jsr     LB393
+        jsr     SCROLL_WIN_DOWN
+
+LB1D4:  jsr     LB393_SET_LSXP_FF_SET_CARRY
         jmp     LAEA6
 ; ----------------------------------------------------------------------------
 ;Start the screen editor
@@ -7421,17 +7453,20 @@ SCINIT_:
         stz     QTSW
         stz     $0382
         stz     INSFLG
-        stz     $036E
+        stz     LSTCHR
         stz     INSFLG
         lda     #$ED
         sta     $AA
         stz     BLNOFF ;Blink = on
         jsr     ESC_Y_SET_DEFAULT_TABS
+        ;Fall through to set initial modes
+
 ;ESC-O Cancel insert, quote, reverse modes
 ESC_O_CANCEL_MODES:
         stz     QTSW  ;Quote mode = off
         stz     INSRT ;# chars to insert = 0
         ;Fall through to cancel reverse
+
 ;CHR$(146) Reverse Off
 CODE_92_RVS_OFF:
         stz     REVERSE ;Reverse mode = off
@@ -7466,16 +7501,19 @@ LCDsetupSet:
         rts
 ; ----------------------------------------------------------------------------
 EDITOR_LOCS:
-        .word   $00A1,$00A2,$00A3,$00A4
-        .word   $00A6,$00A5,$00A7,$037D
-        .word   $00A8,$00A9,$00AA,BLNOFF
-        .word   REVERSE,$036D,$036A,$036B
-        .word   $036E,TABMAP,TABMAP+1,TABMAP+2
+        .word   CursorX,CursorY,WIN_TOP_LEFT_X,WIN_BTM_RGHT_X
+        .word   WIN_BTM_RGHT_Y,WIN_TOP_LEFT_Y,QTSW
+        .word   $037D  ;TODO name
+        .word   INSRT,INSFLG
+        .word   $00AA ;TODO name
+        .word   BLNOFF,REVERSE
+        .word   $036D,$036A,$036B ;TODO names
+        .word   LSTCHR,TABMAP,TABMAP+1,TABMAP+2
         .word   TABMAP+3,TABMAP+4,TABMAP+5,TABMAP+6
-        .word   TABMAP+7,TABMAP+8,TABMAP+9,$00A0
-        .word   SETUP_LCD_A,SETUP_LCD_X,SETUP_LCD_Y
+        .word   TABMAP+7,TABMAP+8,TABMAP+9
+        .word   VidMemHi,SETUP_LCD_A,SETUP_LCD_X,SETUP_LCD_Y
 EDITOR_LOCS_SIZE = * - EDITOR_LOCS
-; ----------------------------------------------------------------------------
+
 ;Given a pointer to a 62-byte area in MMU RAM mode, swap the state
 ;of the screen editor (the locations in EDITOR_LOCS) with values in
 ;that area.  If called twice, the first call will swap in a new editor
@@ -7577,7 +7615,7 @@ LB319_CHRIN_DEV_3_SCREEN:
         lda     $80
         tsb     $0382
         bne     LB362
-        jsr     LB393
+        jsr     LB393_SET_LSXP_FF_SET_CARRY
         bra     LB349
 
 ;CHRIN from keyboard
@@ -7604,6 +7642,7 @@ LB33A:  jsr     LB2D6_SHOW_CURSOR
         pla
         cmp     #$0D  ;Return
         bne     LB337_LOOP
+
 LB349:  stz     QTSW ;Quote mode = off
         jsr     ESC_K_MOVE_TO_END_OF_LINE
         jsr     SaveCursorXY
@@ -7641,7 +7680,8 @@ LB387:  jsr     ESC_K_MOVE_TO_END_OF_LINE
         clc
         rts
 ; ----------------------------------------------------------------------------
-LB393:  stz     LSXP
+LB393_SET_LSXP_FF_SET_CARRY:
+        stz     LSXP
         dec     LSXP
         rts
 
@@ -7824,19 +7864,21 @@ LB585:  lda     $AB
 
         ;Check for CTRL-Q
         ldy     KBD_MATRIX_NORMAL,x
-        cpy     #'Q'
+        cpy     #$51;'Q'
         bne     LB5A3_CHECK_CTRL_S
 
-        ;CTRL-Q pressed
+        ;CTRL-Q pressed (in BASIC, performs cursor down)
+        ;reset bit 1 of 036D
         trb     $036D
         bra     LB5E1_JMP_LBFBE ;UNKNOWN_SECS/MINS
 
 LB5A3_CHECK_CTRL_S:
         ;Check for CTRL-S
-        cpy     #'S'
+        cpy     #$53;'S'
         bne     LB5AC_NO_CTRL
 
-        ;CTRL-S pressed
+        ;CTRL-S pressed (in BASIC, performs Home)
+        ;set bit 1 of $036D
         tsb     $036D
         bra     LB5E1_JMP_LBFBE ;UNKNOWN_SECS/MINS
 
@@ -8105,7 +8147,7 @@ LB729:  cmp     #$12
         tsb     $03FD
         bra     LB750_DONE_CLC
 LB734_NE_12:
-        cmp     #$92
+        cmp     #$92 ;Reverse off
         bne     LB73F_NE_92
         lda     #$80
         trb     $03FD

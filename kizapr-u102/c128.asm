@@ -155,6 +155,8 @@ C128_A79D := $A79D
 C128_A7B6 := $A7B6
 C128_A7E2 := $A7E2
 C128_A9F1 := $A9F1
+C128_B0E7 := $B0E7
+C128_B0FC := $B0FC
 C128_B7CE := $B7CE
 C128_B950 := $B950
 C128_B952 := $B952
@@ -1627,7 +1629,7 @@ LDF08:  adc     $2011,y                         ; DF08 79 11 20                 
 LDF29:  lda     ($F0)                           ; DF29 B2 F0                    ..
         bcc     LDF29                           ; DF2B 90 FC                    ..
 ; Unused (the two FFs)
-        trb     IRQ_VECTOR+1                    ; DF2D 1C FF FF                 ...
+        trb     $ffff                    ; DF2D 1C FF FF                 ...
 ; Conv Words Lo
         tsb     $72                             ; DF30 04 72                    .r
         tsb     $50                             ; DF32 04 50                    .P
@@ -3555,7 +3557,7 @@ LF0A6:  jsr     LB8E9                           ; F0A6 20 E9 B8                 
 ; Monitor command
 
 LF0B2:  ldx     #$15                            ; F0B2 A2 15                    ..
-LF0B4:  cmp     LB0E7-1,x                       ; F0B4 DD E6 B0                 ...
+LF0B4:  cmp     C128_B0E7-1,x                       ; F0B4 DD E6 B0                 ...
         beq     LF0C5                           ; F0B7 F0 0C                    ..
         dex                                     ; F0B9 CA                       .
         bpl     LF0B4                           ; F0BA 10 F8                    ..
@@ -3573,9 +3575,9 @@ LF0C5:  cpx     #$13                            ; F0C5 E0 13                    
         txa                                     ; F0CD 8A                       .
         asl     a                               ; F0CE 0A                       .
         tax                                     ; F0CF AA                       .
-        lda     LB0FC+1,x                       ; F0D0 BD FD B0                 ...
+        lda     C128_B0FC+1,x                       ; F0D0 BD FD B0                 ...
         pha                                     ; F0D3 48                       H
-        lda     LB0FC,x                         ; F0D4 BD FC B0                 ...
+        lda     C128_B0FC,x                         ; F0D4 BD FC B0                 ...
         pha                                     ; F0D7 48                       H
         jmp     LB7A7                           ; F0D8 4C A7 B7                 L..
 ; ----------------------------------------------------------------------------
