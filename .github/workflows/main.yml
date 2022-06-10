@@ -14,3 +14,11 @@ jobs:
 
     - name: Assemble kizapr-u102.bin
       run: cd kizapr-u102 && make && cat kizapr-u102.lst
+
+    - name: 'Upload build artifacts'
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifacts
+        path: |
+            kizapr-u102/kizapr-u102.bin
+            kizapr-u102/kizapr-u102.lst
