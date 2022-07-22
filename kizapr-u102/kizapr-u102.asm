@@ -12589,7 +12589,7 @@ LD46D:  asl     a
 
 ;$D480-F6FF is filler.  It contains 6502 code but it's actually from the C128
 ;BASIC at $9480-B6FF.  This is garbage to the CLCD and is not used.  If it is
-;zereoed out, the CLCD works normally.  This area is available for new code.
+;zeroed out, the CLCD works normally.  This area is available for new code.
 .list off
 .include "c128.asm"
 .list on
