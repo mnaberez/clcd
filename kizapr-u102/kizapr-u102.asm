@@ -10240,20 +10240,31 @@ LC382:  .byte 0, 6, 12, 18, 24, 30, 36, 42, 48, 54
 ;CHROUT to Centronics
 ;Wait for /BUSY to go high, or STOP key pressed, or timeout
 ;Returns carry=1 if error (STOP or timeout)
+;
+;XXX CLCD Version Differences
+;
+;  /BUSY
+;   - On Bil Herd's prototype (this firmware), Centronics /BUSY is PB6.
+;   - On the schematics, PB6 is Barcode Data In and Centronics /BUSY is PB2.
+;
+;  74HC374 CP
+;   - On Bil Herd's prototype (this firmware), 74HC374 CP is PB5.
+;   - On the schematics, PB5 is Modem-related and 74HC374 CP is PB1.
+;
 CENTRONICS_CHROUT:
         ldx     SATUS
         bne     LC3AC
 
-        pha ;Save byte to send
-        ldy     #$F0 ;loops before timeout
+        pha                 ;Save byte to send
+        ldy     #$F0        ;Y = number of loops before timeout
 LC393:  lda     VIA2_PORTB
-        and     #$40 ;PB6 = /BUSY
-        bne     LC3B0 ;Branch if /BUSY=high
+        and     #%01000000  ;PB6 = Centronics /BUSY input (XXX See "version differences" above)
+        bne     LC3B0       ;Branch if /BUSY=high
 
         lda     MODKEY
-        lsr     a ;Bit 0 = MOD_STOP
+        lsr     a           ;Bit 0 = MOD_STOP
         lda     #$00
-        bcs     LC3AB ;Return early if pressed
+        bcs     LC3AB       ;Return early if pressed
 
         ldx     #$01
         jsr     WaitXticks_
@@ -10272,17 +10283,23 @@ LC3B0:  ldx     #$03
 LC3B2:  dex
         bpl     LC3B2 ;delay a bit after /BUSY=1
 
-        ;PORTA = Centronics data lines
-        pla     ;A=byte to send
-        sta     VIA2_PORTA ;PA = Centronics data
+        ;PA0-7 = 74HC374 inputs 0-7 (data lines)
+        pla                 ;A = byte to send
+        sta     VIA2_PORTA  ;Put byte on 74HC374 input lines
 
-        lda     #$20 ;PB5 = ?
-        trb     VIA2_PORTB
-        tsb     VIA2_PORTB
+        ;Pulse 74HC374 CP low->high so 74HC374 latches its input lines.
+        ;This puts the byte on the Centronics data lines.
+        ;PB5 = 74HC374 CP input (XXX See "version differences" above)
+        lda     #%00100000
+        trb     VIA2_PORTB  ;PB5 = low
+        tsb     VIA2_PORTB  ;PB5 = high (74HC374 latches on rising edge)
 
-        lda     #$02 ;CA2 = ?
-        tsb     VIA2_PCR
-        trb     VIA2_PCR
+        ;Pulse Centronics /STB high -> low.
+        ;This signals the printer that a byte is ready on the data lines.
+        ;CA2 = Centronics /STB
+        lda     #$02
+        tsb     VIA2_PCR    ;CA2 = high
+        trb     VIA2_PCR    ;CA2 = low (Centronics latches on falling edge)
 
         clc
         rts
