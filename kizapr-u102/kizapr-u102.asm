@@ -93,6 +93,9 @@ WIN_BTM_RGHT_Y  := $00A6
 QTSW            := $00A7  ;Quote mode flag (0=quote mode off, nonzero=on)
 INSRT           := $00A8  ;Number of chars to insert (1 for each time SHIFT-INS/DEL is pressed)
 INSFLG          := $00A9  ;Auto-insert mode flag (0=auto-insert off, nonzero=on)
+MEM_00AA        := $00AA  ;Screen editor or maybe keyboard related
+MEM_00AB        := $00AB  ;Keyboard scan related
+MEM_00AC        := $00AC  ;Keyboard scan related
 MODKEY          := $00AD  ;"Modifier" key byte read directly from keyboard shift register
 FNADR           := $00AE
 EAL             := $00B2
@@ -124,6 +127,8 @@ V1541_ACTIV_E9    := $00E9  ;  4 bytes
 V1541_ACTIV_EA    := $00EA  ; /
 BLNCT             := $00EF  ;Counter for cursor blink
 CHAR_UNDER_CURSOR := $00F0  ;Character under the cursor; used with blinking
+MEM_00F4          := $00F4  ;Keyboard scan related
+MEM_00F5          := $00F5  ;Keyboard scan related
 stack             := $0100
 ROM_ENV_A         := $0204
 ROM_ENV_X         := $0205
@@ -164,6 +169,9 @@ SINNER                    := $034E  ; "SINNER" name is from TED-series KERNAL,
 GO_APPL_LOAD_GO_KERN      := $0353  ; where similar RAM-resident code is
 GO_RAM_STORE_GO_KERN      := $035C  ; modified at runtime.
 GO_NOWHERE_STORE_GO_KERN  := $035F  ;
+MEM_0365        := $0365  ;Keyboard related
+MEM_0366        := $0366  ;Keyboard related
+MEM_0367        := $0367  ;Keyboard related
 LSTCHR          := $036E  ;Last char typed; used to test for ESC sequence
 REVERSE         := $036C  ;0=Reverse Off, 0x80=Reverse On
 BLNOFF          := $036F  ;0=Cursor Blink On, 0x80=Cursor Blink Off
@@ -178,6 +186,7 @@ MSGFLG          := $0383
 DFLTN           := $0385
 DFLTO           := $0386
 FNLEN           := $0387
+MEM_038E        := $038E  ;Keyboard related
 JIFFIES         := $038F
 TOD_SECS        := $0390
 TOD_MINS        := $0391
@@ -208,6 +217,11 @@ LSXP            := $03E9
 SavedCursorX    := $03EA
 SavedCursorY    := $03EB
 KEYD            := $03EC
+MEM_03F6        := $03F6  ;Keyboard related
+MEM_03F7        := $03F7  ;Keyboard related
+MEM_03F8        := $03F8  ;Keyboard related
+MEM_03F9        := $03F9  ;Keyboard related
+MEM_03FA        := $03FA  ;Possibly Virtual 1541 or Keyboard related
 SWITCH_COUNT    := $03FB  ;Counts down to debounce switching upper/lowercase on Shift-Commodore
 CAPS_FLAGS      := $03FC
 LDTND           := $0405
@@ -6388,7 +6402,7 @@ LABD7:  php
         pla
         bit     #$04
         bne     LABED
-        lda     $AA
+        lda     MEM_00AA
         and     $036D
         and     #$02
         beq     LABED
@@ -6412,7 +6426,7 @@ LAC03:  cmp     #$1B          ;Char = Escape?
         bne     LAC08
         rts
 ; ----------------------------------------------------------------------------
-LAC08:  bit     $AA
+LAC08:  bit     MEM_00AA
         bpl     LAC24
         ldy     INSRT
         beq     LAC19
@@ -6464,7 +6478,7 @@ LAC58_RTS:
         rts
 
 LAC59_EOL_REACHED:
-        lda     $AA
+        lda     MEM_00AA
         bit     #$04
         beq     JMP_CTRL_1D_CRSR_RIGHT
         bit     #$20
@@ -6667,7 +6681,7 @@ LAD48:  sta     TABMAP,x
 ;CHR$(141) Shift-Return
 CODE_0D_RETURN:
 CODE_8D_SHIFT_RETURN:
-        lda     $AA
+        lda     MEM_00AA
         lsr     a
         bcc     LAD65
 
@@ -6713,12 +6727,12 @@ CODE_91_CRSR_UP:
 LAD89:  rts
 
 LAD8A:  lda     #$10
-        bit     $AA
+        bit     MEM_00AA
         bne     LAD91
         rts
 
 LAD91:  jsr     LB393_SET_LSXP_FF_SET_CARRY
-        bit     $AA
+        bit     MEM_00AA
         bvc     LADA0
         jsr     SCROLL_WIN_DOWN
         ldy     WIN_TOP_LEFT_Y
@@ -6743,12 +6757,12 @@ LADB3:  inc     CursorY
         rts
 
 LADB6:  lda     #$08
-        bit     $AA
+        bit     MEM_00AA
         bne     LADBD
         rts
 
 LADBD:  jsr     LB393_SET_LSXP_FF_SET_CARRY
-        bit     $AA
+        bit     MEM_00AA
         bvc     LADCC
         jsr     SCROLL_WIN_UP
         ldy     WIN_BTM_RGHT_Y
@@ -6778,7 +6792,7 @@ LADE8:  inc     CursorY
         stx     CursorX
         rts
 
-LADEF:  lda     $AA
+LADEF:  lda     MEM_00AA
         bit     #$08
         bne     LADF6
         rts
@@ -6812,7 +6826,7 @@ LAE12:  ldy     CursorY
         jsr     LB393_SET_LSXP_FF_SET_CARRY
 LAE27:  rts
 ; ----------------------------------------------------------------------------
-LAE28:  lda     $AA
+LAE28:  lda     MEM_00AA
         bit     #$10
         bne     LAE2F
         rts
@@ -6820,7 +6834,7 @@ LAE28:  lda     $AA
 LAE2F:  jsr     LB393_SET_LSXP_FF_SET_CARRY
         ldx     WIN_BTM_RGHT_X
         stx     CursorX
-        bit     $AA
+        bit     MEM_00AA
         bvc     LAE42
         jsr     SCROLL_WIN_DOWN
         ldy     WIN_TOP_LEFT_Y
@@ -6923,7 +6937,7 @@ LAEDD:  jsr     LAC50
         lda     CursorX
         cmp     WIN_BTM_RGHT_X
         bne     LAEDD
-        lda     $AA
+        lda     MEM_00AA
         bit     #$20
         beq     LAF16
         bit     #$04
@@ -7128,7 +7142,7 @@ LB049:  .byte   $01,$03,$07,$0F,$1F,$3F,$7F,$FF ; B049 01 03 07 0F 1F 3F 7F FF  
 LB051:  .byte   $FF,$FE,$FC,$F8,$F0,$E0,$C0,$80 ; B051 FF FE FC F8 F0 E0 C0 80  ........
 ; ----------------------------------------------------------------------------
 LB059:  lda     #$04
-        and     $AA
+        and     MEM_00AA
         beq     LB06D
         cpy     #$10
         bcs     LB06D
@@ -7377,13 +7391,13 @@ LB17F:  rts
 ;ESC-L Enable scrolling
 ESC_L_SCROLLING_ON:
         lda     #$40
-        tsb     $AA
+        tsb     MEM_00AA
         rts
 ; ----------------------------------------------------------------------------
 ;ESC-M Disable scrolling
 ESC_M_SCROLLING_OFF:
         lda     #$40
-        trb     $AA
+        trb     MEM_00AA
         rts
 ; ----------------------------------------------------------------------------
 ;ESC-Q Erase to end of current line
@@ -7462,7 +7476,7 @@ SCINIT_:
         stz     LSTCHR
         stz     INSFLG
         lda     #$ED
-        sta     $AA
+        sta     MEM_00AA
         stz     BLNOFF ;Blink = on
         jsr     ESC_Y_SET_DEFAULT_TABS
         ;Fall through to set initial modes
@@ -7764,14 +7778,14 @@ KBD_MATRIX_CTRL:                                ; ----- ----- ----- ----- ----- 
 
 KEYB_INIT:
         lda     #$09
-        sta     $03F6
+        sta     MEM_03F6
         lda     #$1E
-        sta     $0367
+        sta     MEM_0367
         lda     #$01
-        sta     $0366
-        sta     $0365
+        sta     MEM_0366
+        sta     MEM_0365
         lda     #$FF
-        sta     $038E
+        sta     MEM_038E
         lda     #<LFA87_JMP_RTS_IN_KERN_MODE
         sta     RAMVEC_MEM_0336
         lda     #>LFA87_JMP_RTS_IN_KERN_MODE
@@ -7782,25 +7796,25 @@ KEYB_INIT:
 LB4FB_RESET_KEYD_BUFFER:
         php
         sei
-        stz     $03F7
-        stz     $03F8
-        stz     $03F9
+        stz     MEM_03F7
+        stz     MEM_03F8
+        stz     MEM_03F9
         plp
         rts
 ; ----------------------------------------------------------------------------
 ;Called at 60 Hz by the default IRQ handler (see LFA44_VIA1_T1_IRQ).
 ;Scan the keyboard
 KL_SCNKEY:
-        lda     $F4
+        lda     MEM_00F4
         beq     LB54C
-        dec     $F4
-        lda     $AB
+        dec     MEM_00F4
+        lda     MEM_00AB
         and     #$07
         tax
         lda     PowersOfTwo,x
         eor     #$FF
         sta     VIA1_PORTA
-        lda     $AB
+        lda     MEM_00AB
         lsr     a
         lsr     a
         lsr     a
@@ -7808,9 +7822,9 @@ KL_SCNKEY:
         jsr     KBD_TRIGGER_AND_READ_NORMAL_KEYS
         and     PowersOfTwo,y
         beq     LB52E
-        lda     $0365
-        sta     $F4
-LB52E:  lda     $AB
+        lda     MEM_0365
+        sta     MEM_00F4
+LB52E:  lda     MEM_00AB
         eor     #$07
         tax
         lda     KBD_MATRIX_NORMAL,x
@@ -7818,10 +7832,10 @@ LB52E:  lda     $AB
         bcc     LB53E
         cmp     #$8C+1 ;F8 +1
         bcc     LB549  ;Branch if key is F1-F8
-LB53E:  dec     $F5
+LB53E:  dec     MEM_00F5
         bpl     LB549
-        lda     $0366
-        sta     $F5
+        lda     MEM_0366
+        sta     MEM_00F5
         bne     LB585
 LB549:  jmp     KBD_READ_MODIFIER_KEYS_DO_SWITCH_AND_CAPS
 ; ----------------------------------------------------------------------------
@@ -7850,12 +7864,12 @@ LB56C:  iny
 LB575:  inc     a
         dex
         bpl     LB575
-        sta     $AB
-        lda     $0365
-        sta     $F4
-        lda     $0367
-        sta     $F5
-LB585:  lda     $AB
+        sta     MEM_00AB
+        lda     MEM_0365
+        sta     MEM_00F4
+        lda     MEM_0367
+        sta     MEM_00F5
+LB585:  lda     MEM_00AB
         eor     #$07
         tax
 
@@ -7863,9 +7877,9 @@ LB585:  lda     $AB
         and     #MOD_CTRL ;CTRL-key pressed?
         beq     LB5AC_NO_CTRL ;Branch if no
 
-        ;TODO what does $AA do?
+        ;TODO what does MEM_00AA do?
         lda     #$02
-        and     $AA
+        and     MEM_00AA
         beq     LB5AC_NO_CTRL
 
         ;Check for CTRL-Q
@@ -7891,7 +7905,7 @@ LB5A3_CHECK_CTRL_S:
 ;No CTRL-key combination pressed
 LB5AC_NO_CTRL:
         lda     MODKEY
-        and     $038E
+        and     MEM_038E
 
         ldy     KBD_MATRIX_CTRL,x
         bit     #MOD_CTRL
@@ -7914,12 +7928,12 @@ LB5AC_NO_CTRL:
 LB5D0_GOT_KEYCODE:
         tya                           ;A=key from matrix
 
-        ldy     $03FA
+        ldy     MEM_03FA
 LB5D4:  bne     LB5E1_JMP_LBFBE       ;UNKNOWN_SECS/MINS
 
         ldy     KBD_MATRIX_NORMAL,x
         jsr     LFA84
-        sta     $AC
+        sta     MEM_00AC
         jsr     PUT_KEY_INTO_KEYD_BUFFER
 
 LB5E1_JMP_LBFBE:
@@ -7988,11 +8002,11 @@ PUT_KEY_INTO_KEYD_BUFFER:
         php                                     ; B640 08                       .
         sei                                     ; B641 78                       x
         phx                                     ; B642 DA                       .
-        ldx     $03F7                           ; B643 AE F7 03                 ...
+        ldx     MEM_03F7                        ; B643 AE F7 03                 ...
         dex                                     ; B646 CA                       .
         bpl     LB64C                           ; B647 10 03                    ..
-        ldx     $03F6                           ; B649 AE F6 03                 ...
-LB64C:  cpx     $03F8                           ; B64C EC F8 03                 ...
+        ldx     MEM_03F6                        ; B649 AE F6 03                 ...
+LB64C:  cpx     MEM_03F8                        ; B64C EC F8 03                 ...
         bne     LB655                           ; B64F D0 04                    ..
         plx                                     ; B651 FA                       .
         plp                                     ; B652 28                       (
@@ -8000,12 +8014,12 @@ LB64C:  cpx     $03F8                           ; B64C EC F8 03                 
         rts                                     ; B654 60                       `
 LB655:  and     #$FF                            ; B655 29 FF                    ).
         beq     LB668                           ; B657 F0 0F                    ..
-LB659:  ldx     $03F7                           ; B659 AE F7 03                 ...
-        sta     KEYD,x                         ; B65C 9D EC 03                 ...
+LB659:  ldx     MEM_03F7                        ; B659 AE F7 03                 ...
+        sta     KEYD,x                          ; B65C 9D EC 03                 ...
         dex                                     ; B65F CA                       .
         bpl     LB665                           ; B660 10 03                    ..
-        ldx     $03F6                           ; B662 AE F6 03                 ...
-LB665:  stx     $03F7                           ; B665 8E F7 03                 ...
+        ldx     MEM_03F6                        ; B662 AE F6 03                 ...
+LB665:  stx     MEM_03F7                        ; B665 8E F7 03                 ...
 LB668:  plx                                     ; B668 FA                       .
         plp                                     ; B669 28                       (
         clc                                     ; B66A 18                       .
@@ -8013,28 +8027,28 @@ LB668:  plx                                     ; B668 FA                       
 ; ----------------------------------------------------------------------------
 ;todo probably get key from buffer
 GET_KEY_FROM_KEYD_BUFFER:
-        ldx     $03F8                           ; B66C AE F8 03                 ...
+        ldx     MEM_03F8                        ; B66C AE F8 03                 ...
         lda     #$00                            ; B66F A9 00                    ..
-        cpx     $03F7                           ; B671 EC F7 03                 ...
+        cpx     MEM_03F7                        ; B671 EC F7 03                 ...
         beq     LB683                           ; B674 F0 0D                    ..
-        lda     KEYD,x                         ; B676 BD EC 03                 ...
+        lda     KEYD,x                          ; B676 BD EC 03                 ...
         dex                                     ; B679 CA                       .
         bpl     LB67F                           ; B67A 10 03                    ..
-        ldx     $03F6                           ; B67C AE F6 03                 ...
-LB67F:  stx     $03F8                           ; B67F 8E F8 03                 ...
+        ldx     MEM_03F6                        ; B67C AE F6 03                 ...
+LB67F:  stx     MEM_03F8                        ; B67F 8E F8 03                 ...
         clc                                     ; B682 18                       .
 LB683:  rts                                     ; B683 60                       `
 ; ----------------------------------------------------------------------------
 LB684_STA_03F9:
-        sta     $03F9                           ; B684 8D F9 03                 ...
+        sta     MEM_03F9                        ; B684 8D F9 03                 ...
         rts                                     ; B687 60                       `
 ; ----------------------------------------------------------------------------
 LB688_GET_KEY_NONBLOCKING:
         phx
         phy
 
-        lda     $03F9
-        stz     $03F9
+        lda     MEM_03F9
+        stz     MEM_03F9
         bne     LB6D1_NONZERO
 
         ldx     #$0C
@@ -8049,7 +8063,7 @@ LB688_GET_KEY_NONBLOCKING:
 LB6A1:  jsr     V1541_SELECT_CHANNEL_A
         bcc     LB6C0_V1541_SELECT_ERROR ;branch on error
 
-        rol     $03FA
+        rol     MEM_03FA
 
         lda     MODKEY
         lsr     a ;Bit 0 = MOD_STOP
@@ -8070,7 +8084,7 @@ LB6BD_STOP_OR_V1541_L8B46_ERROR:
         jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
 
 LB6C0_V1541_SELECT_ERROR:
-        stz     $03FA
+        stz     MEM_03FA
         lda     #$00
         bra     LB6D9_DONE
 
