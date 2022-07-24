@@ -80,9 +80,9 @@
         .org $8000
 
 ; ----------------------------------------------------------------------------
-L0015           := $0015
-L0041           := $0041
-L0081           := $0081
+MEM_0015        := $0015
+MEM_0041        := $0041
+MEM_0081        := $0081
 VidMemHi        := $00A0
 CursorX         := $00A1
 CursorY         := $00A2
@@ -137,7 +137,7 @@ V1541_02D7      := $02d7
 LAT             := $02DB
 SAT             := $02F3
 FAT             := $02E7
-L0300           := $0300
+MEM_0300        := $0300
 RAMVEC_IRQ      := $0314   ;KERNAL RAM vectors, 36 bytes: $0314-0337
 RAMVEC_BRK      := $0316
 RAMVEC_NMI      := $0318
@@ -154,8 +154,8 @@ RAMVEC_CLALL    := $032C
 RAMVEC_WTF      := $032E
 RAMVEC_LOAD     := $0330
 RAMVEC_SAVE     := $0332
-RAMVEC_L0334    := $0334
-RAMVEC_L0336    := $0336
+RAMVEC_MEM_0334 := $0334
+RAMVEC_MEM_0336 := $0336
 GO_RAM_LOAD_GO_APPL       := $0338  ;
 GO_RAM_STORE_GO_APPL      := $0341  ; RAM-resident code loaded from:
 GO_RAM_LOAD_GO_KERN       := $034A  ; MMU_HELPER_ROUTINES
@@ -172,7 +172,7 @@ SETUP_LCD_A     := $037A
 SETUP_LCD_X     := $037B
 SETUP_LCD_Y     := $037C
 CurMaxY         := $037E
-L0380           := $0380
+MEM_0380        := $0380
 CurMaxX         := $0381
 MSGFLG          := $0383
 DFLTN           := $0385
@@ -197,12 +197,11 @@ BAD             := $03A0
 MON_MMU_MODE    := $03A1  ;0=MMU_MODE_RAM, 1=MMU_MODE_APPL, 2=MMU_MODE_KERN
 V1541_FILE_MODE := $03A3
 V1541_FILE_TYPE := $03A4
-L03AB           := $03AB
-L03AC           := $03AC
+MEM_03AC        := $03AC
 SXREG           := $039D
 FORMAT          := $03B4
-L03B7           := $03B7
-L03C0           := $03C0
+MEM_03B7        := $03B7
+MEM_03C0        := $03C0
 RAMVEC_BACKUP   := $03C3  ;Backs up KERNAL RAM vectors, 36 bytes: $03C3-$03E6
 LSTP            := $03E8
 LSXP            := $03E9
@@ -222,8 +221,7 @@ IECCNT          := $040C
 RTC_IDX         := $0411
 HULP            := $0450
 LINE_INPUT_BUF  := $0470  ;Buffer used for a line of input in the monitor and menu
-L04C0           := $04C0
-L11A0           := $11A0
+MEM_04C0        := $04C0
 
 ;VIA #1 Registers
 VIA1_PORTB    := $F800
@@ -424,9 +422,9 @@ L806B:  phy
         phy
         cld
         ldx     #$08
-L8074:  stx     L03C0
-L8077:  dec     L03C0
-        ldx     L03C0
+L8074:  stx     MEM_03C0
+L8077:  dec     MEM_03C0
+        ldx     MEM_03C0
         bpl     L8082
         sec
         bra     L80BB
@@ -729,7 +727,7 @@ L826F:  phy
 ; (high byte only): $00-$3F, $40-$7F, $80-$BF, $C0-$F7, $F8-$FF.
 L8277:  sei
         phx
-        ldx     L03C0
+        ldx     MEM_03C0
         lda     ROM_MMU_values,x
         clc
         adc     #$10
@@ -1433,7 +1431,7 @@ L87C5:  sei
 L87CA:  stz     $00,x
         stz     stack,x
         stz     $0200,x
-        stz     L0300,x
+        stz     MEM_0300,x
         stz     $0400,x
         inx
         bne     L87CA
@@ -1536,8 +1534,8 @@ L88AD:  lda     SETUP_LCD_A,y
         jsr     LCDsetupGetOrSet
 L88BF:  jmp     KL_RESTOR
 ; ----------------------------------------------------------------------------
-L88C2:  ldx     #<L04C0
-        ldy     #>L04C0
+L88C2:  ldx     #<MEM_04C0
+        ldy     #>MEM_04C0
         jsr     KL_VECTOR
         lda     $020C
         ldx     $020D
@@ -4556,7 +4554,7 @@ L9E87:  php                                     ; 9E87 08                       
         tsb     $7F                             ; 9E9F 04 7F                    ..
 L9EA1:  asl     $4D                             ; 9EA1 06 4D                    .M
         .byte   $42                             ; 9EA3 42                       B
-        jmp     L11A0                           ; 9EA4 4C A0 11                 L..
+        jmp     $11A0                           ; 9EA4 4C A0 11                 L..
 ; ----------------------------------------------------------------------------
         ror     $7F                             ; 9EA7 66 7F                    f.
         bit     $25                             ; 9EA9 24 25                    $%
@@ -5676,9 +5674,9 @@ LA677:  ldx     #$41                            ; A677 A2 41                    
         jsr     LA227                           ; A67B 20 27 A2                  '.
         lda     $38                             ; A67E A5 38                    .8
         bpl     LA691                           ; A680 10 0F                    ..
-        jsr     LA369_X1E                           ; A682 20 69 A3                  i.
-        lda     #<L0041                         ; A685 A9 41                    .A
-        ldy     #>L0041                         ; A687 A0 00                    ..
+        jsr     LA369_X1E                       ; A682 20 69 A3                  i.
+        lda     #<MEM_0041                      ; A685 A9 41                    .A
+        ldy     #>MEM_0041                      ; A687 A0 00                    ..
         jsr     LA2DC_X38_UNKNOWN_INDIRECT_STUFF_LOAD ; A689 20 DC A2                  ..
         bne     LA691                           ; A68C D0 03                    ..
         tya                                     ; A68E 98                       .
@@ -5762,7 +5760,7 @@ LA6F4:  and     ($84,x)                         ; A6F4 21 84                    
         and     ($72),y                         ; A71C 31 72                    1r
 LA71E:  rmb1    $F7                             ; A71E 17 F7                    ..
         cmp     ($CF),y                         ; A720 D1 CF                    ..
-        jmp     (L0081,x)                       ; A722 7C 81 00                 |..
+        jmp     (MEM_0081,x)                    ; A722 7C 81 00                 |..
 LA725:  brk                                     ; A725 00                       .
         brk                                     ; A726 00                       .
         brk                                     ; A727 00                       .
@@ -5883,8 +5881,8 @@ LA7DB_X3A:  bmi     LA81A                           ; A7DB 30 3D                
         sta     $2C                             ; A800 85 2C                    .,
         jmp     LA832                           ; A802 4C 32 A8                 L2.
 ; ----------------------------------------------------------------------------
-LA805:  lda     #<L03AC                         ; A805 A9 AC                    ..
-        ldy     #>L03AC                         ; A807 A0 03                    ..
+LA805:  lda     #<MEM_03AC                         ; A805 A9 AC                    ..
+        ldy     #>MEM_03AC                         ; A807 A0 03                    ..
         jsr     LA1DD_X42_INDIRECT_STUFF_LOAD       ; A809 20 DD A1                  ..
         lda     #<LA7C8                         ; A80C A9 C8                    ..
         ldy     #>LA7C8                         ; A80E A0 A7                    ..
@@ -5958,9 +5956,9 @@ LA898_X2E:  jsr     LA220                           ; A898 20 20 A2             
         ldx     #$41                            ; A8A2 A2 41                    .A
         ldy     #$00                            ; A8A4 A0 00                    ..
         jsr     LA845                           ; A8A6 20 45 A8                  E.
-        lda     #<L0015                         ; A8A9 A9 15                    ..
-        ldy     #>L0015                         ; A8AB A0 00                    ..
-        jsr     LA1DD_X42_INDIRECT_STUFF_LOAD       ; A8AD 20 DD A1                  ..
+        lda     #<MEM_0015                      ; A8A9 A9 15                    ..
+        ldy     #>MEM_0015                      ; A8AB A0 00                    ..
+        jsr     LA1DD_X42_INDIRECT_STUFF_LOAD   ; A8AD 20 DD A1                  ..
         lda     #$00                            ; A8B0 A9 00                    ..
         sta     $2D                             ; A8B2 85 2D                    .-
         lda     $04                             ; A8B4 A5 04                    ..
@@ -6845,7 +6843,7 @@ LAE4C:  sty     CursorY
         bpl     LAE4C
         jmp     LB087
 ; ----------------------------------------------------------------------------
-LAE5B:  ldx     L0380
+LAE5B:  ldx     MEM_0380
         stx     WIN_TOP_LEFT_X
         ldx     CurMaxX
         stx     WIN_BTM_RGHT_X
@@ -7450,7 +7448,7 @@ SCINIT_:
         lda     #80-1
         sta     CurMaxX
         stz     $037F
-        stz     L0380
+        stz     MEM_0380
         jsr     LAE5B
         lda     #$00
         tax
@@ -7775,9 +7773,9 @@ KEYB_INIT:
         lda     #$FF
         sta     $038E
         lda     #<LFA87_JMP_RTS_IN_KERN_MODE
-        sta     RAMVEC_L0336
+        sta     RAMVEC_MEM_0336
         lda     #>LFA87_JMP_RTS_IN_KERN_MODE
-        sta     RAMVEC_L0336+1
+        sta     RAMVEC_MEM_0336+1
         ;Fall through
 
 ;looks like clearing the keyboard buffer
@@ -9463,7 +9461,7 @@ LBEFB:  txa
         bne     LBF04
         ldx     $038A
 LBF04:  dex
-        sta     L04C0,x
+        sta     MEM_04C0,x
         stx     $040F
 RXFULL:  rts
 ; ----------------------------------------------------------------------------
@@ -9499,7 +9497,7 @@ LBF3E:  ldx     $0410
         bne     LBF46
         ldx     $038A
 LBF46:  dex
-        lda     L04C0,x
+        lda     MEM_04C0,x
         stx     $0410
 LBF4D_CHKIN_ACIA:
         clc
@@ -10835,7 +10833,7 @@ LC6CE_LOOP:
 
 ; ----------------------------------------------------------------------------
 MON_START:
-        stz     L03B7
+        stz     MEM_03B7
         stz     MON_MMU_MODE
         ldx     #$FF
         stx     $03BB
@@ -10973,7 +10971,7 @@ LC7F3_LOOP:
         jsr     PARSE
         bcs     LC81B_DONE
         lda     T0
-        sta     L03B7,y
+        sta     MEM_03B7,y
         iny
         cpy     #$05 ;0=SR, 1=AC, 2=XR,3=YR,4=SP
         bcc     LC7F3_LOOP
@@ -11042,7 +11040,7 @@ LC870:  lda     LC886,x
         pha
         lda     LC889,x
         pha
-        lda     L03B7
+        lda     MEM_03B7
         pha
         ldx     $03B9
         ldy     $03BA
@@ -12152,7 +12150,7 @@ LD168:  ldy     $03BA
         lda     $03B8
         ldx     $03BB
         txs
-        ldx     L03B7
+        ldx     MEM_03B7
         phx
         ldx     $03B9
         plp
@@ -12180,7 +12178,7 @@ LD19D:  sta     $03B6
 LD1A3:  php
         stx     $03B9
         plx
-        stx     L03B7
+        stx     MEM_03B7
         tsx
         stx     $03BB
         sta     $03B8
@@ -12241,7 +12239,7 @@ LD201_MON_WALK_OPCODE_4C_JMP:
 ; ----------------------------------------------------------------------------
 LD20B_MON_WALK_OPCODE_40_RTI:
         pla
-        sta     L03B7
+        sta     MEM_03B7
         plx
         pla
         inc     $03BB
@@ -12713,14 +12711,14 @@ LFA7E:
 ; but on read, normal ROM content is read as opcodes, as $FA80 here is inside
 ; and opcode itself.
         sta     MMU_MODE_APPL
-        jmp     (RAMVEC_L0334)
+        jmp     (RAMVEC_MEM_0334)
 ; ----------------------------------------------------------------------------
 LFA84:  jsr     LFA8A
 LFA87_JMP_RTS_IN_KERN_MODE:
         jmp     RTS_IN_KERN_MODE
 ; ----------------------------------------------------------------------------
 LFA8A:  sta     MMU_MODE_APPL
-        jmp     (RAMVEC_L0336)  ;Contains LFA87_JMP_RTS_IN_KERN_MODE by default
+        jmp     (RAMVEC_MEM_0336)  ;Contains LFA87_JMP_RTS_IN_KERN_MODE by default
 ; ----------------------------------------------------------------------------
 ; Default values of "RAM vectors" copied to $314 into the RAM. The "missing"
 ; vector in the gap seems to be "monitor" entry (according to C128's ROM) but
@@ -12824,7 +12822,7 @@ LFB41:  sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
 LFB4B:  sta     MMU_MODE_APPL
-        jmp     (L0300)
+        jmp     (MEM_0300)
 ; ----------------------------------------------------------------------------
 PRIMM00:
 ; This stuff prints (zero terminated) string after the JSR to the screen (by
