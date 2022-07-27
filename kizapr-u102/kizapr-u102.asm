@@ -10919,14 +10919,17 @@ LC77F_GOT_LINE:
         beq     MON_MAIN_INPUT
         cmp     #' '
         beq     LC77F_GOT_LINE
-        ldx     #$10
-LC78A:  cmp     MON_COMMANDS,x
-        beq     LC794
+        ldx     #MON_CMD_COUNT-1 ;X = point to last entry in commands table
+LC78A_CMD_SEARCH_LOOP:
+        cmp     MON_COMMANDS,x
+        beq     LC794_FOUND_CMD
         dex
-        bpl     LC78A
+        bpl     LC78A_CMD_SEARCH_LOOP
         bmi     MON_BAD_COMMAND
-LC794:  cpx     #$0E
-        bcs     LC7A6
+LC794_FOUND_CMD:
+        cpx     #MON_CMD_LOAD_IDX
+        bcs     LC7A6_FOUND_CMD_L_S_V ;Branch if >= "L" index (command is L,S,V)
+        ;Command is not L,S,V
         txa
         asl     a
         tax
@@ -10935,7 +10938,8 @@ LC794:  cpx     #$0E
         lda     MON_CMD_ENTRIES,x
         pha
         jmp     PARSE
-LC7A6:  sta     V1541_FNLEN
+LC7A6_FOUND_CMD_L_S_V:
+        sta     V1541_FNLEN
         jsr     CRLF
         jmp     MON_CMD_LOAD_SAVE_VERIFY
 ; ----------------------------------------------------------------------------
@@ -11079,9 +11083,11 @@ MON_COMMANDS:
         .byte   ">" ;Modify Memory
         .byte   ";" ;Modify Registers
         .byte   "W" ;Walk
+MON_CMD_LOAD_IDX = * - MON_COMMANDS
         .byte   "L" ;Load     \
         .byte   "S" ;Save      | L,S,V are handled separately, not in the table below
         .byte   "V" ;Verify   /
+MON_CMD_COUNT = * - MON_COMMANDS
 
 MON_CMD_ENTRIES:
         .word  MON_CMD_EXIT-1
