@@ -167,7 +167,7 @@ The monitor is entered with the `MONITOR` command in BASIC.  The following comma
 | S | Save | $C89B |
 | V | Verify | $C89C |
 
-The commands use the same syntax as the TED-series and C128 monitors.  The "A" (Assemble) and "D" (Disassemble) commands have been extended to handle the 65C02 opcodes.
+The commands use the same syntax as the TED-series and C128 monitors (see the [C128 Programmer's Reference Guide](https://web.archive.org/web/20200211184434/https://commodore.bombjack.org/commodore/commodore/C128_Programmers_Reference_Guide.pdf), page 186).  The "A" (Assemble) and "D" (Disassemble) commands have been extended to handle the 65C02 opcodes.
 
 A new command, "W" (Walk), has been added.  It single steps from the current PC.  This command is not found in the TED-series or C128 monitors.
 
