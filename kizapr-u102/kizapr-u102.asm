@@ -233,6 +233,7 @@ R2D2            := $040A
 C3P0            := $040B
 IECCNT          := $040C
 RTC_IDX         := $0411
+RTC_DATA        := $0412  ;8 bytes (see RTC_ constants below)
 HULP            := $0450
 LINE_INPUT_BUF  := $0470  ;Buffer used for a line of input in the monitor and menu
 MEM_04C0        := $04C0
@@ -342,6 +343,16 @@ fmode_r_read    = 'R'   ;Read
 fmode_w_write   = 'W'   ;Write
 fmode_a_append  = 'A'   ;Append
 fmode_m_modify  = 'M'   ;Modify
+
+;RTC_DATA offsets
+RTC_HOURS = 0
+RTC_MINUTES = 1
+RTC_SECONDS = 2
+RTC_24H_AMPM = 3
+RTC_DOW = 4
+RTC_DAY = 5
+RTC_MONTH = 6
+RTC_YEAR = 7
 
 ; ----------------------------------------------------------------------------
 ROM_HEADER:
@@ -1415,7 +1426,7 @@ InitIOhw:
         stz     VIA2_PORTA
         lda     #$FF
         sta     VIA2_DDRA
-        lda     #$AF
+        lda     #%10101111
         sta     VIA2_DDRB
         lda     #$82
         sta     VIA2_PORTB
@@ -10010,8 +10021,41 @@ LC200_VIA2_PB4_OFF_ACIA_BITS_OFF_VIA2_PB1_ON_JMP_UDST:
 
 ; ----------------------------------------------------------------------------
 
-LC211_RTC_OFFSETS:
-      .byte   $04,$02,$00,$04,$06,$07,$09,$0B
+LC211_RTC_REGISTERS:
+      .assert (* - LC211_RTC_REGISTERS) = RTC_HOURS, error
+      .byte $04   ;$04=H1
+                  ;$05=H10
+
+      .assert (* - LC211_RTC_REGISTERS) = RTC_MINUTES, error
+      .byte $02   ;$02=MI1
+                  ;$03=MI10
+
+      .assert (* - LC211_RTC_REGISTERS) = RTC_SECONDS, error
+      .byte $00   ;$00=S1
+                  ;$01=S10
+
+      .assert (* - LC211_RTC_REGISTERS) = RTC_24H_AMPM, error
+      .byte $04   ;$04=H1
+                  ;$05=H10
+
+      .assert (* - LC211_RTC_REGISTERS) = RTC_DOW, error
+      .byte $06   ;$06=W
+                  ;$07=don't care
+
+      .assert (* - LC211_RTC_REGISTERS) = RTC_DAY, error
+      .byte $07   ;$07=D1
+                  ;$08=D10
+
+      .assert (* - LC211_RTC_REGISTERS) = RTC_MONTH, error
+      .byte $09   ;$09=MO1
+                  ;$0A=MO10
+
+      .assert (* - LC211_RTC_REGISTERS) = RTC_YEAR, error
+      .byte $0B   ;$0B=Y1
+                  ;$0C=Y10
+
+RTC_DATA_SIZE = * - LC211_RTC_REGISTERS
+
 ; ----------------------------------------------------------------------------
 ;OPEN to RTC device 31
 ;
@@ -10034,35 +10078,38 @@ RTC_SET_FROM_OPEN:
         lda     #FNADR
         sta     SINNER
 
-        ldy     #$07
+        ;Copy the 8 bytes of the filename into RTC_DATA
+        ldy     #RTC_DATA_SIZE-1
 LC233_LOOP:
         jsr     GO_RAM_LOAD_GO_KERN ;Get byte from filename
-        sta     $0412,y
+        sta     RTC_DATA,y
         dey
         bpl     LC233_LOOP
 
-        lda     $0415
+        lda     RTC_DATA+RTC_24H_AMPM
         ror     a
         ror     a
         ror     a
-        and     #$C0
-        ora     $0412
-        sta     $0415
-        jsr     RTC_ACCESS_ON
-        lda     #$80
+        and     #%11000000
+        ora     RTC_DATA
+        sta     RTC_DATA+RTC_24H_AMPM
+
+        jsr     RTC_ENABLE ;Enable RTC (clears data & control, then CS2=1)
+        lda     #%10000000
         tsb     VIA2_PORTA
         php
         sei
-        ldy     #$0E
-        lda     #$40
-        jsr     RTC_UNKNOWN_VIA_STUFF
-        ldx     #$01
-LC25D:  lda     $0412,x
-        jsr     LC325
+        ldy     #$0E ;RTC register $0e??? TODO what is this???
+        lda     #%01000000 ;PB6 = RTC Address Write (AW)
+        jsr     RTC_SET_AND_CLEAR_BITS
+        ldx     #RTC_MINUTES
+LC25D_LOOP:
+        lda     RTC_DATA,x
+        jsr     RTC_WRITE_BYTE_TO_HW
         inx
-        cpx     #$08
-        bne     LC25D
-        jsr     RTC_ACCESS_OFF
+        cpx     #RTC_DATA_SIZE
+        bne     LC25D_LOOP
+        jsr     RTC_DISABLE ;Disable RTC (CS2=0)
         plp
         stz     RTC_IDX
         clc
@@ -10073,12 +10120,12 @@ LC25D:  lda     $0412,x
 ;Sending any character to the RTC device will read the hardware RTC time
 ;and set the software TOD clock (TI$) to it.  The character sent is ignored.
 RTC_CHROUT:
-        jsr     LC2CE_READ_RTC_HARDWARE
+        jsr     RTC_READ_ALL_RTC_DATA_FROM_HW ;Read 8 bytes of time data from the RTC into RTC_DATA
         php
         sei
         sed
-        lda     $0412
-        ldx     $0415
+        lda     RTC_DATA
+        ldx     RTC_DATA+RTC_24H_AMPM
         bne     LC287
         cmp     #$12
         bne     LC290
@@ -10089,14 +10136,18 @@ LC287:  dex
         cmp     #$12
         beq     LC290
         adc     #$12
+
 LC290:  jsr     RTC_SHIFT_LOOKUP_SUBTRACT
         sta     TOD_HOURS
-        lda     $0413
+
+        lda     RTC_DATA+RTC_MINUTES
         jsr     RTC_SHIFT_LOOKUP_SUBTRACT
         sta     TOD_MINS
-        lda     $0414
+
+        lda     RTC_DATA+RTC_SECONDS
         jsr     RTC_SHIFT_LOOKUP_SUBTRACT
         sta     TOD_SECS
+
         stz     RTC_IDX
         plp
         rts
@@ -10109,111 +10160,144 @@ LC290:  jsr     RTC_SHIFT_LOOKUP_SUBTRACT
 ;and return new time data.
 RTC_CHRIN:
         ldx     RTC_IDX
-        beq     RTC_READ_HW_THEN_FIRST_RAM_VALUE
-        cpx     #$08
-        bcc     RTC_READ_NEXT_VALUE_FROM_RAM
+        beq     RTC_READ_ALL_RTC_DATA_AND_GET_FIRST_VALUE
+        cpx     #RTC_DATA_SIZE
+        bcc     RTC_GET_NEXT_VALUE
         lda     #$0D ;Carriage return
         stz     RTC_IDX
         clc
         rts
 ; ----------------------------------------------------------------------------
-RTC_READ_HW_THEN_FIRST_RAM_VALUE:
-        jsr     LC2CE_READ_RTC_HARDWARE
+RTC_READ_ALL_RTC_DATA_AND_GET_FIRST_VALUE:
+        jsr     RTC_READ_ALL_RTC_DATA_FROM_HW
         stz     RTC_IDX
         ;Fall through
 ; ----------------------------------------------------------------------------
-RTC_READ_NEXT_VALUE_FROM_RAM:
+RTC_GET_NEXT_VALUE:
         ldx     RTC_IDX
-        lda     $0412,x
+        lda     RTC_DATA,x
         inc     RTC_IDX
         clc
         rts
 ; ----------------------------------------------------------------------------
-LC2CE_READ_RTC_HARDWARE:
-        jsr     RTC_ACCESS_ON
-        ldx     #$07
-LC2D3:  jsr     LC30E
-        sta     $0412,x
+;Read 8 bytes of time data from the RTC chip into RTC_DATA
+RTC_READ_ALL_RTC_DATA_FROM_HW:
+
+        ;Read 8 bytes of data from the RTC
+
+        jsr     RTC_ENABLE ;Enable RTC (clears data & control, then CS2=1)
+        ldx     #RTC_DATA_SIZE-1
+LC2D3_LOOP:
+        jsr     RTC_READ_BYTE_FROM_HW
+        sta     RTC_DATA,x
         dex
-        bpl     LC2D3
-        jsr     RTC_ACCESS_OFF
-        jsr     RTC_ACCESS_ON
-        ldx     #$07
-LC2E4:  jsr     LC30E
-        cmp     $0412,x
-        bne     LC2CE_READ_RTC_HARDWARE
+        bpl     LC2D3_LOOP
+        jsr     RTC_DISABLE ;Disable RTC (CS2=0)
+
+        ;Compare the 8 bytes we just read by reading them again.  If they
+        ;don't read back the same, start over from the top.  This is needed
+        ;because the time might change mid-reading, and a rollover (e.g. minutes
+        ;into hours) would give an invalid time.
+
+        jsr     RTC_ENABLE ;Enable RTC (clears data & control, then CS2=1)
+        ldx     #RTC_DATA_SIZE-1
+LC2E4_LOOP:
+        jsr     RTC_READ_BYTE_FROM_HW
+        cmp     RTC_DATA,x
+        bne     RTC_READ_ALL_RTC_DATA_FROM_HW
         dex
-        bne     LC2E4
-        jsr     RTC_ACCESS_OFF
-        lda     $0412
-        and     #$3F
-        sta     $0412
-        lda     $0416
-        and     #$0F
-        sta     $0416
-        lda     $0415
+        bne     LC2E4_LOOP
+        jsr     RTC_DISABLE ;Disable RTC (CS2=0)
+
+        lda     RTC_DATA+RTC_HOURS
+        and     #%00111111
+        sta     RTC_DATA+RTC_HOURS
+
+        lda     RTC_DATA+RTC_DOW
+        and     #%00001111
+        sta     RTC_DATA+RTC_DOW
+
+        lda     RTC_DATA+RTC_24H_AMPM
         rol     a
         rol     a
         rol     a
-        and     #$03
-        sta     $0415
+        and     #%00000011
+        sta     RTC_DATA+RTC_24H_AMPM
+
         rts
 ; ----------------------------------------------------------------------------
-LC30E:  ldy     LC211_RTC_OFFSETS,x
+;X = offset to LC211_RTC_REGISTERS table
+;Returns value in A
+RTC_READ_BYTE_FROM_HW:
+        ldy     LC211_RTC_REGISTERS,x ;Y = RTC register number
         phy
-        jsr     RTC_READ_NIB
-        sta     RTC_IDX
+        jsr     RTC_READ_REGISTER_NIB ;Read low nibble into bits 3-0 of A
+        sta     RTC_IDX               ;Store low nibble temporarily
         ply
-        iny
-        jsr     RTC_READ_NIB
+        iny                           ;Increment to next RTC register number
+        jsr     RTC_READ_REGISTER_NIB ;Read high nibble into bits 3-0 of A
+        asl     a                     ;Rotate into high nibble of A
         asl     a
         asl     a
         asl     a
-        asl     a
-        ora     RTC_IDX
+        ora     RTC_IDX               ;Add low nibble
         rts
-; ----------------------------------------------------------------------------
-LC325:  pha
-        and     #$0F
-        ldy     LC211_RTC_OFFSETS,x
-        jsr     LC337
-        pla
-        lsr     a
-        lsr     a
-        lsr     a
-        lsr     a
-        ldy     LC211_RTC_OFFSETS,x
-        iny
-        ;Fall through
-
-LC337:  pha
-        lda     #$40
-        jsr     RTC_UNKNOWN_VIA_STUFF
-        ply
-        lda     #$20
-        ;Fall through
 
 ; ----------------------------------------------------------------------------
-RTC_UNKNOWN_VIA_STUFF:
+
+RTC_WRITE_BYTE_TO_HW:
         pha
-        lda     #$7F
-        trb     VIA2_PORTA
+        and     #$0F
+        ldy     LC211_RTC_REGISTERS,x
+        jsr     LC337_RTC_WRITE_REGISTER_NIB
+        pla
+        lsr     a
+        lsr     a
+        lsr     a
+        lsr     a
+        ldy     LC211_RTC_REGISTERS,x
+        iny
+        ;Fall through
+
+LC337_RTC_WRITE_REGISTER_NIB:
+        pha
+        lda     #%01000000 ;PA6 = RTC Address Write (AW)
+        jsr     RTC_SET_AND_CLEAR_BITS
+        ply
+        lda     #%00100000 ;PA5 = RTC Write (WR)
+        ;Fall through
+
+; ----------------------------------------------------------------------------
+;Called with RTC register number in Y
+;Called with bits to strobe high->low in A
+;	pa7 = rtc "stop"
+;	pa6 = rtc "address write"
+;	pa5 = rtc "write"
+;	pa4 = rtc "read"
+;	pa0-3 = rtc data
+;Set RTC bits in Y, then Set->Clear RTC bits in A
+RTC_SET_AND_CLEAR_BITS:
+        pha
+
+        lda     #%01111111
+        trb     VIA2_PORTA ;Clear all bits except for STOP
+
         tya
-        tsb     VIA2_PORTA
+        tsb     VIA2_PORTA ;Set bits specified by Y (RTC register number)
 
         pla
-        tsb     VIA2_PORTA
-        trb     VIA2_PORTA
+        tsb     VIA2_PORTA ;Set bits specified by A (assert RTC control signals)
+        trb     VIA2_PORTA ;Clear bits specified by A (release RTC control signals)
         rts
 ; ----------------------------------------------------------------------------
-; Read a nibble from the RTC chip.
+; Read a register from the RTC chip.  A register is a nibble.
 ; $40 is for AW (address write) signal for the RTC.
 ; Input: Y = RTC register number
-; Output: A = read value
-RTC_READ_NIB:
-        lda     #$40
-        jsr     RTC_UNKNOWN_VIA_STUFF
-        lda     #$1F
+; Output: A = nibble read
+RTC_READ_REGISTER_NIB:
+        lda     #%01000000 ;PB6 = RTC Address Write (AW)
+        jsr     RTC_SET_AND_CLEAR_BITS
+        lda     #%00011111
         tsb     VIA2_PORTA
         ldy     VIA2_PORTA
         trb     VIA2_PORTA
@@ -10221,16 +10305,25 @@ RTC_READ_NIB:
         and     #$0F
         rts
 ; ----------------------------------------------------------------------------
-RTC_ACCESS_ON:
-        stz     VIA2_PORTA
+;Enable RTC (clears data & control, then CS2=1)
+RTC_ENABLE:
+        stz     VIA2_PORTA ;PA7=0 Don't care (not connected to MSM58321)
+                           ;PA6=0 MSM58321 AW (Address Write)
+                           ;PA5=0 MSM58321 WR (Write)
+                           ;PA4=0 MSM58321 RD (Read)
+                           ;PA3=0 MSM58321 DATA3
+                           ;PA2=0 MSM58321 DATA2
+                           ;PA1=0 MSM58321 DATA1
+                           ;PA0=0 MSM58321 DATA0
 
-        lda     #$02
-        tsb     VIA1_PORTB
+        lda     #%00000010 ;PB1=RTCEN
+        tsb     VIA1_PORTB ;Set PB1=1 to set MSM58321 CS1=1 (RTC enabled)
         rts
 ; ----------------------------------------------------------------------------
-RTC_ACCESS_OFF:
-        lda     #$02
-        trb     VIA1_PORTB
+;Disable RTC (CS2=0)
+RTC_DISABLE:
+        lda     #%00000010 ;PB1=RTCEN
+        trb     VIA1_PORTB ;Set PB1=0 to set MSM58321 CS1=0 (RTC disabled)
         rts
 ; ----------------------------------------------------------------------------
 ;Used for converting RTC values to TOD values
