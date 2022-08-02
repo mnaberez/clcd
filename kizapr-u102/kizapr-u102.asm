@@ -281,17 +281,17 @@ ACIA_CMD      := $F982
 ACIA_CTRL     := $F983
 
 ;MMU Registers
-MMU_MODE_KERN    := $FA00
-MMU_MODE_APPL    := $FA80
-MMU_MODE_RAM     := $FB00
-MMU_MODE_RECALL  := $FB80
-MMU_MODE_SAVE    := $FC00
-MMU_MODE_TEST    := $FC80   ;Unused
-MMU_APPL_WINDOW1 := $FD00
-MMU_APPL_WINDOW2 := $FD80
-MMU_APPL_WINDOW3 := $FE00
-MMU_APPL_WINDOW4 := $FE80
-MMU_KERN_WINDOW  := $FF00
+MMU_MODE_KERN    := $FA00   ;Any write here switches to the "KERN" MMU mode.
+MMU_MODE_APPL    := $FA80   ;Any write here switches to the "APPL" MMU mode.
+MMU_MODE_RAM     := $FB00   ;Any write here switches to the "RAM" MMU mode.
+MMU_RECALL_MODE  := $FB80   ;Any write here recalls the previously saved mode.
+MMU_SAVE_MODE    := $FC00   ;Any write here saves the current mode so it can be recalled.
+MMU_MODE_TEST    := $FC80   ;Any write here switches to the "TEST" MMU mode. (Unused)
+MMU_OFFS_APPL_W1 := $FD00   ;Sets offset for $1000-3FFF "APPL Window 1" in the "APPL" MMU mode.
+MMU_OFFS_APPL_W2 := $FD80   ;Sets offset for $4000-7FFF "APPL Window 2" in the "APPL" MMU mode.
+MMU_OFFS_APPL_W3 := $FE00   ;Sets offset for $8000-BFFF "APPL Window 3" in the "APPL" MMU mode.
+MMU_OFFS_APPL_W4 := $FE80   ;Sets offset for $8000-F7FF "APPL Window 4" in the "APPL" MMU mode.
+MMU_OFFS_KERN_W  := $FF00   ;Sets offset for $4000-7FFF "KERNAL Window" in the "KERN" MMU mode.
 
 ;LCD Controller Registers $FF80-$FF83
 LCDCTRL_REG0 := $FF80
@@ -367,7 +367,7 @@ ROM_HEADER:
         .byte   $DD ;unknown
 
 ROM_MAGIC:
-;ScanROMs routine looks for this magic string
+;SCAN_ROMS routine looks for this magic string
         .byte   "Commodore LCD"
 ROM_MAGIC_SIZE = * - ROM_MAGIC
 
@@ -456,8 +456,8 @@ L8077:  dec     MEM_03C0
 L8082:  lda     ROM_ENV_A
         and     PowersOfTwo,x
         beq     L8077
-        lda     ROM_MMU_values,x
-        sta     MMU_KERN_WINDOW
+        lda     ROM_START_KERN_W_OFFSETS,x
+        sta     MMU_OFFS_KERN_W
         lda     #$40
         sta     $DC
         stz     $DB
@@ -753,7 +753,7 @@ L826F:  phy
 L8277:  sei
         phx
         ldx     MEM_03C0
-        lda     ROM_MMU_values,x
+        lda     ROM_START_KERN_W_OFFSETS,x
         clc
         adc     #$10
         ldy     #$02
@@ -764,22 +764,22 @@ L8277:  sei
         lda     ($DB),y
         cmp     #$F8
         bcs     L82B1
-        stz     MMU_APPL_WINDOW1
-        stz     MMU_APPL_WINDOW2
-        stz     MMU_APPL_WINDOW3
+        stz     MMU_OFFS_APPL_W1
+        stz     MMU_OFFS_APPL_W2
+        stz     MMU_OFFS_APPL_W3
         cmp     #$C0
-        bcs     L82AE_WINDOW4
+        bcs     L82AE_APPL_W4
         cmp     #$80
-        bcs     L82AB_WINDOW3
+        bcs     L82AB_APPL_W3
         cmp     #$40
-        bcs     L82A8_WINDOW2
-        stx     MMU_APPL_WINDOW1
-L82A8_WINDOW2:
-        stx     MMU_APPL_WINDOW2
-L82AB_WINDOW3:
-        stx     MMU_APPL_WINDOW3
-L82AE_WINDOW4:
-        stx     MMU_APPL_WINDOW4
+        bcs     L82A8_APPL_W2
+        stx     MMU_OFFS_APPL_W1
+L82A8_APPL_W2:
+        stx     MMU_OFFS_APPL_W2
+L82AB_APPL_W3:
+        stx     MMU_OFFS_APPL_W3
+L82AE_APPL_W4:
+        stx     MMU_OFFS_APPL_W4
 L82B1:  pha
         dey
         lda     ($DB),y
@@ -792,29 +792,46 @@ L82BB:  dec     a
         rts
 ; ----------------------------------------------------------------------------
 L82BE_CHECK_ROM_ENV:
-        jsr     ScanROMs
+        jsr     SCAN_ROMS
         sta     ROM_ENV_A
         stx     ROM_ENV_X
         sty     ROM_ENV_Y
         rts
 ; ----------------------------------------------------------------------------
-ROM_MMU_values:
-; The 'ScanROMs' routine uses this table to write values to $FF00 to check
-; for ROMs.
-        .byte   $70,$80,$90,$A0,$B0,$C0,$D0,$E0
+ROM_START_KERN_W_OFFSETS:
+;SCAN_ROMS uses this table to write offsets to MMU_OFFS_KERN_W ($FF00)
+;to check for ROMs.  There are 8 offsets in the table, each corresponding
+;to a 16K area.  SCAN_ROMS looks for a header (see the ROM_HEADER area)
+;at the start of each 16K area.
+;
+;Although eight areas of 16K are scanned, the EPROMs found in Bil Herd's
+;prototype are 32K each.  So, the two 16K halves of each 32K EPROM are scanned.
+;The code in the EPROMs really is 32K, though.  Offset 0 in each EPROM contains
+;a magic header while offset $4000 is just normal code.
+;
+;                            Offset    CPU Address   Physical Address
+        .byte $70 ;$70<<10 = $1C000  + $4000       = $20000  (ss-calc13apr-u105.bin: $0000-3FFF)
+        .byte $80 ;$80<<10 = $20000  + $4000       = $24000  (ss-calc13apr-u105.bin: $4000-7FFF)
+        .byte $90 ;$90<<10 = $24000  + $4000       = $28000  (sept-m-13apr-u104.bin: $0000-3FFF)
+        .byte $A0 ;$A0<<10 = $28000  + $4000       = $2C000  (sept-m-13apr-u104.bin: $4000-7FFF)
+        .byte $B0 ;$B0<<10 = $2C000  + $4000       = $30000  (sizapr-u103.bin:       $0000-3FFF)
+        .byte $C0 ;$C0<<10 = $30000  + $4000       = $34000  (sizapr-u103.bin:       $4000-7FFF)
+        .byte $D0 ;$D0<<10 = $34000  + $4000       = $38000  (kizapr-u102.bin:       $0000-3FFF)
+        .byte $E0 ;$E0<<10 = $38000  + $4000       = $3C000  (kizapr-u102.bin:       $4000-7FFF)
+
+ROM_START_KERN_W_OFFSETS_SIZE = * - ROM_START_KERN_W_OFFSETS
 ; ----------------------------------------------------------------------------
-ScanROMs:
-; This routine seems to scan ROMs, searching for the "Commodore LCD" string.
+SCAN_ROMS:
+; This routine scans ROMs, searching for the "Commodore LCD" string.
 ; This is done by using register at $FF00 which seems to tell the memory
-; mapping at CPU address $4000. So I think $FF00 tells what is mapped to
-; $4000.
-        lda     #$00
+; mapping at CPU address $4000.
+        lda     #0
         pha
         pha
         pha
-        ldy     #$07
-L82DA:  lda     ROM_MMU_values,y
-        sta     MMU_KERN_WINDOW
+        ldy     #ROM_START_KERN_W_OFFSETS_SIZE-1
+L82DA:  lda     ROM_START_KERN_W_OFFSETS,y
+        sta     MMU_OFFS_KERN_W
         phy
         ldx     #ROM_MAGIC_SIZE-1
 L82E3:  lda     ROM_MAGIC-$4000,x
@@ -824,7 +841,7 @@ L82E3:  lda     ROM_MAGIC-$4000,x
         bpl     L82E3
         ply
         phy
-        lda     ROM_MMU_values,y
+        lda     ROM_START_KERN_W_OFFSETS,y
 ; $4004 is the paged-in ROM, where the id string would be ($FF00 controls
 ; what can you see from $4000), it's compared with the kernal's image's id
 ; string ("Commodore LCD").
@@ -832,7 +849,7 @@ L82E3:  lda     ROM_MAGIC-$4000,x
         pha
         jsr     RomCheckSum
         ply
-        sty     MMU_KERN_WINDOW
+        sty     MMU_OFFS_KERN_W
 L82FE:  phx
         tsx
         clc
@@ -892,7 +909,7 @@ RomCheckSum:
         tax
         cld
 L8371:  ldy     $03C2
-        sty     MMU_KERN_WINDOW
+        sty     MMU_OFFS_KERN_W
         ldy     #$00
         clc
 L837A:  adc     $4000,y
@@ -1161,7 +1178,7 @@ KL_RESET:
         jsr     LCDsetupGetOrSet
         jsr     L870F_CHECK_V1541_DISK_INTACT
         bcs     L8582_COULD_NOT_RESTORE_STATE ;Branch if not intact
-        jsr     ScanROMs
+        jsr     SCAN_ROMS
         bne     L8582_COULD_NOT_RESTORE_STATE
         ldx     $0200
         jsr     L840F
@@ -1742,13 +1759,13 @@ L8A10:  lda     ($E4),y
         tax
         pla
 L8A14:  pha
-        sta     MMU_KERN_WINDOW
+        sta     MMU_OFFS_KERN_W
         lda     ($D9),y
 L8A1A:  pha
         txa
         sta     ($D9),y
         lda     $0216
-        sta     MMU_KERN_WINDOW
+        sta     MMU_OFFS_KERN_W
         pla
         sta     ($e4),y
         iny
@@ -1830,7 +1847,7 @@ L8A92:  sta     $E5                             ; 8A92 85 E5                    
         lsr     $E5                             ; 8AA5 46 E5                    F.
         stz     $E4                             ; 8AA7 64 E4                    d.
 L8AA9:  lda     $0216                           ; 8AA9 AD 16 02                 ...
-        sta     MMU_KERN_WINDOW                 ; 8AAC 8D 00 FF                 ...
+        sta     MMU_OFFS_KERN_W                 ; 8AAC 8D 00 FF                 ...
 L8AAF:  ldy     #$01                            ; 8AAF A0 01                    ..
         lda     ($E4)                           ; 8AB1 B2 E4                    ..
         tax                                     ; 8AB3 AA                       .
@@ -12746,7 +12763,7 @@ RESET:  sei
 IRQ:    pha
         phx
         phy
-        sta     MMU_MODE_SAVE
+        sta     MMU_SAVE_MODE
         sta     MMU_MODE_APPL
         tsx
 
@@ -12801,7 +12818,7 @@ RETURN_FROM_IRQ:
         ply
         plx
         pla
-        sta     MMU_MODE_RECALL
+        sta     MMU_RECALL_MODE
 NMI:    rti
 ; ----------------------------------------------------------------------------
 LFA67:  jsr     LFA6D
@@ -12969,7 +12986,7 @@ LFB71:  txa
         sta     MMU_MODE_APPL
 LFB77:  tsx
         inc     stack+4,x
-        bne     MMU_MODE_RECALL
+        bne     MMU_RECALL_MODE
         inc     stack+5,x
         lda     stack+4,x
         sta     $F1

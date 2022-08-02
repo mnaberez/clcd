@@ -191,6 +191,7 @@ C128_F90E := $F90E
 C128_F922 := $F922
 C128_F944 := $F944
 C128_F960 := $F960
+C128_FF00_MMU_CR  := $FF00
 C128_FF4A_CLALL   := $FF4A  ;CLALL
 C128_FF50_DMACALL := $FF50  ;DMACALL
 C128_FF59_LKUPLA  := $FF59  ;LKUPLA
@@ -1248,7 +1249,7 @@ LDC9F:  lda     $8D                             ; DC9F A5 8D                    
         ora     #$D8                            ; DCA3 09 D8                    ..
         sta     $8D                             ; DCA5 85 8D                    ..
         lda     #$00                            ; DCA7 A9 00                    ..
-        sta     MMU_KERN_WINDOW   ; MMU Configuration Register              ; DCA9 8D 00 FF                 ...
+        sta     C128_FF00_MMU_CR   ; MMU Configuration Register              ; DCA9 8D 00 FF                 ...
         sei                                     ; DCAC 78                       x
         lda     $01                             ; DCAD A5 01                    ..
         pha                                     ; DCAF 48                       H
@@ -2879,7 +2880,7 @@ LE819:  rts                                     ; E819 60                       
 ; ----------------------------------------------------------------------------
         pha                                     ; E81A 48                       H
         lda     #$00                            ; E81B A9 00                    ..
-        sta     MMU_KERN_WINDOW                 ; E81D 8D 00 FF                 ...
+        sta     C128_FF00_MMU_CR                ; E81D 8D 00 FF                 ...
         pla                                     ; E820 68                       h
         rts                                     ; E821 60                       `
 ; ----------------------------------------------------------------------------
@@ -3496,7 +3497,7 @@ LF019:  pla                                     ; F019 68                       
 ; Print 'call' entry
 
 LF021:  lda     #$00                            ; F021 A9 00                    ..
-        sta     MMU_KERN_WINDOW                 ; F023 8D 00 FF                 ...
+        sta     C128_FF00_MMU_CR                ; F023 8D 00 FF                 ...
         sta     $06                             ; F026 85 06                    ..
         sta     $07                             ; F028 85 07                    ..
         sta     $08                             ; F02A 85 08                    ..
