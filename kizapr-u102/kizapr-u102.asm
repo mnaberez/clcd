@@ -37,10 +37,10 @@
 ; -------       ----    ----    ---             ----            ----            ----           -----
 ; 0FA00-0FFFF   1.5K    Fixed   3FA00-3FFFF     3FA00-3FFFF     3FA00-3FFFF     3FA00-3FFFF    Top of KERNAL. Read from ROM, Write to LCD or MMU
 ; 0F800-0F9FF   0.5K    I/O     0F800-0F9FF     0F800-0F9FF     0F800-0F9FF     0F800-0F9FF    Fixed I/O (VIAs, ACIA, EXP)
-; 0C000-0F7FF   14K     Banked  0C000-0F7FF     Appl Window#4   3C000-3F7FF     Offset 4/5     Configured via MMU
-; 08000-0BFFF   16K     Banked  08000-0BFFF     Appl Window#3   38000-3BFFF     Offset 3       Configured via MMU
-; 04000-07FFF   16K     Banked  04000-07FFF     Appl Window#2   Kernal Window   Offset 2       Configured via MMU
-; 01000-03FFF   12K     Banked  01000-03FFF     Appl window#1   01000-03FFF     Offset 1       Configured via MMU
+; 0C000-0F7FF   14K     Banked  0C000-0F7FF     APPL Window 4   3C000-3F7FF     Offset 4/5     Configured via MMU
+; 08000-0BFFF   16K     Banked  08000-0BFFF     APPL Window 3   38000-3BFFF     Offset 3       Configured via MMU
+; 04000-07FFF   16K     Banked  04000-07FFF     APPL Window 2   KERN Window     Offset 2       Configured via MMU
+; 01000-03FFF   12K     Banked  01000-03FFF     APPL Window 1   01000-03FFF     Offset 1       Configured via MMU
 ; 00000-00FFF   4K      Fixed   00000-00FFF     00000-00FFF     00000-00FFF     00000-00FFF    Always fixed
 
 ; LCD, MMU, IO Address:
@@ -54,22 +54,22 @@
 ;                       FF83    [5] Test Mode, [4] SS40, [3] CS80, [2] Chr Width
 
 ; 0FA00-0FFFF   MMU     Custom Gate Array
-;                       FF00    KERN window offset      (write only)    * Sets a pointer to any 1K boundary in the extended address range.
-;                       FE80    APPL window#4 offset    (write only)      The top 8 bits (A10-A17) of the extended address are written to
-;                       FE00    APPL window#3 offset    (write only)      any of the 5 offset registers (KERNAL or Applcation window).
-;                       FD80    APPL window#2 offset    (write only)
-;                       FD00    APPL window#1 offset    (write only)
+;                       FF00    KERN Window offset      (write only)    * Sets a pointer to any 1K boundary in the extended address range.
+;                       FE80    APPL Window 4 offset    (write only)      The top 8 bits (A10-A17) of the extended address are written to
+;                       FE00    APPL Window 3 offset    (write only)      any of these offset registers.
+;                       FD80    APPL Window 2 offset    (write only)
+;                       FD00    APPL Window 1 offset    (write only)
 
-;                       FC80    Select TEST mode        (dummywrite     * Writing ANYTHING to these registers triggers the selected MODE
-;                       FC00    Save current mode       (dummywrite)      (see above) or does a SAVE or RECALL operation.
-;                       FB80    Recall saved mode       (dummywrite)
-;                       FB00    Select RAM mode         (dummywrite)
-;                       FA80    Select APPL mode        (dummywrite)
-;                       FA00    Select KERN mode        (dummywrite)
+;                       FC80    Select TEST mode        (dummy write)   * Any write to these registers triggers the selected mode
+;                       FC00    Save current mode       (dummy write)     (see above) or does a Save or Recall operation.
+;                       FB80    Recall saved mode       (dummy write)
+;                       FB00    Select RAM mode         (dummy write)
+;                       FA80    Select APPL mode        (dummy write)
+;                       FA00    Select KERN mode        (dummy write)
 
 ; 0F800-0F9FF   I/O     IO Chips and Expansion via rear connector
 ;                       F980    I/O#4   ACIA            RS-232, Modem
-;                       F900    I/O#3   External Expansion
+;                       F900    I/O#3                   External Expansion
 ;                       F880    I/O#2   VIA#2           Centronics, RTC, RS-232, Modem, Beeper, Barcode Reader
 ;                       F800    I/O#1   VIA#1           Keyboard, Battery Level, Alarm, RTC Enable, Power, IEC
 
@@ -291,7 +291,7 @@ MMU_OFFS_APPL_W1 := $FD00   ;Sets offset for $1000-3FFF "APPL Window 1" in the "
 MMU_OFFS_APPL_W2 := $FD80   ;Sets offset for $4000-7FFF "APPL Window 2" in the "APPL" MMU mode.
 MMU_OFFS_APPL_W3 := $FE00   ;Sets offset for $8000-BFFF "APPL Window 3" in the "APPL" MMU mode.
 MMU_OFFS_APPL_W4 := $FE80   ;Sets offset for $8000-F7FF "APPL Window 4" in the "APPL" MMU mode.
-MMU_OFFS_KERN_W  := $FF00   ;Sets offset for $4000-7FFF "KERNAL Window" in the "KERN" MMU mode.
+MMU_OFFS_KERN_W  := $FF00   ;Sets offset for $4000-7FFF "KERN Window" in the "KERN" MMU mode.
 
 ;LCD Controller Registers $FF80-$FF83
 LCDCTRL_REG0 := $FF80
@@ -809,15 +809,16 @@ ROM_START_KERN_W_OFFSETS:
 ;The code in the EPROMs really is 32K, though.  Offset 0 in each EPROM contains
 ;a magic header while offset $4000 is just normal code.
 ;
-;                            Offset    CPU Address   Physical Address
-        .byte $70 ;$70<<10 = $1C000  + $4000       = $20000  (ss-calc13apr-u105.bin: $0000-3FFF)
-        .byte $80 ;$80<<10 = $20000  + $4000       = $24000  (ss-calc13apr-u105.bin: $4000-7FFF)
-        .byte $90 ;$90<<10 = $24000  + $4000       = $28000  (sept-m-13apr-u104.bin: $0000-3FFF)
-        .byte $A0 ;$A0<<10 = $28000  + $4000       = $2C000  (sept-m-13apr-u104.bin: $4000-7FFF)
-        .byte $B0 ;$B0<<10 = $2C000  + $4000       = $30000  (sizapr-u103.bin:       $0000-3FFF)
-        .byte $C0 ;$C0<<10 = $30000  + $4000       = $34000  (sizapr-u103.bin:       $4000-7FFF)
-        .byte $D0 ;$D0<<10 = $34000  + $4000       = $38000  (kizapr-u102.bin:       $0000-3FFF)
-        .byte $E0 ;$E0<<10 = $38000  + $4000       = $3C000  (kizapr-u102.bin:       $4000-7FFF)
+;MMU_OFFS_KERN_W = (Physical address - KERN Window base address $4000) >> 10
+;
+        .byte ($20000-$4000)>>10  ;Physical address $20000 (ss-calc13apr-u105.bin: $0000)
+        .byte ($24000-$4000)>>10  ;Physical address $24000 (ss-calc13apr-u105.bin: $4000)
+        .byte ($28000-$4000)>>10  ;Physical address $28000 (sept-m-13apr-u104.bin: $0000)
+        .byte ($2C000-$4000)>>10  ;Physical address $2C000 (sept-m-13apr-u104.bin: $4000)
+        .byte ($30000-$4000)>>10  ;Physical address $30000 (sizapr-u103.bin: $0000)
+        .byte ($34000-$4000)>>10  ;Physical address $34000 (sizapr-u103.bin: $4000)
+        .byte ($38000-$4000)>>10  ;Physical address $38000 (kizapr-u102.bin: $0000)
+        .byte ($3C000-$4000)>>10  ;Physical address $3C000 (kizapr-u102.bin: $4000)
 
 ROM_START_KERN_W_OFFSETS_SIZE = * - ROM_START_KERN_W_OFFSETS
 ; ----------------------------------------------------------------------------
@@ -1289,7 +1290,7 @@ L86B4:  eor     $FF
         dex
         bne     L86B0_LOOP
 
-; Test rest of the RAM, using the kernal window to page in the testable area.
+; Test rest of the RAM, using the KERN Window to page in the testable area.
 L86C2:  lda     $D9
         ldx     $DA
         inc     a
