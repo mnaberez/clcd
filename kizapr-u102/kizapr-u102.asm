@@ -290,7 +290,7 @@ MMU_MODE_TEST    := $FC80   ;Any write here switches to the "TEST" MMU mode. (Un
 MMU_OFFS_APPL_W1 := $FD00   ;Sets offset for $1000-3FFF "APPL Window 1" in the "APPL" MMU mode.
 MMU_OFFS_APPL_W2 := $FD80   ;Sets offset for $4000-7FFF "APPL Window 2" in the "APPL" MMU mode.
 MMU_OFFS_APPL_W3 := $FE00   ;Sets offset for $8000-BFFF "APPL Window 3" in the "APPL" MMU mode.
-MMU_OFFS_APPL_W4 := $FE80   ;Sets offset for $8000-F7FF "APPL Window 4" in the "APPL" MMU mode.
+MMU_OFFS_APPL_W4 := $FE80   ;Sets offset for $C000-F7FF "APPL Window 4" in the "APPL" MMU mode.
 MMU_OFFS_KERN_W  := $FF00   ;Sets offset for $4000-7FFF "KERN Window" in the "KERN" MMU mode.
 
 ;LCD Controller Registers $FF80-$FF83
