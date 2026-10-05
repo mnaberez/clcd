@@ -80,8 +80,39 @@
         .org $8000
 
 ; ----------------------------------------------------------------------------
-MEM_0015        := $0015
-MEM_0041        := $0041
+;Zero page locations used by the floating point math package (see
+;MATH_DISPATCH).  They have the names of the same things in other CBM BASICs.
+INTEGR          := $0000  ;2 bytes: low byte of the result of INT; scratch for the AND, OR and XOR operators
+VALTYP          := $0002  ;Set to 0 (number) by GIVAYF
+TANSGN          := $0004  ;Sign flag used by SIN and TAN
+LINNUM          := $0006  ;2 bytes: unsigned integer result of GETADR
+INDEX1          := $0008  ;2 bytes: pointer to a number or a string in memory
+INDEX2          := $000A  ;2 bytes: pointer used by FCOMP and STRVAL
+RESHO           := $000C  ;7 bytes: product or quotient being built by FMULTT and FDIVT
+OLDOV           := $0014  ;Saved FACOV
+TEMPF1          := $0015  ;8 bytes: temporary number
+TEMPF2          := $001D  ;8 bytes: temporary number.  The last 4 bytes are also the 4 locations below.
+DECCNT          := $0021  ;FIN: number of digits after the decimal point.  FOUT: decimal exponent.
+TENEXP          := $0022  ;FIN, FOUT: exponent
+DPTFLG          := $0023  ;FIN: bit 7 set = a decimal point has been seen
+EXPSGN          := $0024  ;FIN: bit 7 set = the exponent is negative
+FACEXP          := $0025  ;\ FAC, the floating point accumulator: exponent ($81 = 2^0; 0 = the number is zero)
+FACHO           := $0026  ;   7 bytes of mantissa, most significant first; bit 7 of the first is always set
+FACLO           := $002C  ;   last byte of mantissa
+FACSGN          := $002D  ;/  sign in bit 7
+SGNFLG          := $002E  ;FIN: bit 7 set = number is negative.  POLY: number of terms left to do.
+BITS            := $002F  ;Byte that SHIFTR shifts into the top of a mantissa
+ARGEXP          := $0030  ;\ ARG, the second operand, laid out like FAC: exponent
+ARGHO           := $0031  ;   7 bytes of mantissa
+ARGLO           := $0037  ;   last byte of mantissa
+ARGSGN          := $0038  ;/  sign in bit 7
+ARISGN          := $0039  ;Bit 7 set = the signs of FAC and ARG are different
+FACOV           := $003A  ;Extra low byte of FAC's mantissa, used for rounding
+FBUFPT          := $003B  ;2 bytes: FOUT's index into FBUFFR; POLY's pointer to coefficients; TXTPTR saved by STRVAL
+FOUT_TMP        := $003D  ;FOUT: saved index into FOUTBL
+TXTPTR          := $003F  ;2 bytes: pointer to the text being read by FIN (in RAM)
+TEMPF3          := $0041  ;8 bytes: temporary number
+ANDOR_MASK      := $0049  ;$00 for AND or $FF for OR (see ANDOP)
 MEM_0081        := $0081
 VidMemHi        := $00A0
 CursorX         := $00A1
@@ -130,6 +161,7 @@ CHAR_UNDER_CURSOR := $00F0  ;Character under the cursor; used with blinking
 MEM_00F4          := $00F4  ;Keyboard scan related
 MEM_00F5          := $00F5  ;Keyboard scan related
 stack             := $0100
+FBUFFR            := $0100 ;FOUT builds its string at the bottom of the stack page
 ROM_ENV_A         := $0204
 ROM_ENV_X         := $0205
 ROM_ENV_Y         := $0206
@@ -143,6 +175,7 @@ LAT             := $02DB
 SAT             := $02F3
 FAT             := $02E7
 MEM_0300        := $0300
+IERROR        := $0300                  ;Error vector of the math package, called in APPL mode with a BASIC error number in X.  Applications must set it.
 RAMVEC_IRQ      := $0314   ;KERNAL RAM vectors, 36 bytes: $0314-0337
 RAMVEC_BRK      := $0316
 RAMVEC_NMI      := $0318
@@ -169,6 +202,8 @@ SINNER                    := $034E  ; "SINNER" name is from TED-series KERNAL,
 GO_APPL_LOAD_GO_KERN      := $0353  ; where similar RAM-resident code is
 GO_RAM_STORE_GO_KERN      := $035C  ; modified at runtime.
 GO_NOWHERE_STORE_GO_KERN  := $035F  ;
+GO_APPL_LOAD_GO_KERN_ZP   := $0357  ;ZP address of the pointer that GO_APPL_LOAD_GO_KERN loads through
+GO_RAM_STORE_GO_KERN_ZP   := $0360  ;ZP address of the pointer that GO_RAM_STORE_GO_KERN stores through
 MEM_0365        := $0365  ;Keyboard related
 MEM_0366        := $0366  ;Keyboard related
 MEM_0367        := $0367  ;Keyboard related
@@ -206,7 +241,7 @@ BAD             := $03A0
 MON_MMU_MODE    := $03A1  ;0=MMU_MODE_RAM, 1=MMU_MODE_APPL, 2=MMU_MODE_KERN
 V1541_FILE_MODE := $03A3
 V1541_FILE_TYPE := $03A4
-MEM_03AC        := $03AC
+RNDX        := $03AC
 SXREG           := $039D
 FORMAT          := $03B4
 MEM_03B7        := $03B7
@@ -4122,2066 +4157,1981 @@ L9B12:  lda     #$80
 L9B19:  sec
         rts
 ; ----------------------------------------------------------------------------
-L9B1B_JMP_L9B1E_X:
-        jmp     (L9B1E,x)
-L9B1E:  .addr L9BF6_X00
-        .addr L9BDA_X02
-        .addr LA473_X04
-        .addr L9C6B_X06
-        .addr L9BE0_X08
-        .addr LA2D1_X0A
-        .addr L9CA4_X0C
-        .addr L9CA7_X0E
-        .addr L9CBB_X10
-        .addr L9CBE_X12
-        .addr L9F60_X14
-        .addr L9F63_X16
-        .addr LA0F6_X18
-        .addr LA0F9_X1A
-        .addr L9EF0_X1C
-        .addr LA369_X1E
-        .addr LA661_X20
-        .addr LA6A7_X22
-        .addr LA65A_X24
-        .addr LA66B_X26
-        .addr LA72B_X28
-        .addr LA848_X2A
-        .addr LA84F_X2C
-        .addr LA898_X2E
-        .addr LA92D_X30
-        .addr LA28A_X32
-        .addr LA2D9_X34
-        .addr LA29A_X36
-        .addr LA2DC_X38_UNKNOWN_INDIRECT_STUFF_LOAD
-        .addr LA7DB_X3A
-        .addr LA02B_X3C
-        .addr L9FF1_X3E_INDIRECT_STUFF
-        .addr LA1DB_X40
-        .addr LA1DD_X42_INDIRECT_STUFF_LOAD
-        .addr LA21A_X44
-        .addr LA26B_X46
-        .addr LA27B_X48
-        .addr LA2AB_X4A
-        .addr LA2CD_X4C
-        .addr LA2D5_X4E
-        .addr LA338_X50
-        .addr LA421_X52
-        .addr LA396_X54
-        .addr LA226_X56
-        .addr LA475_X58
-        .addr LA2A8_X5A
-        .addr LA7D8_X5C
-        .addr L9F4E_X5E
-        .addr L9F42_X60
-        .addr L9F33_X62
-        .addr L9F5A_X64
-        .addr LA65F_X66
-        .addr LA06D_X68
-        .addr LA1B7_X6A
-        .addr L9BCE_X6C
-        .addr L9B9F_X6E
-        .addr L9BA2_X70
-        .addr L9B98_X72
-        .addr L9B9B_X74
-        .addr LA9C6_X76
-        .addr LA9C9_X78
+;Floating point math package.  This is jump table entry $FF51.
+;
+;Call with X = a function code from the table below.  A, Y and the flags
+;are passed on to the function.
+;
+;This is the floating point code of Microsoft BASIC, as found in other CBM
+;machines, but with the mantissa widened from 4 bytes to 7 (about 16 decimal
+;digits).  The routines are named after their counterparts in those BASICs.
+;
+;FAC is the accumulator and ARG is the second operand.  A number in memory
+;is packed into 8 bytes: the exponent, then the 7 bytes of the mantissa with
+;the sign in bit 7 of the first one.
+;
+;Where a function takes a number or a string in memory, its address is given
+;in A (low) and Y (high).  Most functions read it in MMU RAM mode, where all
+;64K is RAM.  The ones marked "KERN" read it as the KERNAL sees memory (for
+;the constants in this ROM), and the ones marked "APPL" read it as the
+;application sees memory (for constants in an application's ROM).
+;
+;An error jumps through the vector at IERROR, in MMU APPL mode, with the
+;BASIC error number in X: 14 = illegal quantity, 15 = overflow, 20 = division
+;by zero.  It is up to the application to set that vector.
+MATH_DISPATCH:
+        jmp     (MATH_FUNCTIONS,x)
+MATH_FUNCTIONS:
+        .addr AYINT                     ;$00 FAC to signed 16-bit integer in FACHO+5 (high) and FACLO (low)
+        .addr GIVAYF                    ;$02 FAC = signed 16-bit integer in A (high) and Y (low)
+        .addr FOUT                      ;$04 FAC to string at FBUFFR; returns its address in A/Y
+        .addr STRVAL                    ;$06 FAC = value of the string at INDEX1 with length A
+        .addr GETADR                    ;$08 FAC to unsigned 16-bit integer in LINNUM, A (high) and Y (low)
+        .addr FLOATC_Y                  ;$0A FAC = 16-bit integer in FACHO, FACHO+1 with exponent Y; carry clear = negate
+        .addr FSUB                      ;$0C FAC = number in memory - FAC
+        .addr FSUBT                     ;$0E FAC = ARG - FAC
+        .addr FADD                      ;$10 FAC = number in memory + FAC
+        .addr FADDT                     ;$12 FAC = ARG + FAC
+        .addr FMULT                     ;$14 FAC = number in memory * FAC
+        .addr FMULTT                    ;$16 FAC = ARG * FAC
+        .addr FDIV                      ;$18 FAC = number in memory / FAC
+        .addr FDIVT                     ;$1A FAC = ARG / FAC
+        .addr LOG                       ;$1C FAC = natural logarithm of FAC
+        .addr INT                       ;$1E FAC = integer part of FAC, rounding down
+        .addr SQR                       ;$20 FAC = square root of FAC
+        .addr NEGOP                     ;$22 FAC = -FAC
+        .addr FPWR                      ;$24 FAC = ARG to the power of the number in memory
+        .addr FPWRT                     ;$26 FAC = ARG to the power of FAC
+        .addr EXP                       ;$28 FAC = e to the power of FAC
+        .addr COS                       ;$2A FAC = cosine of FAC
+        .addr SIN                       ;$2C FAC = sine of FAC
+        .addr TAN                       ;$2E FAC = tangent of FAC
+        .addr ATN                       ;$30 FAC = arctangent of FAC
+        .addr ROUND                     ;$32 Round FAC using FACOV
+        .addr ABS                       ;$34 FAC = absolute value of FAC
+        .addr SIGN                      ;$36 A = $FF, 0 or 1 for FAC negative, zero or positive
+        .addr FCOMP                                 ;$38 Compare FAC with number in memory (KERN): A = $FF, 0 or 1 for FAC less, equal or greater
+        .addr RND_A                     ;$3A Same as $5C, but the flags must already be set for the sign of FAC
+        .addr CONUPK                    ;$3C ARG = number in memory
+        .addr ROMUPK                    ;$3E ARG = number in memory (KERN)
+        .addr MOVFM                     ;$40 FAC = number in memory
+        .addr MOVFRM                        ;$42 FAC = number in memory (KERN)
+        .addr MOVMF_AY                  ;$44 Number in memory = FAC, rounded
+        .addr MOVFA                     ;$46 FAC = ARG
+        .addr MOVAF                     ;$48 ARG = FAC, rounded
+        .addr FLOAT                     ;$4A FAC = signed byte in A
+        .addr FLOATB_Y                  ;$4C FAC = 56-bit integer in FACHO-FACLO with exponent Y; A must be 0; carry clear = negate
+        .addr FLOATS_Y                  ;$4E FAC = signed 16-bit integer in FACHO, FACHO+1 with exponent Y
+        .addr QINT                      ;$50 FAC to signed integer filling FACHO-FACLO
+        .addr FINLOG                    ;$52 FAC = FAC + signed byte in A
+        .addr FIN                       ;$54 FAC = number read from the text at TXTPTR; A and carry as left by CHRGET
+        .addr MOVMF_AY2                 ;$56 Same as $44
+        .addr FOUTC                     ;$58 Same as $04, but the string starts at FBUFFR-1+Y
+        .addr SGN                       ;$5A FAC = -1, 0 or 1 for the sign of FAC
+        .addr RND                       ;$5C FAC = random number, depending on the sign of FAC
+        .addr FSUB_APPL                 ;$5E FAC = number in memory (APPL) - FAC
+        .addr FADD_APPL                 ;$60 FAC = number in memory (APPL) + FAC
+        .addr FMULT_APPL                ;$62 FAC = number in memory (APPL) * FAC
+        .addr FDIV_APPL                 ;$64 FAC = number in memory (APPL) / FAC
+        .addr FPWR_APPL                 ;$66 Same as $26: the code to get the number from memory first is missing
+        .addr CONUPK_APPL               ;$68 ARG = number in memory (APPL)
+        .addr MOVFM_APPL                ;$6A FAC = number in memory (APPL)
+        .addr NOTOP                     ;$6C FAC = NOT FAC, as 16-bit integers
+        .addr ANDOP_MEM                 ;$6E FAC = number in memory AND FAC, as 16-bit integers
+        .addr ANDOP                     ;$70 FAC = ARG AND FAC, as 16-bit integers
+        .addr OROP_MEM                  ;$72 FAC = number in memory OR FAC, as 16-bit integers
+        .addr OROP                      ;$74 FAC = ARG OR FAC, as 16-bit integers
+        .addr XOROP_MEM                 ;$76 FAC = number in memory XOR FAC, as 16-bit integers
+        .addr XOROP                     ;$78 FAC = ARG XOR FAC, as 16-bit integers
 
-L9B98_X72:  jsr     LA02B_X3C                           ; 9B98 20 2B A0                  +.
-L9B9B_X74:  ldy     #$FF                            ; 9B9B A0 FF                    ..
-        bra     L9BA4                           ; 9B9D 80 05                    ..
-L9B9F_X6E:  jsr     LA02B_X3C                           ; 9B9F 20 2B A0                  +.
-L9BA2_X70:  ldy     #$00                            ; 9BA2 A0 00                    ..
-L9BA4:  sty     $49                             ; 9BA4 84 49                    .I
-        jsr     L9BF6_X00                           ; 9BA6 20 F6 9B                  ..
-        lda     $2B                             ; 9BA9 A5 2B                    .+
-        eor     $49                             ; 9BAB 45 49                    EI
-        sta     $00                             ; 9BAD 85 00                    ..
-        lda     $2C                             ; 9BAF A5 2C                    .,
-        eor     $49                             ; 9BB1 45 49                    EI
-        sta     $01                             ; 9BB3 85 01                    ..
-        jsr     LA26B_X46                           ; 9BB5 20 6B A2                  k.
-        jsr     L9BF6_X00                           ; 9BB8 20 F6 9B                  ..
-        lda     $2C                             ; 9BBB A5 2C                    .,
-        eor     $49                             ; 9BBD 45 49                    EI
-        and     $01                             ; 9BBF 25 01                    %.
-        eor     $49                             ; 9BC1 45 49                    EI
-        tay                                     ; 9BC3 A8                       .
-        lda     $2B                             ; 9BC4 A5 2B                    .+
-        eor     $49                             ; 9BC6 45 49                    EI
-        and     $00                             ; 9BC8 25 00                    %.
-        eor     $49                             ; 9BCA 45 49                    EI
-        bra     L9BDA_X02                           ; 9BCC 80 0C                    ..
-L9BCE_X6C:  jsr     L9BF6_X00                           ; 9BCE 20 F6 9B                  ..
-        lda     $2C                             ; 9BD1 A5 2C                    .,
-        eor     #$FF                            ; 9BD3 49 FF                    I.
-        tay                                     ; 9BD5 A8                       .
-        lda     $2B                             ; 9BD6 A5 2B                    .+
-        eor     #$FF                            ; 9BD8 49 FF                    I.
+;OR and AND operators.  Both operands are converted to signed 16-bit
+;integers.  OR is done as NOT (NOT a AND NOT b).
+OROP_MEM:
+        jsr     CONUPK
+OROP:   ldy     #$FF                    ;$FF = OR
+        bra     L9BA4_AND_OR
+ANDOP_MEM:
+        jsr     CONUPK
+ANDOP:  ldy     #$00                    ;$00 = AND
+L9BA4_AND_OR:
+        sty     ANDOR_MASK
+        jsr     AYINT                   ;Second operand to integer
+        lda     FACHO+5
+        eor     ANDOR_MASK
+        sta     INTEGR
+        lda     FACLO
+        eor     ANDOR_MASK
+        sta     INTEGR+1
+        jsr     MOVFA                   ;FAC = ARG
+        jsr     AYINT                   ;First operand to integer
+        lda     FACLO
+        eor     ANDOR_MASK
+        and     INTEGR+1
+        eor     ANDOR_MASK
+        tay
+        lda     FACHO+5
+        eor     ANDOR_MASK
+        and     INTEGR
+        eor     ANDOR_MASK
+        bra     GIVAYF                  ;Result back to floating point
+;NOT operator
+NOTOP:  jsr     AYINT
+        lda     FACLO
+        eor     #$FF
+        tay
+        lda     FACHO+5
+        eor     #$FF
 ; ----------------------------------------------------------------------------
-L9BDA_X02:  jsr     L9C60                           ; 9BDA 20 60 9C                  `.
-L9BDD:  jmp     LA2B3                           ; 9BDD 4C B3 A2                 L..
 ; ----------------------------------------------------------------------------
-L9BE0_X08:  lda     $2D                             ; 9BE0 A5 2D                    .-
-        bmi     L9C05                           ; 9BE2 30 21                    0!
-        lda     $25                             ; 9BE4 A5 25                    .%
-        cmp     #$91                            ; 9BE6 C9 91                    ..
-        bcs     L9C05                           ; 9BE8 B0 1B                    ..
-        jsr     LA338_X50                           ; 9BEA 20 38 A3                  8.
-        lda    $2b
-        ldy    $2c
-        sty    $06
-        sta    $07
-L9BF4:  rts
+;FAC = signed 16-bit integer in A (high byte) and Y (low byte)
+GIVAYF: jsr     L9C60_SET_INTEGER
+        jmp     FLOATS
 ; ----------------------------------------------------------------------------
-L9BF6_X00:  lda     $25                             ; 9BF6 A5 25                    .%
-        cmp     #$90                            ; 9BF8 C9 90                    ..
-        bcc     L9C0A                           ; 9BFA 90 0E                    ..
-        lda     #<L9C58                         ; 9BFC A9 58                    .X
-        ldy     #>L9C58                         ; 9BFE A0 9C                    ..
-        jsr     LA2DC_X38_UNKNOWN_INDIRECT_STUFF_LOAD ; 9C00 20 DC A2                  ..
-        beq     L9C0A                           ; 9C03 F0 05                    ..
-L9C05:  ldx     #$0E                            ; 9C05 A2 0E                    ..
-        jmp     LFB4B                           ; 9C07 4C 4B FB                 LK.
+;Convert FAC to an unsigned 16-bit integer (0-65535) in LINNUM.
+;Returns it in A (high byte) and Y (low byte) too.
+GETADR: lda     FACSGN
+        bmi     FCERR                   ;Branch if negative: illegal quantity
+        lda     FACEXP
+        cmp     #$91
+        bcs     FCERR                   ;Branch if 65536 or more: illegal quantity
+        jsr     QINT
+        lda     FACHO+5
+        ldy     FACLO
+        sty     LINNUM
+        sta     LINNUM+1
+L9BF5_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-L9C0A:  jmp     LA338_X50
-L9C0D:  inc     $3F                             ; 9C0D E6 3F                    .?
-        bne     L9C13                           ; 9C0F D0 02                    ..
-        inc     $40                             ; 9C11 E6 40                    .@
-L9C13:  sei                                     ; 9C13 78                       x
-        ldy     #$00                            ; 9C14 A0 00                    ..
-        lda     #$3F ;ZP-address                ; 9C16 A9 3F                    .?
-        sta     SINNER                          ; 9C18 8D 4E 03                 .N.
-        jsr     GO_RAM_LOAD_GO_KERN             ; 9C1B 20 4A 03                  J.
-        cli                                     ; 9C1E 58                       X
-        cmp     #$3A                            ; 9C1F C9 3A                    .:
-        bcs     L9C2D                           ; 9C21 B0 0A                    ..
-        cmp     #$20                            ; 9C23 C9 20                    .
-        beq     L9C0D                           ; 9C25 F0 E6                    ..
-        sec                                     ; 9C27 38                       8
-        sbc     #$30                            ; 9C28 E9 30                    .0
-        sec                                     ; 9C2A 38                       8
-        sbc     #$D0                            ; 9C2B E9 D0                    ..
-L9C2D:  rts                                     ; 9C2D 60                       `
+;Convert FAC to a signed 16-bit integer (-32768 to 32767), left in FACHO+5
+;(high byte) and FACLO (low byte).
+AYINT:  lda     FACEXP
+        cmp     #$90
+        bcc     L9C0A_JMP_QINT          ;Branch if its magnitude is less than 32768
+        lda     #<N32768
+        ldy     #>N32768
+        jsr     FCOMP
+        beq     L9C0A_JMP_QINT          ;Branch if it is exactly -32768
+;?ILLEGAL QUANTITY ERROR
+FCERR:  ldx     #$0E                    ;BASIC error number
+        jmp     JMP_IERROR
 ; ----------------------------------------------------------------------------
-L9C2E:  lda     #$3F ;ZP-address                ; 9C2E A9 3F                    .?
-        sta     SINNER                          ; 9C30 8D 4E 03                 .N.
-        jmp     GO_RAM_LOAD_GO_KERN             ; 9C33 4C 4A 03                 LJ.
+L9C0A_JMP_QINT:
+        jmp     QINT
+;Get the next character of the text at TXTPTR (which is in RAM), skipping
+;spaces.  Returns it in A, with carry clear if it is a digit and Z=1 if it
+;is a colon or a zero byte.  CHRGOT gets the current character again.
+CHRGET: inc     TXTPTR
+        bne     CHRGOT
+        inc     TXTPTR+1
+CHRGOT: sei
+        ldy     #$00
+        lda     #TXTPTR
+        sta     SINNER
+        jsr     GO_RAM_LOAD_GO_KERN
+        cli
+        cmp     #$3A
+        bcs     L9C2D_RTS
+        cmp     #$20
+        beq     CHRGET
+        sec
+        sbc     #$30
+        sec
+        sbc     #$D0
+L9C2D_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-L9C36:  lda     #$08 ;ZP-address                ; 9C36 A9 08                    ..
-        sta     SINNER                          ; 9C38 8D 4E 03                 .N.
+;Small routines to read or write memory in another MMU mode through one of
+;the pointers.  All of them use Y as the index.
+GET_TXTPTR_RAM:
+        lda     #TXTPTR
+        sta     SINNER
         jmp     GO_RAM_LOAD_GO_KERN
-L9C3E:  lda     #$08                            ; 9C3E A9 08                    ..
-        sta     $0357                           ; 9C40 8D 57 03                 .W.
-        jmp     GO_APPL_LOAD_GO_KERN            ; 9C43 4C 53 03                 LS.
 ; ----------------------------------------------------------------------------
-L9C46:  lda     #$0A ;ZP-address                ; 9C46 A9 0A                    ..
-        sta     SINNER                          ; 9C48 8D 4E 03                 .N.
-        jmp     GO_RAM_LOAD_GO_KERN             ; 9C4B 4C 4A 03                 LJ.
+GET_INDEX1_RAM:
+        lda     #INDEX1
+        sta     SINNER
+        jmp     GO_RAM_LOAD_GO_KERN
+GET_INDEX1_APPL:
+        lda     #INDEX1
+        sta     GO_APPL_LOAD_GO_KERN_ZP
+        jmp     GO_APPL_LOAD_GO_KERN
 ; ----------------------------------------------------------------------------
-L9C4E:  pha                                     ; 9C4E 48                       H
-        lda     #$0A                            ; 9C4F A9 0A                    ..
-        sta     $0360                           ; 9C51 8D 60 03                 .`.
-        pla                                     ; 9C54 68                       h
-        jmp     GO_RAM_STORE_GO_KERN            ; 9C55 4C 5C 03                 L\.
+GET_INDEX2_RAM:
+        lda     #INDEX2
+        sta     SINNER
+        jmp     GO_RAM_LOAD_GO_KERN
 ; ----------------------------------------------------------------------------
-L9C58:  bcc     L9BDA_X02                           ; 9C58 90 80                    ..
-        brk                                     ; 9C5A 00                       .
-        brk                                     ; 9C5B 00                       .
-        brk                                     ; 9C5C 00                       .
-        brk                                     ; 9C5D 00                       .
-        brk                                     ; 9C5E 00                       .
-        brk                                     ; 9C5F 00                       .
-L9C60:  ldx     #$00                            ; 9C60 A2 00                    ..
-        stx     $02
-        sta     $26                             ; 9C64 85 26                    .&
-        sty     $27                             ; 9C66 84 27                    .'
-        ldx     #$90                            ; 9C68 A2 90                    ..
-        rts                                     ; 9C6A 60                       `
+PUT_INDEX2_RAM:
+        pha
+        lda     #INDEX2
+        sta     GO_RAM_STORE_GO_KERN_ZP
+        pla
+        jmp     GO_RAM_STORE_GO_KERN
 ; ----------------------------------------------------------------------------
-L9C6B_X06:  ldx     $3F                             ; 9C6B A6 3F                    .?
-        ldy     $40                             ; 9C6D A4 40                    .@
-        stx     $3B                             ; 9C6F 86 3B                    .;
-        sty     $3C                             ; 9C71 84 3C                    .<
-        ldx     $08                             ; 9C73 A6 08                    ..
-        stx     $3F                             ; 9C75 86 3F                    .?
-        clc                                     ; 9C77 18                       .
-        adc     $08                             ; 9C78 65 08                    e.
-        sta     $0A                             ; 9C7A 85 0A                    ..
-        ldx     $09                             ; 9C7C A6 09                    ..
-        stx     $40                             ; 9C7E 86 40                    .@
-        bcc     L9C83                           ; 9C80 90 01                    ..
-        inx                                     ; 9C82 E8                       .
-L9C83:  stx     $0B                             ; 9C83 86 0B                    ..
-        ldy     #$00                            ; 9C85 A0 00                    ..
-        jsr     L9C46                           ; 9C87 20 46 9C                  F.
-        pha                                     ; 9C8A 48                       H
-        tya                                     ; 9C8B 98                       .
-        jsr     L9C4E                           ; 9C8C 20 4E 9C                  N.
-        jsr     L9C13                           ; 9C8F 20 13 9C                  ..
-        jsr     LA396_X54                           ; 9C92 20 96 A3                  ..
-        pla                                     ; 9C95 68                       h
-        ldy     #$00                            ; 9C96 A0 00                    ..
-        jsr     L9C4E                           ; 9C98 20 4E 9C                  N.
-        ldx     $3B                             ; 9C9B A6 3B                    .;
-        ldy     $3C                             ; 9C9D A4 3C                    .<
-        stx     $3F                             ; 9C9F 86 3F                    .?
-        sty     $40                             ; 9CA1 84 40                    .@
-L9CA3:  rts                                     ; 9CA3 60                       `
+N32768:
+        .byte   $90,$80,$00,$00,$00,$00,$00,$00 ;-32768
+;First part of GIVAYF: put the integer in the top of FAC's mantissa and
+;return X = the exponent that goes with a 16-bit integer.
+L9C60_SET_INTEGER:
+        ldx     #$00
+        stx     VALTYP
+        sta     FACHO
+        sty     FACHO+1
+        ldx     #$90
+        rts
 ; ----------------------------------------------------------------------------
-L9CA4_X0C:  jsr     LA02B_X3C                           ; 9CA4 20 2B A0                  +.
-L9CA7_X0E:  lda     $2D                             ; 9CA7 A5 2D                    .-
-        eor     #$FF                            ; 9CA9 49 FF                    I.
-        sta     $2D                             ; 9CAB 85 2D                    .-
-        eor     $38                             ; 9CAD 45 38                    E8
-        sta     $39                             ; 9CAF 85 39                    .9
-        lda     $25                             ; 9CB1 A5 25                    .%
-        jmp     L9CBE_X12                           ; 9CB3 4C BE 9C                 L..
+;FAC = value of the number written in the string at INDEX1 with length A.
+;The string is in RAM.  The byte after it is replaced with a zero while FIN
+;reads it, and is put back afterwards.
+STRVAL: ldx     TXTPTR
+        ldy     TXTPTR+1
+        stx     FBUFPT                  ;Save TXTPTR
+        sty     FBUFPT+1
+        ldx     INDEX1
+        stx     TXTPTR                  ;TXTPTR = start of string
+        clc
+        adc     INDEX1
+        sta     INDEX2                  ;INDEX2 = address of the byte after the string
+        ldx     INDEX1+1
+        stx     TXTPTR+1
+        bcc     L9C83_NO_CARRY
+        inx
+L9C83_NO_CARRY:
+        stx     INDEX2+1
+        ldy     #$00
+        jsr     GET_INDEX2_RAM
+        pha                             ;Push the byte after the string
+        tya
+        jsr     PUT_INDEX2_RAM          ;Put a zero there instead
+        jsr     CHRGOT
+        jsr     FIN
+        pla
+        ldy     #$00
+        jsr     PUT_INDEX2_RAM          ;Put the byte back
+        ldx     FBUFPT
+        ldy     FBUFPT+1
+        stx     TXTPTR                  ;Restore TXTPTR
+        sty     TXTPTR+1
+L9CA3_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-L9CB6:  jsr     L9E56                           ; 9CB6 20 56 9E                  V.
-        bcc     L9CF7                           ; 9CB9 90 3C                    .<
-L9CBB_X10:  jsr     LA02B_X3C
-L9CBE_X12:  bne     L9CC3                           ; 9CBE D0 03                    ..
-        jmp     LA26B_X46                           ; 9CC0 4C 6B A2                 Lk.
+;FAC = number in memory - FAC
+FSUB:   jsr     CONUPK
+;FAC = ARG - FAC
+FSUBT:  lda     FACSGN
+        eor     #$FF
+        sta     FACSGN                  ;Negate FAC, then add
+        eor     ARGSGN
+        sta     ARISGN
+        lda     FACEXP
+        jmp     FADDT
 ; ----------------------------------------------------------------------------
-L9CC3:  ldx     $3A                             ; 9CC3 A6 3A                    .:
-        stx     $14                             ; 9CC5 86 14                    ..
-        ldx     #$30                            ; 9CC7 A2 30                    .0
-        lda     $30                             ; 9CC9 A5 30                    .0
-L9CCB:  tay                                     ; 9CCB A8                       .
-        beq     L9CA3                           ; 9CCC F0 D5                    ..
-        sec                                     ; 9CCE 38                       8
-        sbc     $25                             ; 9CCF E5 25                    .%
-        beq     L9CF7                           ; 9CD1 F0 24                    .$
-        bcc     L9CE7                           ; 9CD3 90 12                    ..
-        sty     $25
-        ldy     $38
-        sty     $2D                             ; 9CD9 84 2D                    .-
-L9CDB:  eor     #$FF                            ; 9CDB 49 FF                    I.
-        adc     #$00                            ; 9CDD 69 00                    i.
-        ldy     #$00                            ; 9CDF A0 00                    ..
-        sty     $14                             ; 9CE1 84 14                    ..
-        ldx     #$25                            ; 9CE3 A2 25                    .%
-        bne     L9CEB                           ; 9CE5 D0 04                    ..
-L9CE7:  ldy     #$00                            ; 9CE7 A0 00                    ..
-        sty     $3A                             ; 9CE9 84 3A                    .:
-L9CEB:  cmp     #$F9                            ; 9CEB C9 F9                    ..
-        bmi     L9CB6                           ; 9CED 30 C7                    0.
-        tay                                     ; 9CEF A8                       .
-        lda     $3A                             ; 9CF0 A5 3A                    .:
-        lsr     $01,x                           ; 9CF2 56 01                    V.
-        jsr     L9E6D                           ; 9CF4 20 6D 9E                  m.
-L9CF7:  bit     $39                             ; 9CF7 24 39                    $9
-        bpl     L9D73                           ; 9CF9 10 78                    .x
-        ldy     #$25                            ; 9CFB A0 25                    .%
-        cpx     #$30                            ; 9CFD E0 30                    .0
-        beq     L9D03                           ; 9CFF F0 02                    ..
-        ldy     #$30                            ; 9D01 A0 30                    .0
-L9D03:  sec                                     ; 9D03 38                       8
-        eor     #$FF                            ; 9D04 49 FF                    I.
-        adc     $14                             ; 9D06 65 14                    e.
-        sta     $3A                             ; 9D08 85 3A                    .:
-        lda     $07,y                           ; 9D0A B9 07 00                 ...
-        sbc     $07,x                           ; 9D0D F5 07                    ..
-        sta     $2C                             ; 9D0F 85 2C                    .,
-        lda     $06,y                           ; 9D11 B9 06 00                 ...
-        sbc     $06,x                           ; 9D14 F5 06                    ..
-        sta     $2b
-        lda     $05,y                           ; 9D18 B9 05 00                 ...
-        sbc     $05,x                           ; 9D1B F5 05                    ..
-        sta     $2A                             ; 9D1D 85 2A                    .*
-        lda     $04,y                           ; 9D1F B9 04 00                 ...
-        sbc     $04,x                           ; 9D22 F5 04                    ..
-        sta     $29                             ; 9D24 85 29                    .)
-        lda     $03,y                           ; 9D26 B9 03 00                 ...
-        sbc     $03,x                           ; 9D29 F5 03                    ..
-        sta     $28                             ; 9D2B 85 28                    .(
-        lda     $02,y                           ; 9D2D B9 02 00                 ...
-        sbc     $02,x                           ; 9D30 F5 02                    ..
-        sta     $27                             ; 9D32 85 27                    .'
-        lda     $01,y                           ; 9D34 B9 01 00                 ...
-        sbc     $01,x                           ; 9D37 F5 01                    ..
-        sta     $26                             ; 9D39 85 26                    .&
-L9D3B:  bcs     L9D40                           ; 9D3B B0 03                    ..
-        jsr     L9DDA                           ; 9D3D 20 DA 9D                  ..
-L9D40:  ldy     #$00                            ; 9D40 A0 00                    ..
-        tya                                     ; 9D42 98                       .
-        clc                                     ; 9D43 18                       .
-L9D44:  ldx     $26                             ; 9D44 A6 26                    .&
-        bne     L9DB6                           ; 9D46 D0 6E                    .n
-        ldx     $27                             ; 9D48 A6 27                    .'
-        stx     $26                             ; 9D4A 86 26                    .&
-        ldx     $28
-        stx     $27                             ; 9D4E 86 27                    .'
-        ldx     $29                             ; 9D50 A6 29                    .)
-        stx     $28                             ; 9D52 86 28                    .(
-        ldx     $2A                             ; 9D54 A6 2A                    .*
-        stx     $29                             ; 9D56 86 29                    .)
-        ldx     $2B                             ; 9D58 A6 2B                    .+
-        stx     $2A                             ; 9D5A 86 2A                    .*
-        ldx     $2C                             ; 9D5C A6 2C                    .,
-L9D5E:  stx     $2B                             ; 9D5E 86 2B                    .+
-L9D60:  ldx     $3A                             ; 9D60 A6 3A                    .:
-        stx     $2C                             ; 9D62 86 2C                    .,
-        sty     $3A                             ; 9D64 84 3A                    .:
-        adc     #$08                            ; 9D66 69 08                    i.
-        cmp     #$38                            ; 9D68 C9 38                    .8
-        bne     L9D44                           ; 9D6A D0 D8                    ..
-L9D6C:  lda     #$00                            ; 9D6C A9 00                    ..
-L9D6E:  sta     $25
-L9D70:  sta     $2D                             ; 9D70 85 2D                    .-
-        rts                                     ; 9D72 60                       `
+FADD5:  jsr     SHIFTR
+        bcc     FADD4
+;FAC = number in memory + FAC
+FADD:   jsr     CONUPK
+;FAC = ARG + FAC.  Call with A = FACEXP and the flags set from it.
+FADDT:  bne     L9CC3_NOT_ZERO          ;Branch if FAC is not zero
+        jmp     MOVFA                   ;FAC is zero: the result is ARG
 ; ----------------------------------------------------------------------------
-L9D73:  adc     $14                             ; 9D73 65 14                    e.
-        sta     $3A                             ; 9D75 85 3A                    .:
-        lda     $2C                             ; 9D77 A5 2C                    .,
-        adc     $37                             ; 9D79 65 37                    e7
-        sta     $2C                             ; 9D7B 85 2C                    .,
-        lda     $2B                             ; 9D7D A5 2B                    .+
-        adc     $36                             ; 9D7F 65 36                    e6
-        sta     $2b
-        lda     $2A                             ; 9D83 A5 2A                    .*
-        adc     $35                             ; 9D85 65 35                    e5
-        sta     $2A                             ; 9D87 85 2A                    .*
-        lda     $29                             ; 9D89 A5 29                    .)
-        adc     $34
-        sta     $29
-        lda     $28                             ; 9D8F A5 28                    .(
-        adc     $33                             ; 9D91 65 33                    e3
-        sta     $28                             ; 9D93 85 28                    .(
-        lda     $27                             ; 9D95 A5 27                    .'
-        adc     $32                             ; 9D97 65 32                    e2
-        sta     $27                             ; 9D99 85 27                    .'
-        lda     $26                             ; 9D9B A5 26                    .&
-        adc     $31                             ; 9D9D 65 31                    e1
-        sta     $26                             ; 9D9F 85 26                    .&
-        jmp     L9DC3                           ; 9DA1 4C C3 9D                 L..
+L9CC3_NOT_ZERO:
+        ldx     FACOV
+        stx     OLDOV
+        ldx     #$30
+        lda     ARGEXP
+FADDC:  tay
+        beq     L9CA3_RTS               ;Branch if ARG is zero: the result is FAC
+        sec
+        sbc     FACEXP
+        beq     FADD4                   ;Branch if the exponents are the same
+        bcc     FADDA                   ;Branch if FAC has the bigger exponent
+        sty     FACEXP
+        ldy     ARGSGN
+        sty     FACSGN
+        eor     #$FF
+        adc     #$00
+        ldy     #$00
+        sty     OLDOV
+        ldx     #$25
+        bne     FADD1
+FADDA:  ldy     #$00
+        sty     FACOV
+FADD1:  cmp     #$F9
+        bmi     FADD5
+        tay
+        lda     FACOV
+        lsr     $01,x
+        jsr     ROLSHF
+FADD4:  bit     ARISGN
+        bpl     FADD2                   ;Branch if the signs are the same: add the mantissas
+        ldy     #$25
+        cpx     #$30
+        beq     SUBIT
+        ldy     #$30
+SUBIT:  sec
+        eor     #$FF
+        adc     OLDOV
+        sta     FACOV
+        lda     7,y
+        sbc     7,x
+        sta     FACLO
+        lda     6,y
+        sbc     6,x
+        sta     FACHO+5
+        lda     5,y
+        sbc     5,x
+        sta     FACHO+4
+        lda     4,y
+        sbc     4,x
+        sta     FACHO+3
+        lda     3,y
+        sbc     3,x
+        sta     FACHO+2
+        lda     2,y
+        sbc     2,x
+        sta     FACHO+1
+        lda     1,y
+        sbc     1,x
+        sta     FACHO
+FADFLT: bcs     NORMAL                  ;Branch if the result is positive
+        jsr     NEGFAC
+;Normalize FAC: shift the mantissa left until bit 7 of FACHO is set.
+NORMAL: ldy     #$00
+        tya
+        clc
+NORM3:  ldx     FACHO
+        bne     NORM1                   ;Branch if the top byte is not zero
+        ldx     FACHO+1
+        stx     FACHO
+        ldx     FACHO+2
+        stx     FACHO+1
+        ldx     FACHO+3
+        stx     FACHO+2
+        ldx     FACHO+4
+        stx     FACHO+3
+        ldx     FACHO+5
+        stx     FACHO+4
+        ldx     FACLO
+        stx     FACHO+5
+        ldx     FACOV
+        stx     FACLO
+        sty     FACOV
+        adc     #$08                    ;Shift left a whole byte at a time...
+        cmp     #$38                    ;...up to 7 times (56 bits)
+        bne     NORM3
+;FAC = 0
+ZEROFC: lda     #$00
+ZEROF1: sta     FACEXP
+ZEROML: sta     FACSGN
+        rts
 ; ----------------------------------------------------------------------------
-L9DA4:  adc     #$01                            ; 9DA4 69 01                    i.
-        asl     $3A                             ; 9DA6 06 3A                    .:
-        rol     $2C                             ; 9DA8 26 2C                    &,
-        rol     $2B                             ; 9DAA 26 2B                    &+
-        rol     $2A                             ; 9DAC 26 2A                    &*
-        rol     $29                             ; 9DAE 26 29                    &)
-        rol     $28                             ; 9DB0 26 28                    &(
-        rol     $27                             ; 9DB2 26 27                    &'
-        rol     $26                             ; 9DB4 26 26                    &&
-L9DB6:  bpl     L9DA4                           ; 9DB6 10 EC                    ..
-        sec                                     ; 9DB8 38                       8
-        sbc     $25                             ; 9DB9 E5 25                    .%
-        bcs     L9D6C                           ; 9DBB B0 AF                    ..
-        eor     #$FF                            ; 9DBD 49 FF                    I.
-        adc     #$01                            ; 9DBF 69 01                    i.
-        sta     $25                             ; 9DC1 85 25                    .%
-L9DC3:  bcc     L9DD9                           ; 9DC3 90 14                    ..
-L9DC5:  inc     $25                             ; 9DC5 E6 25                    .%
-        beq     L9E2F                           ; 9DC7 F0 66                    .f
-        ror     $26                             ; 9DC9 66 26                    f&
-        ror     $27                             ; 9DCB 66 27                    f'
-        ror     $28                             ; 9DCD 66 28                    f(
-        ror     $29                             ; 9DCF 66 29                    f)
-        ror     $2A                             ; 9DD1 66 2A                    f*
-        ror     $2B                             ; 9DD3 66 2B                    f+
-        ror     $2C                             ; 9DD5 66 2C                    f,
-        ror     $3A                             ; 9DD7 66 3A                    f:
-L9DD9:  rts                                     ; 9DD9 60                       `
+FADD2:  adc     OLDOV
+        sta     FACOV
+        lda     FACLO
+        adc     ARGLO
+        sta     FACLO
+        lda     FACHO+5
+        adc     ARGHO+5
+        sta     FACHO+5
+        lda     FACHO+4
+        adc     ARGHO+4
+        sta     FACHO+4
+        lda     FACHO+3
+        adc     ARGHO+3
+        sta     FACHO+3
+        lda     FACHO+2
+        adc     ARGHO+2
+        sta     FACHO+2
+        lda     FACHO+1
+        adc     ARGHO+1
+        sta     FACHO+1
+        lda     FACHO
+        adc     ARGHO
+        sta     FACHO
+        jmp     SQUEEZ
 ; ----------------------------------------------------------------------------
-L9DDA:  lda     $2D                             ; 9DDA A5 2D                    .-
-        eor     #$FF                            ; 9DDC 49 FF                    I.
-        sta     $2D                             ; 9DDE 85 2D                    .-
-L9DE0:  lda     $26                             ; 9DE0 A5 26                    .&
-        eor     #$FF                            ; 9DE2 49 FF                    I.
-        sta     $26                             ; 9DE4 85 26                    .&
-        lda     $27                             ; 9DE6 A5 27                    .'
-        eor     #$FF                            ; 9DE8 49 FF                    I.
-        sta     $27                             ; 9DEA 85 27                    .'
-        lda     $28                             ; 9DEC A5 28                    .(
-        eor     #$FF                            ; 9DEE 49 FF                    I.
-        sta     $28                             ; 9DF0 85 28                    .(
-        lda     $29                             ; 9DF2 A5 29                    .)
-        eor     #$FF                            ; 9DF4 49 FF                    I.
-        sta     $29                             ; 9DF6 85 29                    .)
-        lda     $2A                             ; 9DF8 A5 2A                    .*
-        eor     #$FF                            ; 9DFA 49 FF                    I.
-        sta     $2A                             ; 9DFC 85 2A                    .*
-        lda     $2B                             ; 9DFE A5 2B                    .+
-        eor     #$FF                            ; 9E00 49 FF                    I.
-        sta     $2B                             ; 9E02 85 2B                    .+
-        lda     $2C                             ; 9E04 A5 2C                    .,
-        eor     #$FF                            ; 9E06 49 FF                    I.
-        sta     $2C                             ; 9E08 85 2C                    .,
-        lda     $3A                             ; 9E0A A5 3A                    .:
-        eor     #$FF                            ; 9E0C 49 FF                    I.
-        sta     $3A                             ; 9E0E 85 3A                    .:
-        inc     $3a
-        bne     L9E2E                           ; 9E12 D0 1A                    ..
-L9E14:  inc     $2C                             ; 9E14 E6 2C                    .,
-        bne     L9E2E                           ; 9E16 D0 16                    ..
-        inc     $2B                             ; 9E18 E6 2B                    .+
-        bne     L9E2E                           ; 9E1A D0 12                    ..
-        inc     $2A                             ; 9E1C E6 2A                    .*
-        bne     L9E2E                           ; 9E1E D0 0E                    ..
-        inc     $29                             ; 9E20 E6 29                    .)
-        bne     L9E2E                           ; 9E22 D0 0A                    ..
-        inc     $28                             ; 9E24 E6 28                    .(
-        bne     L9E2E                           ; 9E26 D0 06                    ..
-        inc     $27                             ; 9E28 E6 27                    .'
-        bne     L9E2E                           ; 9E2A D0 02                    ..
-        inc     $26                             ; 9E2C E6 26                    .&
-L9E2E:  rts                                     ; 9E2E 60                       `
+NORM2:  adc     #$01
+        asl     FACOV
+        rol     FACLO
+        rol     FACHO+5
+        rol     FACHO+4
+        rol     FACHO+3
+        rol     FACHO+2
+        rol     FACHO+1
+        rol     FACHO
+NORM1:  bpl     NORM2                   ;Loop until bit 7 of FACHO is set
+        sec
+        sbc     FACEXP
+        bcs     ZEROFC                  ;Branch if the exponent underflowed: the result is 0
+        eor     #$FF
+        adc     #$01
+        sta     FACEXP
+SQUEEZ: bcc     RNDRTS                  ;Branch if the mantissa did not overflow
+RNDSHF: inc     FACEXP
+        beq     OVERR                   ;Branch if the exponent overflowed
+        ror     FACHO
+        ror     FACHO+1
+        ror     FACHO+2
+        ror     FACHO+3
+        ror     FACHO+4
+        ror     FACHO+5
+        ror     FACLO
+        ror     FACOV
+RNDRTS: rts
 ; ----------------------------------------------------------------------------
-L9E2F:  ldx     #$0F                            ; 9E2F A2 0F                    ..
-        jmp     LFB4B                           ; 9E31 4C 4B FB                 LK.
+;Negate FAC: flip its sign and two's complement the mantissa.
+NEGFAC: lda     FACSGN
+        eor     #$FF
+        sta     FACSGN
+NEGFCH: lda     FACHO
+        eor     #$FF
+        sta     FACHO
+        lda     FACHO+1
+        eor     #$FF
+        sta     FACHO+1
+        lda     FACHO+2
+        eor     #$FF
+        sta     FACHO+2
+        lda     FACHO+3
+        eor     #$FF
+        sta     FACHO+3
+        lda     FACHO+4
+        eor     #$FF
+        sta     FACHO+4
+        lda     FACHO+5
+        eor     #$FF
+        sta     FACHO+5
+        lda     FACLO
+        eor     #$FF
+        sta     FACLO
+        lda     FACOV
+        eor     #$FF
+        sta     FACOV
+        inc     FACOV
+        bne     INCFRT
+;Add 1 to the mantissa of FAC.
+INCFAC: inc     FACLO
+        bne     INCFRT
+        inc     FACHO+5
+        bne     INCFRT
+        inc     FACHO+4
+        bne     INCFRT
+        inc     FACHO+3
+        bne     INCFRT
+        inc     FACHO+2
+        bne     INCFRT
+        inc     FACHO+1
+        bne     INCFRT
+        inc     FACHO
+INCFRT: rts
 ; ----------------------------------------------------------------------------
-L9E34:  ldx     #$0B                            ; 9E34 A2 0B                    ..
-L9E36:  ldy     $07,x                           ; 9E36 B4 07                    ..
-        sty     $3A                             ; 9E38 84 3A                    .:
-        ldy     $06,x                           ; 9E3A B4 06                    ..
-        sty     $07,x                           ; 9E3C 94 07                    ..
-        ldy     $05,x                           ; 9E3E B4 05                    ..
+;?OVERFLOW ERROR
+OVERR:  ldx     #$0F                    ;BASIC error number
+        jmp     JMP_IERROR
+; ----------------------------------------------------------------------------
+;Shift a mantissa right.  SHIFTR is called with X = the address of the
+;exponent byte, which is just before the mantissa (FACEXP for FAC, ARGEXP for
+;ARG), A = minus the number of bits, and carry clear.  Whole bytes are moved
+;first, bringing in BITS at the top.  MULSHF shifts the product in RESHO
+;right by one byte.
+MULSHF: ldx     #$0B
+SHFTR2: ldy     $07,x
+        sty     FACOV
+        ldy     $06,x
+        sty     $07,x
+        ldy     $05,x
         sty     $06,X
         ldy     $04,X
         sty     $05,X
         ldy     $03,X
         sty     $04,X
         ldy     $02,X
-        sty     $03,x                           ; 9E4C 94 03                    ..
-        ldy     $01,x                           ; 9E4E B4 01                    ..
-        sty     $02,x                           ; 9E50 94 02                    ..
-        ldy     $2F                             ; 9E52 A4 2F                    ./
-        sty     $01,x                           ; 9E54 94 01                    ..
-L9E56:  adc     #$08                            ; 9E56 69 08                    i.
-        bmi     L9E36                           ; 9E58 30 DC                    0.
-        beq     L9E36                           ; 9E5A F0 DA                    ..
-        sbc     #$08                            ; 9E5C E9 08                    ..
-        tay                                     ; 9E5E A8                       .
-        lda     $3A                             ; 9E5F A5 3A                    .:
-        bcs     L9E7D
-L9E63:  asl     $01,x
-        bcc     L9E69                           ; 9E65 90 02                    ..
-        inc     $01,x                           ; 9E67 F6 01                    ..
-L9E69:  ror     $01,x                           ; 9E69 76 01                    v.
-        ror     $01,x                           ; 9E6B 76 01                    v.
-L9E6D:  ror     $02,x                           ; 9E6D 76 02                    v.
-        ror     $03,x                           ; 9E6F 76 03                    v.
-        ror     $04,x                           ; 9E71 76 04                    v.
-        ror     $05,x                           ; 9E73 76 05                    v.
-        ror     $06,x                           ; 9E75 76 06                    v.
-        ror     $07,x                           ; 9E77 76 07                    v.
-        ror     a                               ; 9E79 6A                       j
-        iny                                     ; 9E7A C8                       .
-        bne     L9E63                           ; 9E7B D0 E6                    ..
-L9E7D:  clc                                     ; 9E7D 18                       .
-        rts                                     ; 9E7E 60                       `
+        sty     $03,x
+        ldy     $01,x
+        sty     $02,x
+        ldy     BITS
+        sty     $01,x
+SHIFTR: adc     #$08
+        bmi     SHFTR2
+        beq     SHFTR2
+        sbc     #$08
+        tay
+        lda     FACOV
+        bcs     SHFTRT
+SHFTR3: asl     $01,x
+        bcc     SHFTR4
+        inc     $01,x
+SHFTR4: ror     $01,x
+        ror     $01,x
+ROLSHF: ror     $02,x
+        ror     $03,x
+        ror     $04,x
+        ror     $05,x
+        ror     $06,x
+        ror     $07,x
+        ror     a
+        iny
+        bne     SHFTR3
+SHFTRT: clc
+        rts
 ; ----------------------------------------------------------------------------
-L9E7F:  sta     ($00,x)                         ; 9E7F 81 00                    ..
-        brk                                     ; 9E81 00                       .
-        brk                                     ; 9E82 00                       .
-        brk                                     ; 9E83 00                       .
-        brk                                     ; 9E84 00                       .
-        brk                                     ; 9E85 00                       .
-        brk                                     ; 9E86 00                       .
-L9E87:  php                                     ; 9E87 08                       .
-        ror     LCD2D,x                         ; 9E88 7E 2D CD                 ~-.
-        stz     $DB                             ; 9E8B 64 DB                    d.
-        lda     ($F8,x)                         ; 9E8D A1 F8                    ..
-        pla                                     ; 9E8F 68                       h
-        ror     $F944,x                         ; 9E90 7E 44 F9                 ~D.
-        cld                                     ; 9E93 D8                       .
-        ldy     WIN_BTM_RGHT_Y,x                ; 9E94 B4 A6                    ..
-        ;TODO probably data
-        bbr7    $F4,$9F17                       ; 9E96 7F F4 7E                 ..~
-        .byte   $63                             ; 9E99 63                       c
-        rmb4    $AB                             ; 9E9A 47 AB                    G.
-        lsr     $98                             ; 9E9C 46 98                    F.
-        .byte   $BB                             ; 9E9E BB                       .
-        tsb     $7F                             ; 9E9F 04 7F                    ..
-L9EA1:  asl     $4D                             ; 9EA1 06 4D                    .M
-        .byte   $42                             ; 9EA3 42                       B
-        jmp     $11A0                           ; 9EA4 4C A0 11                 L..
+FONE:
+        .byte   $81,$00,$00,$00,$00,$00,$00,$00 ;1
+
+;Coefficients for LOG
+LOGCN2:
+        .byte   $08                     ;Degree of the polynomial: 9 coefficients follow
+        .byte   $7E,$2D,$CD,$64,$DB,$A1,$F8,$68 ;0.16972882833987804
+        .byte   $7E,$44,$F9,$D8,$B4,$A6,$7F,$F4 ;0.19235933878519512
+        .byte   $7E,$63,$47,$AB,$46,$98,$BB,$04 ;0.22195308321368667
+        .byte   $7F,$06,$4D,$42,$4C,$A0,$11,$66 ;0.2623081892525388
+        .byte   $7F,$24,$25,$89,$EB,$E0,$15,$46 ;0.3205988979753252
+        .byte   $7F,$53,$0B,$B1,$53,$D6,$F6,$CC ;0.41219858311113244
+        .byte   $80,$13,$BB,$62,$87,$7C,$DF,$EE ;0.5770780163555853
+        .byte   $80,$76,$38,$4E,$E1,$D0,$1F,$E8 ;0.9617966939259756
+        .byte   $82,$38,$AA,$3B,$29,$5C,$17,$EE ;2.8853900817779268
+
+SQR05:
+        .byte   $80,$35,$04,$F3,$33,$F9,$DE,$68 ;0.7071067811865476 = 1/SQR(2)
+SQRTWO:
+        .byte   $81,$35,$04,$F3,$33,$F9,$DE,$68 ;1.4142135623730951 = SQR(2)
+NEGHLF:
+        .byte   $80,$80,$00,$00,$00,$00,$00,$00 ;-0.5
+LOG2:
+        .byte   $80,$31,$72,$17,$F7,$D1,$CF,$7C ;0.6931471805599454 = LOG(2)
 ; ----------------------------------------------------------------------------
-        ror     $7F                             ; 9EA7 66 7F                    f.
-        bit     $25                             ; 9EA9 24 25                    $%
-        bit     #$EB                            ; 9EAB 89 EB                    ..
-        cpx     #$15                            ; 9EAD E0 15                    ..
-        lsr     $7F                             ; 9EAF 46 7F                    F.
-        .byte   $53                             ; 9EB1 53                       S
-        .byte   $0B                             ; 9EB2 0B                       .
-        lda     ($53),y                         ; 9EB3 B1 53                    .S
-        dec     $F6,x                           ; 9EB5 D6 F6                    ..
-        cpy     $1380                           ; 9EB7 CC 80 13                 ...
-        .byte   $BB                             ; 9EBA BB                       .
-        .byte   $62                             ; 9EBB 62                       b
-        smb0    $7C                             ; 9EBC 87 7C                    .|
-        ;TODO probably data
-        bbs5    $EE,$9E41                       ; 9EBE DF EE 80                 ...
-        ror     $38,x                           ; 9EC1 76 38                    v8
-        lsr     $D0E1                           ; 9EC3 4E E1 D0                 N..
-        ;TODO probably data
-        bbr1    $E8,$9E4B                       ; 9EC6 1F E8 82                 ...
-        sec                                     ; 9EC9 38                       8
-        tax                                     ; 9ECA AA                       .
-        .byte   $3B                             ; 9ECB 3B                       ;
-        and     #$5C                            ; 9ECC 29 5C                    )\
-        rmb1    $EE                             ; 9ECE 17 EE                    ..
+;FAC = natural logarithm of FAC
+LOG:    jsr     SIGN
+        beq     LOGERR                  ;Branch if FAC is zero: illegal quantity
+        bpl     LOG1
+LOGERR: jmp     FCERR
 ; ----------------------------------------------------------------------------
-L9ED0:  bra     L9F07                           ; 9ED0 80 35                    .5
-        tsb     $F3                             ; 9ED2 04 F3                    ..
-        .byte   $33                             ; 9ED4 33                       3
-        sbc     $68DE,y                         ; 9ED5 F9 DE 68                 ..h
-; ----------------------------------------------------------------------------
-L9ED8:  sta     ($35,x)                         ; 9ED8 81 35                    .5
-        tsb     $F3                             ; 9EDA 04 F3                    ..
-        .byte   $33                             ; 9EDC 33                       3
-        sbc     $68DE,y                         ; 9EDD F9 DE 68                 ..h
-; ----------------------------------------------------------------------------
-L9EE0:  bra     $9E62 ;todo branches mid-instruction, probably data ; 9EE0 80 80                    ..
-        brk                                     ; 9EE2 00                       .
-        brk                                     ; 9EE3 00                       .
-        brk                                     ; 9EE4 00                       .
-        brk                                     ; 9EE5 00                       .
-        brk                                     ; 9EE6 00                       .
-        brk                                     ; 9EE7 00                       .
-; ----------------------------------------------------------------------------
-L9EE8:  bra     $9F1B ;todo branches mid-instruction, probably data ; 9EE8 80 31                    .1
-        adc     ($17)                           ; 9EEA 72 17                    r.
-        smb7    $D1                             ; 9EEC F7 D1                    ..
-        .byte   $CF                             ; 9EEE CF                       .
-        .byte   $7C                             ; 9EEF 7C                       |
-; ----------------------------------------------------------------------------
-L9EF0_X1C:  jsr     LA29A_X36                           ; 9EF0 20 9A A2                  ..
-        beq     L9EF7                           ; 9EF3 F0 02                    ..
-        bpl     L9EFA                           ; 9EF5 10 03                    ..
-L9EF7:  jmp     L9C05                           ; 9EF7 4C 05 9C                 L..
-; ----------------------------------------------------------------------------
-L9EFA:  lda     $25
+LOG1:   lda     FACEXP
         sbc     #$7f
         pha
         lda     #$80
-        sta     $25
-        lda     #<L9ED0
-        ldy     #>L9ED0
-L9F07:  jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12
-        lda     #<L9ED8
-        ldy     #>L9ED8
-        jsr     L9F54_JSR_INDIRECT_STUFF_AND_JMP_LA0F9_X1A
-L9F11:  lda     #<L9E7F
-        ldy     #>L9E7F
-        jsr     L9F48_JSR_INDIRECT_STUFF_AND_JMP_L9CA7_X0E
-L9F18:  lda     #<L9E87
-        ldy     #>L9E87
-L9F1C:  jsr     LA77E_UNKNOWN_OTHER_INDIRECT_STUFF
-        lda     #<L9EE0
-        ldy     #>L9EE0
-        jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12
+        sta     FACEXP
+        lda     #<SQR05
+        ldy     #>SQR05
+        jsr     FADD_ROM
+        lda     #<SQRTWO
+        ldy     #>SQRTWO
+        jsr     FDIV_ROM
+        lda     #<FONE
+        ldy     #>FONE
+        jsr     FSUB_ROM
+        lda     #<LOGCN2
+        ldy     #>LOGCN2
+        jsr     POLYX
+        lda     #<NEGHLF
+        ldy     #>NEGHLF
+        jsr     FADD_ROM
         pla
-        jsr     LA421_X52
-        lda     #<L9EE8
-        ldy     #>L9EE8
-L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF:
-        jsr     L9FF1_X3E_INDIRECT_STUFF
-L9F31:  bra     L9F63_X16                           ; 9F31 80 30                    .0
-L9F33_X62:  jsr     LA06D_X68                           ; 9F33 20 6D A0                  m.
-        bra     L9F63_X16                           ; 9F36 80 2B                    .+
-L9F38:  lda     #<LA5BF                         ; 9F38 A9 BF                    ..
-        ldy     #>LA5BF                         ; 9F3A A0 A5                    ..
-L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12:
-        jsr     L9FF1_X3E_INDIRECT_STUFF            ; 9F3C 20 F1 9F                  ..
-        jmp     L9CBE_X12                           ; 9F3F 4C BE 9C                 L..
+        jsr     FINLOG
+        lda     #<LOG2
+        ldy     #>LOG2
+;FAC = number in memory (KERN) * FAC
+FMULT_ROM:
+        jsr     ROMUPK
+        bra     FMULTT
+;FAC = number in memory (APPL) * FAC
+FMULT_APPL:
+        jsr     CONUPK_APPL
+        bra     FMULTT
+;FAC = FAC + 0.5
+FADDH:  lda     #<FHALF
+        ldy     #>FHALF
+;FAC = number in memory (KERN) + FAC
+FADD_ROM:
+        jsr     ROMUPK
+        jmp     FADDT
 ; ----------------------------------------------------------------------------
-L9F42_X60:  jsr     LA06D_X68                           ; 9F42 20 6D A0                  m.
-        jmp     L9CBE_X12                           ; 9F45 4C BE 9C                 L..
+;FAC = number in memory (APPL) + FAC
+FADD_APPL:
+        jsr     CONUPK_APPL
+        jmp     FADDT
 ; ----------------------------------------------------------------------------
-L9F48_JSR_INDIRECT_STUFF_AND_JMP_L9CA7_X0E:
-        jsr     L9FF1_X3E_INDIRECT_STUFF            ; 9F48 20 F1 9F                  ..
-        jmp     L9CA7_X0E                           ; 9F4B 4C A7 9C                 L..
+;FAC = number in memory (KERN) - FAC
+FSUB_ROM:
+        jsr     ROMUPK
+        jmp     FSUBT
 ; ----------------------------------------------------------------------------
-L9F4E_X5E:  jsr     LA06D_X68                           ; 9F4E 20 6D A0                  m.
-        jmp     L9CA7_X0E                           ; 9F51 4C A7 9C                 L..
+;FAC = number in memory (APPL) - FAC
+FSUB_APPL:
+        jsr     CONUPK_APPL
+        jmp     FSUBT
 ; ----------------------------------------------------------------------------
-L9F54_JSR_INDIRECT_STUFF_AND_JMP_LA0F9_X1A:
-        jsr     L9FF1_X3E_INDIRECT_STUFF                           ; 9F54 20 F1 9F                  ..
-        jmp     LA0F9_X1A                           ; 9F57 4C F9 A0                 L..
+;FAC = number in memory (KERN) / FAC
+FDIV_ROM:
+        jsr     ROMUPK
+        jmp     FDIVT
 ; ----------------------------------------------------------------------------
-L9F5A_X64:  jsr     LA06D_X68                           ; 9F5A 20 6D A0                  m.
-        jmp     LA0F9_X1A                           ; 9F5D 4C F9 A0                 L..
+;FAC = number in memory (APPL) / FAC
+FDIV_APPL:
+        jsr     CONUPK_APPL
+        jmp     FDIVT
 ; ----------------------------------------------------------------------------
-L9F60_X14:  jsr     LA02B_X3C                           ; 9F60 20 2B A0                  +.
-L9F63_X16:  bne     L9F68                           ; 9F63 D0 03                    ..
-        jmp     L9FF0                           ; 9F65 4C F0 9F                 L..
+;FAC = number in memory * FAC
+FMULT:  jsr     CONUPK
+;FAC = ARG * FAC.  Call with A = FACEXP and the flags set from it.
+FMULTT: bne     L9F68_NOT_ZERO          ;Branch if FAC is not zero
+        jmp     MULTRT
 ; ----------------------------------------------------------------------------
-L9F68:  jsr     LA096                           ; 9F68 20 96 A0                  ..
-        lda     #$00                            ; 9F6B A9 00                    ..
-        sta     $0C                             ; 9F6D 85 0C                    ..
-        sta     $0D                             ; 9F6F 85 0D                    ..
-        sta     $0E                             ; 9F71 85 0E                    ..
-        sta     $0F                             ; 9F73 85 0F                    ..
-        sta     $10                             ; 9F75 85 10                    ..
-        sta     $11                             ; 9F77 85 11                    ..
-        sta     $12                             ; 9F79 85 12                    ..
-        lda     $3A                             ; 9F7B A5 3A                    .:
-        jsr     L9FA6                           ; 9F7D 20 A6 9F                  ..
-        lda     $2C                             ; 9F80 A5 2C                    .,
-        jsr     L9FA6                           ; 9F82 20 A6 9F                  ..
-L9F85:  lda     $2B                             ; 9F85 A5 2B                    .+
-        jsr     L9FA6                           ; 9F87 20 A6 9F                  ..
-        lda     $2A                             ; 9F8A A5 2A                    .*
-        jsr     L9FA6                           ; 9F8C 20 A6 9F                  ..
-        lda     $29                             ; 9F8F A5 29                    .)
-        jsr     L9FA6                           ; 9F91 20 A6 9F                  ..
-        lda     $28                             ; 9F94 A5 28                    .(
-        jsr     L9FA6                           ; 9F96 20 A6 9F                  ..
-        lda     $27                             ; 9F99 A5 27                    .'
-        jsr     L9FA6                           ; 9F9B 20 A6 9F                  ..
-        lda     $26                             ; 9F9E A5 26                    .&
-        jsr     L9FAB                           ; 9FA0 20 AB 9F                  ..
-        jmp     LA198                           ; 9FA3 4C 98 A1                 L..
+L9F68_NOT_ZERO:
+        jsr     MULDIV                  ;Add the exponents
+        lda     #$00
+        sta     RESHO                   ;Clear the product
+        sta     RESHO+1
+        sta     RESHO+2
+        sta     RESHO+3
+        sta     RESHO+4
+        sta     RESHO+5
+        sta     RESHO+6
+        lda     FACOV
+        jsr     MLTPLY                  ;Multiply by each byte of FAC, lowest first
+        lda     FACLO
+        jsr     MLTPLY
+        lda     FACHO+5
+        jsr     MLTPLY
+        lda     FACHO+4
+        jsr     MLTPLY
+        lda     FACHO+3
+        jsr     MLTPLY
+        lda     FACHO+2
+        jsr     MLTPLY
+        lda     FACHO+1
+        jsr     MLTPLY
+        lda     FACHO
+        jsr     MLTPL1
+        jmp     MOVFR                   ;FAC = product, normalized
 ; ----------------------------------------------------------------------------
-L9FA6:  bne     L9FAB                           ; 9FA6 D0 03                    ..
-        jmp     L9E34                           ; 9FA8 4C 34 9E                 L4.
+;Multiply ARG by the byte in A and add it into the product in RESHO.
+MLTPLY: bne     MLTPL1
+        jmp     MULSHF
 ; ----------------------------------------------------------------------------
-L9FAB:  lsr     a                               ; 9FAB 4A                       J
-        ora     #$80                            ; 9FAC 09 80                    ..
-L9FAE:  tay                                     ; 9FAE A8                       .
-        bcc     L9FDC                           ; 9FAF 90 2B                    .+
-        clc                                     ; 9FB1 18                       .
-        lda     $12                             ; 9FB2 A5 12                    ..
-        adc     $37                             ; 9FB4 65 37                    e7
-        sta     $12                             ; 9FB6 85 12                    ..
-        lda     $11                             ; 9FB8 A5 11                    ..
-L9FBA:  adc     $36                             ; 9FBA 65 36                    e6
-        sta     $11                             ; 9FBC 85 11                    ..
-        lda     $10                             ; 9FBE A5 10                    ..
-        adc     $35                             ; 9FC0 65 35                    e5
-        sta     $10                             ; 9FC2 85 10                    ..
-        lda     $0F                             ; 9FC4 A5 0F                    ..
-        adc     $34                             ; 9FC6 65 34                    e4
-        sta     $0F                             ; 9FC8 85 0F                    ..
-        lda     $0E                             ; 9FCA A5 0E                    ..
-        adc     $33                             ; 9FCC 65 33                    e3
-        sta     $0E                             ; 9FCE 85 0E                    ..
-        lda     $0D                             ; 9FD0 A5 0D                    ..
-        adc     $32                             ; 9FD2 65 32                    e2
-        sta     $0D                             ; 9FD4 85 0D                    ..
-        lda     $0C                             ; 9FD6 A5 0C                    ..
-        adc     $31                             ; 9FD8 65 31                    e1
-        sta     $0C                             ; 9FDA 85 0C                    ..
-L9FDC:  ror     $0C                             ; 9FDC 66 0C                    f.
-        ror     $0D                             ; 9FDE 66 0D                    f.
-        ror     $0E                             ; 9FE0 66 0E                    f.
-        ror     $0F                             ; 9FE2 66 0F                    f.
-        ror     $10                             ; 9FE4 66 10                    f.
-        ror     $11                             ; 9FE6 66 11                    f.
-        ror     $12                             ; 9FE8 66 12                    f.
-        ror     $3A                             ; 9FEA 66 3A                    f:
-        tya                                     ; 9FEC 98                       .
-        lsr     a                               ; 9FED 4A                       J
-        bne     L9FAE                           ; 9FEE D0 BE                    ..
-L9FF0:  rts                                     ; 9FF0 60                       `
+MLTPL1: lsr     a
+        ora     #$80
+MLTPL2: tay
+        bcc     MLTPL3
+        clc
+        lda     RESHO+6
+        adc     ARGLO
+        sta     RESHO+6
+        lda     RESHO+5
+        adc     ARGHO+5
+        sta     RESHO+5
+        lda     RESHO+4
+        adc     ARGHO+4
+        sta     RESHO+4
+        lda     RESHO+3
+        adc     ARGHO+3
+        sta     RESHO+3
+        lda     RESHO+2
+        adc     ARGHO+2
+        sta     RESHO+2
+        lda     RESHO+1
+        adc     ARGHO+1
+        sta     RESHO+1
+        lda     RESHO
+        adc     ARGHO
+        sta     RESHO
+MLTPL3: ror     RESHO
+        ror     RESHO+1
+        ror     RESHO+2
+        ror     RESHO+3
+        ror     RESHO+4
+        ror     RESHO+5
+        ror     RESHO+6
+        ror     FACOV
+        tya
+        lsr     a
+        bne     MLTPL2
+MULTRT: rts
 ; ----------------------------------------------------------------------------
-;Address in A (low byte) Y (high byte)
-L9FF1_X3E_INDIRECT_STUFF:
-        sta     $08                             ; 9FF1 85 08                    ..
-        sty     $09                             ; 9FF3 84 09                    ..
-        ldy     #$07                            ; 9FF5 A0 07                    ..
-        lda     ($08),y                         ; 9FF7 B1 08                    ..
-        sta     $37                             ; 9FF9 85 37                    .7
-        dey                                     ; 9FFB 88                       .
-        lda     ($08),y                         ; 9FFC B1 08                    ..
-        sta     $36                             ; 9FFE 85 36                    .6
-        dey                                     ; A000 88                       .
-        lda     ($08),y                         ; A001 B1 08                    ..
-        sta     $35                             ; A003 85 35                    .5
-        dey                                     ; A005 88                       .
-        lda     ($08),y                         ; A006 B1 08                    ..
-        sta     $34                             ; A008 85 34                    .4
-        dey                                     ; A00A 88                       .
-        lda     ($08),y                         ; A00B B1 08                    ..
-        sta     $33                             ; A00D 85 33                    .3
-        dey                                     ; A00F 88                       .
-        lda     ($08),y                         ; A010 B1 08                    ..
-        sta     $32                             ; A012 85 32                    .2
-        dey                                     ; A014 88                       .
-        lda     ($08),y                         ; A015 B1 08                    ..
-        sta     $38                             ; A017 85 38                    .8
-        eor     $2D                             ; A019 45 2D                    E-
-        sta     $39                             ; A01B 85 39                    .9
-        lda     $38                             ; A01D A5 38                    .8
-        ora     #$80                            ; A01F 09 80                    ..
-        sta     $31                             ; A021 85 31                    .1
-        dey                                     ; A023 88                       .
-        lda     ($08),y                         ; A024 B1 08                    ..
-        sta     $30                             ; A026 85 30                    .0
-        lda     $25                             ; A028 A5 25                    .%
-        rts                                     ; A02A 60                       `
-; ----------------------------------------------------------------------------
-LA02B_X3C:  sta     $08                             ; A02B 85 08                    ..
-        sty     $09                             ; A02D 84 09                    ..
-        ldy     #$07                            ; A02F A0 07                    ..
-        jsr     L9C36                           ; A031 20 36 9C                  6.
-        sta     $37                             ; A034 85 37                    .7
-        dey                                     ; A036 88                       .
-        jsr     L9C36                           ; A037 20 36 9C                  6.
-        sta     $36                             ; A03A 85 36                    .6
-        dey                                     ; A03C 88                       .
-        jsr     L9C36                           ; A03D 20 36 9C                  6.
-        sta     $35                             ; A040 85 35                    .5
-        dey                                     ; A042 88                       .
-        jsr     L9C36                           ; A043 20 36 9C                  6.
-        sta     $34                             ; A046 85 34                    .4
-        dey                                     ; A048 88                       .
-        jsr     L9C36                           ; A049 20 36 9C                  6.
-        sta     $33                             ; A04C 85 33                    .3
-        dey                                     ; A04E 88                       .
-        jsr     L9C36                           ; A04F 20 36 9C                  6.
-        sta     $32                             ; A052 85 32                    .2
-        dey                                     ; A054 88                       .
-LA055:  jsr     L9C36                           ; A055 20 36 9C                  6.
-        sta     $38                             ; A058 85 38                    .8
-        eor     $2D                             ; A05A 45 2D                    E-
-        sta     $39                             ; A05C 85 39                    .9
-        lda     $38                             ; A05E A5 38                    .8
-        ora     #$80                            ; A060 09 80                    ..
-        sta     $31                             ; A062 85 31                    .1
-        dey                                     ; A064 88                       .
-        jsr     L9C36
-        sta     $30                             ; A068 85 30                    .0
-        lda     $25                             ; A06A A5 25                    .%
-        rts                                     ; A06C 60                       `
-; ----------------------------------------------------------------------------
-LA06D_X68:  sta     $08                             ; A06D 85 08                    ..
-        sty     $09                             ; A06F 84 09                    ..
+;ARG = number in memory, as the KERNAL sees memory.  The address is in A (low
+;byte) and Y (high byte).  Returns A = FACEXP with the flags set from it, and
+;ARISGN set for the signs of FAC and ARG, ready for FADDT, FMULTT and so on.
+ROMUPK:
+        sta     INDEX1
+        sty     INDEX1+1
         ldy     #$07
-LA073:  jsr     L9C3E                           ; A073 20 3E 9C                  >.
-        sta     $30,y                           ; A076 99 30 00                 .0.
-        dey                                     ; A079 88                       .
-        cpy     #$02                            ; A07A C0 02                    ..
-        bcs     LA073                           ; A07C B0 F5                    ..
-        jsr     L9C3E                           ; A07E 20 3E 9C                  >.
-        sta     $38                             ; A081 85 38                    .8
-        eor     $2D                             ; A083 45 2D                    E-
-        sta     $39                             ; A085 85 39                    .9
-        lda     $38                             ; A087 A5 38                    .8
-        ora     #$80                            ; A089 09 80                    ..
-        sta     $31                             ; A08B 85 31                    .1
-        dey                                     ; A08D 88                       .
-        jsr     L9C3E                           ; A08E 20 3E 9C                  >.
-        sta     $30                             ; A091 85 30                    .0
-        lda     $25                             ; A093 A5 25                    .%
-        rts                                     ; A095 60                       `
+        lda     (INDEX1),y
+        sta     ARGLO
+        dey
+        lda     (INDEX1),y
+        sta     ARGHO+5
+        dey
+        lda     (INDEX1),y
+        sta     ARGHO+4
+        dey
+        lda     (INDEX1),y
+        sta     ARGHO+3
+        dey
+        lda     (INDEX1),y
+        sta     ARGHO+2
+        dey
+        lda     (INDEX1),y
+        sta     ARGHO+1
+        dey
+        lda     (INDEX1),y
+        sta     ARGSGN
+        eor     FACSGN                  ;ARISGN bit 7 = the signs are different
+        sta     ARISGN
+        lda     ARGSGN
+        ora     #$80                    ;Bit 7 of the first mantissa byte is the sign in memory; set it for ARG
+        sta     ARGHO
+        dey
+        lda     (INDEX1),y
+        sta     ARGEXP
+        lda     FACEXP
+        rts
 ; ----------------------------------------------------------------------------
-LA096:  lda     $30                             ; A096 A5 30                    .0
-LA098:  beq     LA0B9                           ; A098 F0 1F                    ..
-        clc                                     ; A09A 18                       .
-        adc     $25                             ; A09B 65 25                    e%
-        bcc     LA0A3                           ; A09D 90 04                    ..
-        bmi     LA0BE                           ; A09F 30 1D                    0.
-        clc                                     ; A0A1 18                       .
-        .byte   $2C                             ; A0A2 2C                       ,
-LA0A3:  bpl     LA0B9                           ; A0A3 10 14                    ..
-        adc     #$80                            ; A0A5 69 80                    i.
-        sta     $25                             ; A0A7 85 25                    .%
-        bne     LA0AE                           ; A0A9 D0 03                    ..
-        jmp     L9D70                           ; A0AB 4C 70 9D                 Lp.
+;ARG = number in memory (in RAM).  See ROMUPK.
+CONUPK: sta     INDEX1
+        sty     INDEX1+1
+        ldy     #$07
+        jsr     GET_INDEX1_RAM
+        sta     ARGLO
+        dey
+        jsr     GET_INDEX1_RAM
+        sta     ARGHO+5
+        dey
+        jsr     GET_INDEX1_RAM
+        sta     ARGHO+4
+        dey
+        jsr     GET_INDEX1_RAM
+        sta     ARGHO+3
+        dey
+        jsr     GET_INDEX1_RAM
+        sta     ARGHO+2
+        dey
+        jsr     GET_INDEX1_RAM
+        sta     ARGHO+1
+        dey
+        jsr     GET_INDEX1_RAM
+        sta     ARGSGN
+        eor     FACSGN
+        sta     ARISGN
+        lda     ARGSGN
+        ora     #$80
+        sta     ARGHO
+        dey
+        jsr     GET_INDEX1_RAM
+        sta     ARGEXP
+        lda     FACEXP
+        rts
 ; ----------------------------------------------------------------------------
-LA0AE:  lda     $39                             ; A0AE A5 39                    .9
-        sta     $2D                             ; A0B0 85 2D                    .-
-        rts                                     ; A0B2 60                       `
+;ARG = number in memory, as the application sees memory.  See ROMUPK.
+CONUPK_APPL:
+        sta     INDEX1
+        sty     INDEX1+1
+        ldy     #$07
+LA073_LOOP:
+        jsr     GET_INDEX1_APPL
+        sta     ARGEXP,y
+        dey
+        cpy     #$02
+        bcs     LA073_LOOP
+        jsr     GET_INDEX1_APPL
+        sta     ARGSGN
+        eor     FACSGN
+        sta     ARISGN
+        lda     ARGSGN
+        ora     #$80
+        sta     ARGHO
+        dey
+        jsr     GET_INDEX1_APPL
+        sta     ARGEXP
+        lda     FACEXP
+        rts
 ; ----------------------------------------------------------------------------
-LA0B3:  lda     $2D                             ; A0B3 A5 2D                    .-
-        eor     #$FF                            ; A0B5 49 FF                    I.
-        bmi     LA0BE                           ; A0B7 30 05                    0.
-LA0B9:  pla                                     ; A0B9 68                       h
-        pla                                     ; A0BA 68                       h
-        jmp     L9D6C                           ; A0BB 4C 6C 9D                 Ll.
+;Add the exponent of ARG to that of FAC for multiply or divide, and set
+;the sign of the result.  If the result under- or overflows, the caller's
+;return address is thrown away and FAC is set to zero, or OVERR is taken.
+MULDIV: lda     ARGEXP
+MLDEXP: beq     ZEREMV
+        clc
+        adc     FACEXP
+        bcc     TRYOFF
+        bmi     GOOVER
+        clc
+        .byte   $2C
+TRYOFF: bpl     ZEREMV
+        adc     #$80
+        sta     FACEXP
+        bne     LA0AE_SET_SIGN
+        jmp     ZEROML
 ; ----------------------------------------------------------------------------
-LA0BE:  jmp     L9E2F                           ; A0BE 4C 2F 9E                 L/.
+LA0AE_SET_SIGN:
+        lda     ARISGN
+        sta     FACSGN
+        rts
 ; ----------------------------------------------------------------------------
-LA0C1:  jsr     LA27B_X48                           ; A0C1 20 7B A2                  {.
-        tax                                     ; A0C4 AA                       .
-        beq     LA0D7                           ; A0C5 F0 10                    ..
-        clc                                     ; A0C7 18                       .
-        adc     #$02                            ; A0C8 69 02                    i.
-        bcs     LA0BE                           ; A0CA B0 F2                    ..
-        ldx     #$00                            ; A0CC A2 00                    ..
-        stx     $39                             ; A0CE 86 39                    .9
-        jsr     L9CCB                           ; A0D0 20 CB 9C                  ..
-        inc     $25                             ; A0D3 E6 25                    .%
-        beq     LA0BE                           ; A0D5 F0 E7                    ..
-LA0D7:  rts                                     ; A0D7 60                       `
+MLDVEX: lda     FACSGN
+        eor     #$FF
+        bmi     GOOVER
+ZEREMV: pla
+        pla
+        jmp     ZEROFC
 ; ----------------------------------------------------------------------------
-LA0D8:  sty     $20                             ; A0D8 84 20                    .
-        brk                                     ; A0DA 00                       .
-        brk                                     ; A0DB 00                       .
-        brk                                     ; A0DC 00                       .
-        brk                                     ; A0DD 00                       .
-        brk                                     ; A0DE 00                       .
-        brk                                     ; A0DF 00                       .
-LA0E0:  ldx     #$14                            ; A0E0 A2 14                    ..
-        jmp     LFB4B                           ; A0E2 4C 4B FB                 LK.
+GOOVER: jmp     OVERR
 ; ----------------------------------------------------------------------------
-LA0E5:  jsr     LA27B_X48
-        lda     #<LA0D8
-        ldy     #>LA0D8                         ; A0EA A0 A0                    ..
-        ldx     #$00                            ; A0EC A2 00                    ..
-LA0EE:  stx     $39                             ; A0EE 86 39                    .9
-        jsr     LA1DD_X42_INDIRECT_STUFF_LOAD       ; A0F0 20 DD A1                  ..
-        jmp     LA0F9_X1A                           ; A0F3 4C F9 A0                 L..
+;FAC = FAC * 10
+MUL10:  jsr     MOVAF
+        tax
+        beq     MUL10R
+        clc
+        adc     #$02
+        bcs     GOOVER
+        ldx     #$00
+        stx     ARISGN
+        jsr     FADDC
+        inc     FACEXP
+        beq     GOOVER
+MUL10R: rts
 ; ----------------------------------------------------------------------------
-LA0F6_X18:  jsr     LA02B_X3C                           ; A0F6 20 2B A0                  +.
-LA0F9_X1A:  beq     LA0E0                           ; A0F9 F0 E5                    ..
-        jsr     LA28A_X32                           ; A0FB 20 8A A2                  ..
-        lda     #$00                            ; A0FE A9 00                    ..
-        sec                                     ; A100 38                       8
-        sbc     $25                             ; A101 E5 25                    .%
-        sta     $25                             ; A103 85 25                    .%
-        jsr     LA096
-        inc     $25
-        beq     LA0BE
-        ldx     #$f9
+TENC:
+        .byte   $84,$20,$00,$00,$00,$00,$00,$00 ;10
+;?DIVISION BY ZERO ERROR
+DVERR:  ldx     #$14                    ;BASIC error number
+        jmp     JMP_IERROR
+; ----------------------------------------------------------------------------
+;FAC = FAC / 10
+DIV10:  jsr     MOVAF
+        lda     #<TENC
+        ldy     #>TENC
+        ldx     #$00
+FDIVF:  stx     ARISGN
+        jsr     MOVFRM
+        jmp     FDIVT
+; ----------------------------------------------------------------------------
+;FAC = number in memory / FAC
+FDIV:   jsr     CONUPK
+;FAC = ARG / FAC.  Call with A = FACEXP and the flags set from it.
+FDIVT:  beq     DVERR                   ;Branch if FAC is zero
+        jsr     ROUND
+        lda     #$00
+        sec
+        sbc     FACEXP
+        sta     FACEXP
+        jsr     MULDIV
+        inc     FACEXP
+        beq     GOOVER
+        ldx     #$f9                    ;X counts the 7 bytes of the quotient
         lda     #$01
-LA110:  ldy     $31                             ; A110 A4 31                    .1
-        cpy     $26                             ; A112 C4 26                    .&
-        bne     LA138                           ; A114 D0 22                    ."
-        ldy     $32                             ; A116 A4 32                    .2
-        cpy     $27                             ; A118 C4 27                    .'
-        bne     LA138                           ; A11A D0 1C                    ..
-        ldy     $33                             ; A11C A4 33                    .3
-        cpy     $28                             ; A11E C4 28                    .(
-        bne     LA138                           ; A120 D0 16                    ..
-        ldy     $34                             ; A122 A4 34                    .4
-        cpy     $29                             ; A124 C4 29                    .)
-        bne     LA138                           ; A126 D0 10                    ..
-        ldy     $35                             ; A128 A4 35                    .5
-        cpy     $2A                             ; A12A C4 2A                    .*
-        bne     LA138                           ; A12C D0 0A                    ..
-        ldy     $36                             ; A12E A4 36                    .6
-        cpy     $2B                             ; A130 C4 2B                    .+
-        bne     LA138                           ; A132 D0 04                    ..
-        ldy     $37                             ; A134 A4 37                    .7
-        cpy     $2C                             ; A136 C4 2C                    .,
-LA138:  php                                     ; A138 08                       .
-        rol     a                               ; A139 2A                       *
-        bcc     LA145                           ; A13A 90 09                    ..
-        inx                                     ; A13C E8                       .
-        sta     $12,x                           ; A13D 95 12                    ..
-        beq     LA18B                           ; A13F F0 4A                    .J
-        bpl     LA18F                           ; A141 10 4C                    .L
-        lda     #$01                            ; A143 A9 01                    ..
-LA145:  plp                                     ; A145 28                       (
-        bcs     LA15C                           ; A146 B0 14                    ..
-LA148:  asl     $37                             ; A148 06 37                    .7
-LA14A:  rol     $36                             ; A14A 26 36                    &6
-        rol     $35                             ; A14C 26 35                    &5
-        rol     $34                             ; A14E 26 34                    &4
-        rol     $33                             ; A150 26 33                    &3
-        rol     $32                             ; A152 26 32                    &2
-        rol     $31                             ; A154 26 31                    &1
-        bcs     LA138                           ; A156 B0 E0                    ..
-        bmi     LA110                           ; A158 30 B6                    0.
-        bpl     LA138                           ; A15A 10 DC                    ..
-LA15C:  tay                                     ; A15C A8                       .
-        lda     $37                             ; A15D A5 37                    .7
-        sbc     $2C                             ; A15F E5 2C                    .,
-        sta     $37                             ; A161 85 37                    .7
-        lda     $36                             ; A163 A5 36                    .6
-        sbc     $2B                             ; A165 E5 2B                    .+
-        sta     $36                             ; A167 85 36                    .6
-        lda     $35                             ; A169 A5 35                    .5
-        sbc     $2A                             ; A16B E5 2A                    .*
-        sta     $35                             ; A16D 85 35                    .5
-        lda     $34                             ; A16F A5 34                    .4
-        sbc     $29                             ; A171 E5 29                    .)
-        sta     $34                             ; A173 85 34                    .4
-        lda     $33
-        sbc     $28                             ; A177 E5 28                    .(
-        sta     $33                             ; A179 85 33                    .3
-        lda     $32                             ; A17B A5 32                    .2
-        sbc     $27                             ; A17D E5 27                    .'
-        sta     $32                             ; A17F 85 32                    .2
-        lda     $31                             ; A181 A5 31                    .1
-        sbc     $26                             ; A183 E5 26                    .&
-        sta     $31                             ; A185 85 31                    .1
-        tya                                     ; A187 98                       .
-        jmp     LA148                           ; A188 4C 48 A1                 LH.
+DIVIDE: ldy     ARGHO
+        cpy     FACHO
+        bne     SAVQUO
+        ldy     ARGHO+1
+        cpy     FACHO+1
+        bne     SAVQUO
+        ldy     ARGHO+2
+        cpy     FACHO+2
+        bne     SAVQUO
+        ldy     ARGHO+3
+        cpy     FACHO+3
+        bne     SAVQUO
+        ldy     ARGHO+4
+        cpy     FACHO+4
+        bne     SAVQUO
+        ldy     ARGHO+5
+        cpy     FACHO+5
+        bne     SAVQUO
+        ldy     ARGLO
+        cpy     FACLO
+SAVQUO: php
+        rol     a
+        bcc     QSHFT
+        inx
+        sta     RESHO+6,x
+        beq     LA18B_LAST_BITS
+        bpl     DIVNRM
+        lda     #$01
+QSHFT:  plp
+        bcs     DIVSUB
+SHFARG: asl     ARGLO
+        rol     ARGHO+5
+        rol     ARGHO+4
+        rol     ARGHO+3
+        rol     ARGHO+2
+        rol     ARGHO+1
+        rol     ARGHO
+        bcs     SAVQUO
+        bmi     DIVIDE
+        bpl     SAVQUO
+DIVSUB: tay
+        lda     ARGLO
+        sbc     FACLO
+        sta     ARGLO
+        lda     ARGHO+5
+        sbc     FACHO+5
+        sta     ARGHO+5
+        lda     ARGHO+4
+        sbc     FACHO+4
+        sta     ARGHO+4
+        lda     ARGHO+3
+        sbc     FACHO+3
+        sta     ARGHO+3
+        lda     ARGHO+2
+        sbc     FACHO+2
+        sta     ARGHO+2
+        lda     ARGHO+1
+        sbc     FACHO+1
+        sta     ARGHO+1
+        lda     ARGHO
+        sbc     FACHO
+        sta     ARGHO
+        tya
+        jmp     SHFARG
 ; ----------------------------------------------------------------------------
-LA18B:  lda     #$40                            ; A18B A9 40                    .@
-        bne     LA145                           ; A18D D0 B6                    ..
-LA18F:  asl     a                               ; A18F 0A                       .
-        asl     a                               ; A190 0A                       .
-        asl     a                               ; A191 0A                       .
-        asl     a                               ; A192 0A                       .
-        asl     a                               ; A193 0A                       .
-        asl     a                               ; A194 0A                       .
-        sta     $3A                             ; A195 85 3A                    .:
-        plp                                     ; A197 28                       (
-LA198:  lda     $0C                             ; A198 A5 0C                    ..
-        sta     $26                             ; A19A 85 26                    .&
-        lda     $0D                             ; A19C A5 0D                    ..
-        sta     $27                             ; A19E 85 27                    .'
-        lda     $0E                             ; A1A0 A5 0E                    ..
-        sta     $28                             ; A1A2 85 28                    .(
-        lda     $0F                             ; A1A4 A5 0F                    ..
-        sta     $29                             ; A1A6 85 29                    .)
-        lda     $10                             ; A1A8 A5 10                    ..
-        sta     $2A                             ; A1AA 85 2A                    .*
-        lda     $11                             ; A1AC A5 11                    ..
-        sta     $2B                             ; A1AE 85 2B                    .+
-        lda     $12                             ; A1B0 A5 12                    ..
-        sta     $2C                             ; A1B2 85 2C                    .,
-        jmp     L9D40                           ; A1B4 4C 40 9D                 L@.
+LA18B_LAST_BITS:
+        lda     #$40
+        bne     QSHFT
+DIVNRM: asl     a
+        asl     a
+        asl     a
+        asl     a
+        asl     a
+        asl     a
+        sta     FACOV
+        plp
+;FAC = the product or quotient in RESHO, normalized.
+MOVFR:  lda     RESHO
+        sta     FACHO
+        lda     RESHO+1
+        sta     FACHO+1
+        lda     RESHO+2
+        sta     FACHO+2
+        lda     RESHO+3
+        sta     FACHO+3
+        lda     RESHO+4
+        sta     FACHO+4
+        lda     RESHO+5
+        sta     FACHO+5
+        lda     RESHO+6
+        sta     FACLO
+        jmp     NORMAL
 ; ----------------------------------------------------------------------------
-LA1B7_X6A:  sec                                     ; A1B7 38                       8
-        sta     $08                             ; A1B8 85 08                    ..
-        sty     $09                             ; A1BA 84 09                    ..
-        ldy     #$07                            ; A1BC A0 07                    ..
-LA1BE:  jsr     L9C3E                           ; A1BE 20 3E 9C                  >.
-        sta     $25,y                           ; A1C1 99 25 00                 .%.
-        dey                                     ; A1C4 88                       .
-        cpy     #$02                            ; A1C5 C0 02                    ..
-        bcs     LA1BE                           ; A1C7 B0 F5                    ..
-        jsr     L9C3E                           ; A1C9 20 3E 9C                  >.
-        sta     $2D                             ; A1CC 85 2D                    .-
-        ora     #$80                            ; A1CE 09 80                    ..
-        sta     $26                             ; A1D0 85 26                    .&
-        dey                                     ; A1D2 88                       .
-        jsr     L9C3E                           ; A1D3 20 3E 9C                  >.
-        sta     $25                             ; A1D6 85 25                    .%
-        sty     $3A                             ; A1D8 84 3A                    .:
-        rts                                     ; A1DA 60                       `
+;FAC = number in memory, as the application sees memory.
+MOVFM_APPL:
+        sec
+        sta     INDEX1
+        sty     INDEX1+1
+        ldy     #$07
+LA1BE_LOOP:
+        jsr     GET_INDEX1_APPL
+        sta     FACEXP,y
+        dey
+        cpy     #$02
+        bcs     LA1BE_LOOP
+        jsr     GET_INDEX1_APPL
+        sta     FACSGN
+        ora     #$80
+        sta     FACHO
+        dey
+        jsr     GET_INDEX1_APPL
+        sta     FACEXP
+        sty     FACOV
+        rts
 ; ----------------------------------------------------------------------------
-LA1DB_X40:  clc                                     ; A1DB 18                       .
-        .byte   $24 ;skip next byte (sec)       ; A1DC 24                       $
-LA1DD_X42_INDIRECT_STUFF_LOAD:
-        sec                                     ; A1DD 38                       8
-        sta     $08                             ; A1DE 85 08                    ..
-        sty     $09                             ; A1E0 84 09                    ..
-        ldy     #$07                            ; A1E2 A0 07                    ..
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A1E4 20 31 A3                  1.
-        sta     $2C                             ; A1E7 85 2C                    .,
-        dey                                     ; A1E9 88                       .
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A1EA 20 31 A3                  1.
-        sta     $2B                             ; A1ED 85 2B                    .+
-        dey                                     ; A1EF 88                       .
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A1F0 20 31 A3                  1.
-        sta     $2A                             ; A1F3 85 2A                    .*
-        dey                                     ; A1F5 88                       .
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A1F6 20 31 A3                  1.
-        sta     $29                             ; A1F9 85 29                    .)
-        dey                                     ; A1FB 88                       .
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A1FC 20 31 A3                  1.
-        sta     $28                             ; A1FF 85 28                    .(
-        dey                                     ; A201 88                       .
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A202 20 31 A3                  1.
-        sta     $27                             ; A205 85 27                    .'
-        dey                                     ; A207 88                       .
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A208 20 31 A3                  1.
-        sta     $2D                             ; A20B 85 2D                    .-
-        ora     #$80                            ; A20D 09 80                    ..
-        sta     $26                             ; A20F 85 26                    .&
-        dey                                     ; A211 88                       .
-        jsr     LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36                           ; A212 20 31 A3                  1.
-        sta     $25                             ; A215 85 25                    .%
-        sty     $3A                             ; A217 84 3A                    .:
-        rts                                     ; A219 60                       `
+;FAC = number in memory (in RAM).  The address is in A (low byte) and Y
+;(high byte).  Returns with the flags set from FACEXP.
+MOVFM:  clc                             ;Carry clear = read in MMU RAM mode
+        .byte   $24                     ;Skip next instruction
+;FAC = number in memory, as the KERNAL sees memory.
+MOVFRM:
+        sec                             ;Carry set = read directly
+        sta     INDEX1
+        sty     INDEX1+1
+        ldy     #$07
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACLO
+        dey
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACHO+5
+        dey
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACHO+4
+        dey
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACHO+3
+        dey
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACHO+2
+        dey
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACHO+1
+        dey
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACSGN
+        ora     #$80
+        sta     FACHO
+        dey
+        jsr     GET_INDEX1_ROM_OR_RAM
+        sta     FACEXP
+        sty     FACOV
+        rts
 ; ----------------------------------------------------------------------------
-LA21A_X44:  tax                                     ; A21A AA                       .
-        bra     LA227                           ; A21B 80 0A                    ..
-LA21D:  ldx     #$1D                            ; A21D A2 1D                    ..
-        .byte   $2C                             ; A21F 2C                       ,
-LA220:  ldx     #$15                            ; A220 A2 15                    ..
-        LDY     #$00
-        beq     LA227                           ; A224 F0 01                    ..
-LA226_X56:  tax                                     ; A226 AA                       .
-LA227:  jsr     LA28A_X32                           ; A227 20 8A A2                  ..
-        stx     $08                             ; A22A 86 08                    ..
-        sty     $09                             ; A22C 84 09                    ..
-        ldy     #$07                            ; A22E A0 07                    ..
-        lda     #$08                            ; A230 A9 08                    ..
-        sta     $0360                           ; A232 8D 60 03                 .`.
-        lda     $2C                             ; A235 A5 2C                    .,
-        jsr     GO_RAM_STORE_GO_KERN            ; A237 20 5C 03                  \.
-        dey                                     ; A23A 88                       .
-        lda     $2B                             ; A23B A5 2B                    .+
-        jsr     GO_RAM_STORE_GO_KERN            ; A23D 20 5C 03                  \.
-        dey                                     ; A240 88                       .
-        lda     $2A                             ; A241 A5 2A                    .*
-        jsr     GO_RAM_STORE_GO_KERN            ; A243 20 5C 03                  \.
-        dey                                     ; A246 88                       .
-        lda     $29                             ; A247 A5 29                    .)
-        jsr     GO_RAM_STORE_GO_KERN            ; A249 20 5C 03                  \.
-        dey                                     ; A24C 88                       .
-        lda     $28                             ; A24D A5 28                    .(
-        jsr     GO_RAM_STORE_GO_KERN            ; A24F 20 5C 03                  \.
-        dey                                     ; A252 88                       .
-        lda     $27                             ; A253 A5 27                    .'
-        jsr     GO_RAM_STORE_GO_KERN            ; A255 20 5C 03                  \.
-        dey                                     ; A258 88                       .
-        lda     $2D                             ; A259 A5 2D                    .-
-        ora     #$7F                            ; A25B 09 7F                    ..
-        and     $26                             ; A25D 25 26                    %&
-        jsr     GO_RAM_STORE_GO_KERN            ; A25F 20 5C 03                  \.
-        dey                                     ; A262 88                       .
-        lda     $25                             ; A263 A5 25                    .%
-        jsr     GO_RAM_STORE_GO_KERN            ; A265 20 5C 03                  \.
-        sty     $3A                             ; A268 84 3A                    .:
-        rts                                     ; A26A 60                       `
+;Number in memory = FAC, rounded.  The address is in A (low byte) and Y
+;(high byte), and the number is written in MMU RAM mode.
+MOVMF_AY:
+        tax
+        bra     MOVMF
+;TEMPF2 = FAC, rounded
+MOV2F:  ldx     #TEMPF2
+        .byte   $2C                     ;Skip next instruction
+;TEMPF1 = FAC, rounded
+MOV1F:  ldx     #TEMPF1
+        ldy     #$00
+        beq     MOVMF
+;Number in memory = FAC, rounded.  A second copy of MOVMF_AY.
+MOVMF_AY2:
+        tax
+;Number in memory = FAC, rounded.  The address is in X (low byte) and Y
+;(high byte).
+MOVMF:  jsr     ROUND
+        stx     INDEX1
+        sty     INDEX1+1
+        ldy     #$07
+        lda     #INDEX1
+        sta     GO_RAM_STORE_GO_KERN_ZP ;Make GO_RAM_STORE_GO_KERN write through INDEX1
+        lda     FACLO
+        jsr     GO_RAM_STORE_GO_KERN
+        dey
+        lda     FACHO+5
+        jsr     GO_RAM_STORE_GO_KERN
+        dey
+        lda     FACHO+4
+        jsr     GO_RAM_STORE_GO_KERN
+        dey
+        lda     FACHO+3
+        jsr     GO_RAM_STORE_GO_KERN
+        dey
+        lda     FACHO+2
+        jsr     GO_RAM_STORE_GO_KERN
+        dey
+        lda     FACHO+1
+        jsr     GO_RAM_STORE_GO_KERN
+        dey
+        lda     FACSGN
+        ora     #$7F                    ;The sign goes in bit 7 of the first mantissa byte
+        and     FACHO
+        jsr     GO_RAM_STORE_GO_KERN
+        dey
+        lda     FACEXP
+        jsr     GO_RAM_STORE_GO_KERN
+        sty     FACOV
+        rts
 ; ----------------------------------------------------------------------------
-LA26B_X46:  lda     $38                             ; A26B A5 38                    .8
-LA26D:  sta     $2D                             ; A26D 85 2D                    .-
-        ldx     #$08                            ; A26F A2 08                    ..
-LA271:  lda     $2F,x                           ; A271 B5 2F                    ./
-        sta     $24,x                           ; A273 95 24                    .$
-        dex                                     ; A275 CA                       .
-        bne     LA271                           ; A276 D0 F9                    ..
-        stx     $3A                             ; A278 86 3A                    .:
-        rts                                     ; A27A 60                       `
+;FAC = ARG
+MOVFA:  lda     ARGSGN
+MOVFA1: sta     FACSGN
+        ldx     #$08
+LA271_LOOP:
+        lda     ARGEXP-1,x
+        sta     FACEXP-1,x
+        dex
+        bne     LA271_LOOP
+        stx     FACOV
+        rts
 ; ----------------------------------------------------------------------------
-LA27B_X48:  jsr     LA28A_X32                           ; A27B 20 8A A2                  ..
-LA27E:  ldx     #$09                            ; A27E A2 09                    ..
-LA280:  lda     $24,x                           ; A280 B5 24                    .$
-        sta     $2F,x                           ; A282 95 2F                    ./
-        dex                                     ; A284 CA                       .
-        bne     LA280                           ; A285 D0 F9                    ..
-        stx     $3A                             ; A287 86 3A                    .:
-LA289:  rts                                     ; A289 60                       `
+;ARG = FAC, rounded
+MOVAF:  jsr     ROUND
+MOVEF:  ldx     #$09
+LA280_LOOP:
+        lda     FACEXP-1,x
+        sta     ARGEXP-1,x
+        dex
+        bne     LA280_LOOP
+        stx     FACOV
+MOVRTS: rts
 ; ----------------------------------------------------------------------------
-LA28A_X32:  lda     $25                             ; A28A A5 25                    .%
-        beq     LA289                           ; A28C F0 FB                    ..
-        asl     $3A                             ; A28E 06 3A                    .:
-        bcc     LA289                           ; A290 90 F7                    ..
-LA292:  jsr     L9E14                           ; A292 20 14 9E                  ..
-        bne     LA289                           ; A295 D0 F2                    ..
-        jmp     L9DC5                           ; A297 4C C5 9D                 L..
+;Round FAC: add 1 to the mantissa if the top bit of FACOV is set.
+ROUND:  lda     FACEXP
+        beq     MOVRTS
+        asl     FACOV
+        bcc     MOVRTS
+INCRND: jsr     INCFAC
+        bne     MOVRTS
+        jmp     RNDSHF
 ; ----------------------------------------------------------------------------
-LA29A_X36:  lda     $25                             ; A29A A5 25                    .%
-        beq     LA2A7                           ; A29C F0 09                    ..
-LA29E:  lda     $2D                             ; A29E A5 2D                    .-
-LA2A0:  rol     a                               ; A2A0 2A                       *
-        lda     #$FF                            ; A2A1 A9 FF                    ..
-        bcs     LA2A7                           ; A2A3 B0 02                    ..
-        lda     #$01                            ; A2A5 A9 01                    ..
-LA2A7:  rts                                     ; A2A7 60                       `
+;Get the sign of FAC.  Returns A = $FF, 0 or 1 for negative, zero or positive.
+SIGN:   lda     FACEXP
+        beq     SIGNRT
+FCSIGN: lda     FACSGN
+FCOMPS: rol     a
+        lda     #$FF
+        bcs     SIGNRT
+        lda     #$01
+SIGNRT: rts
 ; ----------------------------------------------------------------------------
-LA2A8_X5A:  jsr     LA29A_X36                           ; A2A8 20 9A A2                  ..
-LA2AB_X4A:  sta     $26                             ; A2AB 85 26                    .&
-        lda     #$00                            ; A2AD A9 00                    ..
-        sta     $27                             ; A2AF 85 27                    .'
-        ldx     #$88                            ; A2B1 A2 88                    ..
-LA2B3:  lda     $26                             ; A2B3 A5 26                    .&
-        eor     #$FF                            ; A2B5 49 FF                    I.
-        rol     a                               ; A2B7 2A                       *
-LA2B8:  lda     #$00                            ; A2B8 A9 00                    ..
-        sta     $2C                             ; A2BA 85 2C                    .,
-        sta     $2B                             ; A2BC 85 2B                    .+
-        sta     $2A                             ; A2BE 85 2A                    .*
-        sta     $29                             ; A2C0 85 29                    .)
-        sta     $28                             ; A2C2 85 28                    .(
-LA2C4:  stx     $25                             ; A2C4 86 25                    .%
-        sta     $3A                             ; A2C6 85 3A                    .:
-        sta     $2D                             ; A2C8 85 2D                    .-
-LA2CB = *+2
-        jmp     L9D3B
-LA2CD_X4C:  phy
+;FAC = -1, 0 or 1 for the sign of FAC
+SGN:    jsr     SIGN
+;FAC = signed byte in A
+FLOAT:  sta     FACHO
+        lda     #$00
+        sta     FACHO+1
+        ldx     #$88                    ;Exponent for an 8-bit integer
+FLOATS: lda     FACHO
+        eor     #$FF
+        rol     a                       ;Carry set if the integer is positive
+FLOATC: lda     #$00
+        sta     FACLO
+        sta     FACHO+5
+        sta     FACHO+4
+        sta     FACHO+3
+        sta     FACHO+2
+FLOATB: stx     FACEXP
+        sta     FACOV
+        sta     FACSGN
+        jmp     FADFLT                  ;Negate if carry is clear, then normalize
+;The next three entries are FLOATB, FLOATC and FLOATS with the exponent taken
+;from Y instead of X.
+FLOATB_Y:
+        phy
         plx
-        bra     LA2C4                           ; A2CF 80 F3                    ..
-LA2D1_X0A:  phy                                     ; A2D1 5A                       Z
-        plx                                     ; A2D2 FA                       .
-        bra     LA2B8                           ; A2D3 80 E3                    ..
-LA2D5_X4E:  phy                                     ; A2D5 5A                       Z
-        plx                                     ; A2D6 FA                       .
-        bra     LA2B3                           ; A2D7 80 DA                    ..
-LA2D9_X34:  lsr     $2D                             ; A2D9 46 2D                    F-
-        rts                                     ; A2DB 60                       `
+        bra     FLOATB
+FLOATC_Y:
+        phy
+        plx
+        bra     FLOATC
+FLOATS_Y:
+        phy
+        plx
+        bra     FLOATS
+;FAC = absolute value of FAC
+ABS:    lsr     FACSGN
+        rts
 ; ----------------------------------------------------------------------------
-LA2DC_X38_UNKNOWN_INDIRECT_STUFF_LOAD:
-        sta     $0A                             ; A2DC 85 0A                    ..
-        sty     $0B                             ; A2DE 84 0B                    ..
-        ldy     #$00                            ; A2E0 A0 00                    ..
-        lda     ($0A),y                         ; A2E2 B1 0A                    ..
-        iny                                     ; A2E4 C8                       .
-        tax                                     ; A2E5 AA                       .
-        beq     LA29A_X36                           ; A2E6 F0 B2                    ..
-        lda     ($0A),y                         ; A2E8 B1 0A                    ..
-        eor     $2D                             ; A2EA 45 2D                    E-
-        bmi     LA29E                           ; A2EC 30 B0                    0.
-        cpx     $25                             ; A2EE E4 25                    .%
-        bne     LA328                           ; A2F0 D0 36                    .6
-        lda     ($0A),y                         ; A2F2 B1 0A                    ..
-        ora     #$80                            ; A2F4 09 80                    ..
-        cmp     $26                             ; A2F6 C5 26                    .&
-        bne     LA328                           ; A2F8 D0 2E                    ..
-        iny                                     ; A2FA C8                       .
-        lda     ($0A),y                         ; A2FB B1 0A                    ..
-        cmp     $27                             ; A2FD C5 27                    .'
-        bne     LA328                           ; A2FF D0 27                    .'
-        iny                                     ; A301 C8                       .
-        lda     ($0A),y                         ; A302 B1 0A                    ..
-        cmp     $28                             ; A304 C5 28                    .(
-        bne     LA328                           ; A306 D0 20                    .
-        iny                                     ; A308 C8                       .
-        lda     ($0A),y                         ; A309 B1 0A                    ..
-        cmp     $29                             ; A30B C5 29                    .)
-        bne     LA328                           ; A30D D0 19                    ..
-        iny                                     ; A30F C8                       .
-        lda     ($0A),y                         ; A310 B1 0A                    ..
-        cmp     $2A                             ; A312 C5 2A                    .*
-        bne     LA328                           ; A314 D0 12                    ..
-        iny                                     ; A316 C8                       .
-        lda     ($0A),y                         ; A317 B1 0A                    ..
-        cmp     $2B                             ; A319 C5 2B                    .+
-        bne     LA328                           ; A31B D0 0B                    ..
-        iny                                     ; A31D C8                       .
-        lda     #$7F                            ; A31E A9 7F                    ..
-        cmp     $3A                             ; A320 C5 3A                    .:
-        lda     ($0A),y                         ; A322 B1 0A                    ..
-        sbc     $2C                             ; A324 E5 2C                    .,
-        beq     LA357                           ; A326 F0 2F                    ./
-LA328:  lda     $2D                             ; A328 A5 2D                    .-
-        bcc     LA32E                           ; A32A 90 02                    ..
-        eor     #$FF                            ; A32C 49 FF                    I.
-LA32E:  jmp     LA2A0                           ; A32E 4C A0 A2                 L..
+;Compare FAC with a number in memory, as the KERNAL sees memory.
+;The address is in A (low byte) and Y (high byte).
+;Returns A = $FF if FAC is less, 0 if they are equal, 1 if FAC is greater.
+FCOMP:
+        sta     INDEX2
+        sty     INDEX2+1
+        ldy     #$00
+        lda     (INDEX2),y
+        iny
+        tax
+        beq     SIGN                    ;Branch if the number in memory is zero: the result is the sign of FAC
+        lda     (INDEX2),y
+        eor     FACSGN
+        bmi     FCSIGN                  ;Branch if the signs are different
+        cpx     FACEXP
+        bne     FCOMPC
+        lda     (INDEX2),y
+        ora     #$80
+        cmp     FACHO
+        bne     FCOMPC
+        iny
+        lda     (INDEX2),y
+        cmp     FACHO+1
+        bne     FCOMPC
+        iny
+        lda     (INDEX2),y
+        cmp     FACHO+2
+        bne     FCOMPC
+        iny
+        lda     (INDEX2),y
+        cmp     FACHO+3
+        bne     FCOMPC
+        iny
+        lda     (INDEX2),y
+        cmp     FACHO+4
+        bne     FCOMPC
+        iny
+        lda     (INDEX2),y
+        cmp     FACHO+5
+        bne     FCOMPC
+        iny
+        lda     #$7F
+        cmp     FACOV
+        lda     (INDEX2),y
+        sbc     FACLO
+        beq     QINTRT
+FCOMPC: lda     FACSGN
+        bcc     FCOMPD
+        eor     #$FF
+FCOMPD: jmp     FCOMPS
 ; ----------------------------------------------------------------------------
-LA331_LOAD_INDIRECT_FROM_08_JMP_L9C36:
-        lda     ($08),y                         ; A331 B1 08                    ..
-        bcs     LA357                           ; A333 B0 22                    ."
-        jmp     L9C36                           ; A335 4C 36 9C                 L6.
+;Get the byte at (INDEX1),Y as the KERNAL sees memory if carry is set, or
+;from RAM if carry is clear.
+GET_INDEX1_ROM_OR_RAM:
+        lda     (INDEX1),y
+        bcs     QINTRT
+        jmp     GET_INDEX1_RAM
 ; ----------------------------------------------------------------------------
-LA338_X50:  lda     $25                             ; A338 A5 25                    .%
-        beq     LA386                           ; A33A F0 4A                    .J
-        sec                                     ; A33C 38                       8
-        sbc     #$B8                            ; A33D E9 B8                    ..
-        bit     $2D                             ; A33F 24 2D                    $-
-        bpl     LA34C                           ; A341 10 09                    ..
-        tax                                     ; A343 AA                       .
-        lda     #$FF                            ; A344 A9 FF                    ..
-        sta     $2F                             ; A346 85 2F                    ./
-        jsr     L9DE0                           ; A348 20 E0 9D                  ..
-        txa                                     ; A34B 8A                       .
-LA34C:  ldx     #$25                            ; A34C A2 25                    .%
-        cmp     #$F9                            ; A34E C9 F9                    ..
-        bpl     LA358                           ; A350 10 06                    ..
-        jsr     L9E56                           ; A352 20 56 9E                  V.
-        sty     $2F                             ; A355 84 2F                    ./
-LA357:  rts                                     ; A357 60                       `
+;Convert FAC to a signed integer that fills its 7 mantissa bytes.
+QINT:   lda     FACEXP
+        beq     CLRFAC
+        sec
+        sbc     #$B8
+        bit     FACSGN
+        bpl     LA34C_POSITIVE
+        tax
+        lda     #$FF
+        sta     BITS
+        jsr     NEGFCH
+        txa
+LA34C_POSITIVE:
+        ldx     #$25
+        cmp     #$F9
+        bpl     QISHFT
+        jsr     SHIFTR
+        sty     BITS
+QINTRT: rts
 ; ----------------------------------------------------------------------------
-LA358:  tay                                     ; A358 A8                       .
-        lda     $2D                             ; A359 A5 2D                    .-
-        and     #$80                            ; A35B 29 80                    ).
-        lsr     $26                             ; A35D 46 26                    F&
-        ora     $26                             ; A35F 05 26                    .&
-        sta     $26                             ; A361 85 26                    .&
-        jsr     L9E6D                           ; A363 20 6D 9E                  m.
-        sty     $2F                             ; A366 84 2F                    ./
-        rts                                     ; A368 60                       `
+QISHFT: tay
+        lda     FACSGN
+        and     #$80
+        lsr     FACHO
+        ora     FACHO
+        sta     FACHO
+        jsr     ROLSHF
+        sty     BITS
+        rts
 ; ----------------------------------------------------------------------------
-LA369_X1E:  lda     $25                             ; A369 A5 25                    .%
-        cmp     #$B8                            ; A36B C9 B8                    ..
-        bcs     LA395                           ; A36D B0 26                    .&
-        jsr     LA338_X50                           ; A36F 20 38 A3                  8.
-        sty     $3a
-        lda     $2D                             ; A374 A5 2D                    .-
-        sty     $2D                             ; A376 84 2D                    .-
-        eor     #$80                            ; A378 49 80                    I.
-        rol     a                               ; A37A 2A                       *
-        lda     #$B8                            ; A37B A9 B8                    ..
-        sta     $25                             ; A37D 85 25                    .%
-        lda     $2C                             ; A37F A5 2C                    .,
-        sta     $00                             ; A381 85 00                    ..
-        jmp     L9D3B                           ; A383 4C 3B 9D                 L;.
+;FAC = integer part of FAC, rounding down.  The low byte of the integer is
+;left in INTEGR.
+INT:    lda     FACEXP
+        cmp     #$B8
+        bcs     INTRTS                  ;Branch if FAC is too big to have a fraction
+        jsr     QINT
+        sty     FACOV
+        lda     FACSGN
+        sty     FACSGN
+        eor     #$80
+        rol     a
+        lda     #$B8
+        sta     FACEXP
+        lda     FACLO
+        sta     INTEGR
+        jmp     FADFLT
 ; ----------------------------------------------------------------------------
-LA386:  sta     $26                             ; A386 85 26                    .&
-        sta     $27                             ; A388 85 27                    .'
-        sta     $28                             ; A38A 85 28                    .(
-        sta     $29                             ; A38C 85 29                    .)
-        sta     $2a
-        sta     $2B                             ; A390 85 2B                    .+
-        sta     $2C                             ; A392 85 2C                    .,
-        tay                                     ; A394 A8                       .
-LA395:  rts                                     ; A395 60                       `
+CLRFAC: sta     FACHO
+        sta     FACHO+1
+        sta     FACHO+2
+        sta     FACHO+3
+        sta     FACHO+4
+        sta     FACHO+5
+        sta     FACLO
+        tay
+INTRTS: rts
 ; ----------------------------------------------------------------------------
-LA396_X54:  ldy     #$00                            ; A396 A0 00                    ..
-LA398:  ldx     #$0D                            ; A398 A2 0D                    ..
-LA39A:  sty     $21,x                           ; A39A 94 21                    .!
-        dex                                     ; A39C CA                       .
-        bpl     LA39A                           ; A39D 10 FB                    ..
-        bcc     LA3B0                           ; A39F 90 0F                    ..
-        cmp     #$2D                            ; A3A1 C9 2D                    .-
-        bne     LA3A9                           ; A3A3 D0 04                    ..
-        stx     $2E                             ; A3A5 86 2E                    ..
-        beq     LA3AD                           ; A3A7 F0 04                    ..
-LA3A9:  cmp     #$2B                            ; A3A9 C9 2B                    .+
-        bne     LA3B2                           ; A3AB D0 05                    ..
-LA3AD:  jsr     L9C0D                           ; A3AD 20 0D 9C                  ..
-LA3B0:  bcc     LA40D                           ; A3B0 90 5B                    .[
-LA3B2:  cmp     #$2E                            ; A3B2 C9 2E                    ..
-        beq     LA3E4                           ; A3B4 F0 2E                    ..
-        cmp     #$45                            ; A3B6 C9 45                    .E
-        bne     LA3EA                           ; A3B8 D0 30                    .0
-        jsr     L9C0D                           ; A3BA 20 0D 9C                  ..
-        bcc     LA3D6                           ; A3BD 90 17                    ..
-        cmp     #$AB                            ; A3BF C9 AB                    ..
-LA3C1:  beq     LA3D1                           ; A3C1 F0 0E                    ..
-        cmp     #$2D                            ; A3C3 C9 2D                    .-
-        beq     LA3D1                           ; A3C5 F0 0A                    ..
-        cmp     #$AA                            ; A3C7 C9 AA                    ..
-        beq     LA3D3                           ; A3C9 F0 08                    ..
-        cmp     #$2B                            ; A3CB C9 2B                    .+
-        beq     LA3D3                           ; A3CD F0 04                    ..
-LA3CF:  bne     LA3D8                           ; A3CF D0 07                    ..
-LA3D1:  ror     $24                             ; A3D1 66 24                    f$
-LA3D3:  jsr     L9C0D                           ; A3D3 20 0D 9C                  ..
-LA3D6:  bcc     LA434                           ; A3D6 90 5C                    .\
-LA3D8:  bit     $24                             ; A3D8 24 24                    $$
-        bpl     LA3EA                           ; A3DA 10 0E                    ..
-        lda     #$00                            ; A3DC A9 00                    ..
-        sec                                     ; A3DE 38                       8
-        sbc     $22                             ; A3DF E5 22                    ."
-        jmp     LA3EC                           ; A3E1 4C EC A3                 L..
+;FAC = number read from the text at TXTPTR.
+;
+;Call with A = first character and carry clear if it is a digit, which is
+;how CHRGET and CHRGOT return.  Digits, a sign, a decimal point and an
+;exponent (E) are accepted.  In the exponent, the sign may also be a BASIC
+;token: $AA for + or $AB for -.
+FIN:    ldy     #$00
+        ldx     #$0D                    ;Clear DECCNT through SGNFLG, which includes FAC
+LA39A_CLEAR_LOOP:
+        sty     DECCNT,x
+        dex
+        bpl     LA39A_CLEAR_LOOP
+        bcc     FINDGQ
+        cmp     #'-'
+        bne     QPLUS
+        stx     SGNFLG
+        beq     FINC
+QPLUS:  cmp     #'+'
+        bne     FIN1
+FINC:   jsr     CHRGET
+FINDGQ: bcc     FINDIG
+FIN1:   cmp     #'.'
+        beq     FINDP
+        cmp     #'E'
+        bne     FINE
+        jsr     CHRGET
+        bcc     FNEDG1
+        cmp     #$AB                    ;Token for -
+        beq     FINEC1
+        cmp     #'-'
+        beq     FINEC1
+        cmp     #$AA                    ;Token for +
+        beq     FINEC
+        cmp     #'+'
+        beq     FINEC
+        bne     FINEC2
+FINEC1: ror     EXPSGN
+FINEC:  jsr     CHRGET
+FNEDG1: bcc     FINEDG
+FINEC2: bit     EXPSGN
+        bpl     FINE
+        lda     #$00
+        sec
+        sbc     TENEXP
+        jmp     FINE1
 ; ----------------------------------------------------------------------------
-LA3E4:  ror     $23                             ; A3E4 66 23                    f#
-        bit     $23                             ; A3E6 24 23                    $#
-        bvc     LA3AD                           ; A3E8 50 C3                    P.
-LA3EA:  lda     $22                             ; A3EA A5 22                    ."
-LA3EC:  sec                                     ; A3EC 38                       8
-        sbc     $21                             ; A3ED E5 21                    .!
-        sta     $22                             ; A3EF 85 22                    ."
-        beq     LA405                           ; A3F1 F0 12                    ..
-        bpl     LA3FE                           ; A3F3 10 09                    ..
-LA3F5:  jsr     LA0E5                           ; A3F5 20 E5 A0                  ..
-        inc     $22                             ; A3F8 E6 22                    ."
-        bne     LA3F5                           ; A3FA D0 F9                    ..
-        beq     LA405                           ; A3FC F0 07                    ..
-LA3FE:  jsr     LA0C1                           ; A3FE 20 C1 A0                  ..
-        dec     $22                             ; A401 C6 22                    ."
-        bne     LA3FE                           ; A403 D0 F9                    ..
-LA405:  lda     $2E                             ; A405 A5 2E                    ..
-        bmi     LA40A                           ; A407 30 01                    0.
-        rts                                     ; A409 60                       `
+FINDP:  ror     DPTFLG
+        bit     DPTFLG
+        bvc     FINC
+FINE:   lda     TENEXP
+FINE1:  sec
+        sbc     DECCNT
+        sta     TENEXP
+        beq     FINQNG
+        bpl     FINMUL
+FINDIV: jsr     DIV10
+        inc     TENEXP
+        bne     FINDIV
+        beq     FINQNG
+FINMUL: jsr     MUL10
+        dec     TENEXP
+        bne     FINMUL
+FINQNG: lda     SGNFLG
+        bmi     NEGXQS
+        rts
 ; ----------------------------------------------------------------------------
-LA40A:  jmp     LA6A7_X22                           ; A40A 4C A7 A6                 L..
+NEGXQS: jmp     NEGOP
 ; ----------------------------------------------------------------------------
-LA40D:  pha                                     ; A40D 48                       H
-LA40E:  bit     $23                             ; A40E 24 23                    $#
-        bpl     LA414                           ; A410 10 02                    ..
-        inc     $21                             ; A412 E6 21                    .!
-LA414:  jsr     LA0C1                           ; A414 20 C1 A0                  ..
-        pla                                     ; A417 68                       h
-        sec                                     ; A418 38                       8
-        sbc     #$30                            ; A419 E9 30                    .0
-        jsr     LA421_X52                           ; A41B 20 21 A4                  !.
-        jmp     LA3AD                           ; A41E 4C AD A3                 L..
+FINDIG: pha
+        bit     DPTFLG
+        bpl     LA414_MUL10
+        inc     DECCNT
+LA414_MUL10:
+        jsr     MUL10
+        pla
+        sec
+        sbc     #$30
+        jsr     FINLOG
+        jmp     FINC
 ; ----------------------------------------------------------------------------
-LA421_X52:  pha                                     ; A421 48                       H
-        jsr     LA27B_X48                           ; A422 20 7B A2                  {.
-        pla                                     ; A425 68                       h
-        jsr     LA2AB_X4A                           ; A426 20 AB A2                  ..
-        lda     $38                             ; A429 A5 38                    .8
-        eor     $2D                             ; A42B 45 2D                    E-
-        sta     $39                             ; A42D 85 39                    .9
-        ldx     $25                             ; A42F A6 25                    .%
-        jmp     L9CBE_X12                           ; A431 4C BE 9C                 L..
+;FAC = FAC + signed byte in A
+FINLOG: pha
+        jsr     MOVAF
+        pla
+        jsr     FLOAT
+        lda     ARGSGN
+        eor     FACSGN
+        sta     ARISGN
+        ldx     FACEXP
+        jmp     FADDT
 ; ----------------------------------------------------------------------------
-LA434:  lda     $22                             ; A434 A5 22                    ."
-        cmp     #$0A                            ; A436 C9 0A                    ..
-        bcc     LA443                           ; A438 90 09                    ..
-        lda     #$64                            ; A43A A9 64                    .d
-        bit     $24                             ; A43C 24 24                    $$
-        bmi     LA456                           ; A43E 30 16                    0.
-        jmp     L9E2F                           ; A440 4C 2F 9E                 L/.
+FINEDG: lda     TENEXP
+        cmp     #$0A                    ;Branch if the exponent so far is under 10
+        bcc     MLEX10
+        lda     #$64
+        bit     EXPSGN
+        bmi     MLEXMI
+        jmp     OVERR
 ; ----------------------------------------------------------------------------
-LA443:  asl     a                               ; A443 0A                       .
-        asl     a                               ; A444 0A                       .
-        clc                                     ; A445 18                       .
-        adc     $22                             ; A446 65 22                    e"
-        asl     a                               ; A448 0A                       .
-        clc                                     ; A449 18                       .
-        ldy     #$00                            ; A44A A0 00                    ..
-        sta     $22                             ; A44C 85 22                    ."
-        jsr     L9C2E                           ; A44E 20 2E 9C                  ..
-        adc     $22
-        sec                                     ; A453 38                       8
-        sbc     #$30                            ; A454 E9 30                    .0
-LA456:  sta     $22                             ; A456 85 22                    ."
-        jmp     LA3D3                           ; A458 4C D3 A3                 L..
+MLEX10: asl     a
+        asl     a
+        clc
+        adc     TENEXP
+        asl     a
+        clc
+        ldy     #$00
+        sta     TENEXP
+        jsr     GET_TXTPTR_RAM
+        adc     TENEXP
+        sec
+        sbc     #$30
+MLEXMI: sta     TENEXP
+        jmp     FINEC
 ; ----------------------------------------------------------------------------
-LA45B:  .byte   $AF,$35,$E6,$20,$F4,$7F,$FF,$CC ; A45B AF 35 E6 20 F4 7F FF CC  .5. ....
-LA463:  .byte   $B2,$63,$5F,$A9,$31,$9F,$FF,$E8 ; A463 B2 63 5F A9 31 9F FF E8  .c_.1...
-LA46B:  .byte   $B2,$63,$5F,$A9,$31,$9F,$FF,$FC ; A46B B2 63 5F A9 31 9F FF FC  .c_.1...
+;Limits used by FOUT to scale a number until it is a 15-digit integer
+N0999:
+        .byte   $AF,$35,$E6,$20,$F4,$7F,$FF,$CC ;99999999999999.9
+N9999:
+        .byte   $B2,$63,$5F,$A9,$31,$9F,$FF,$E8 ;999999999999999.6
+NMIL:
+        .byte   $B2,$63,$5F,$A9,$31,$9F,$FF,$FC ;999999999999999.9375
 ; ----------------------------------------------------------------------------
-LA473_X04:  ldy     #$01
-LA475_X58:  lda     #$20
-        bit     $2d
-        bpl     $a47d
-        lda     #$2d
-        sta     $00ff,Y
-        sta     $2d
-        sty     $3b
+; ----------------------------------------------------------------------------
+;Convert FAC to a string of characters at FBUFFR ($0100), ending with a
+;zero byte.  Returns the address of the string in A (low) and Y (high).
+;
+;The string starts with a space or a minus sign.  Up to 15 digits are
+;produced.  Scientific notation is used for numbers of 1E+15 and up and for
+;numbers below 0.01.  FOUTC is the same, but starts at FBUFFR-1+Y.
+FOUT:   ldy     #$01
+FOUTC:  lda     #$20                    ;Start with a space...
+        bit     FACSGN
+        bpl     LA47D_PUT_SIGN
+        lda     #$2d                    ;...or a minus sign for a negative number
+LA47D_PUT_SIGN:
+        sta     FBUFFR-1,y
+        sta     FACSGN
+        sty     FBUFPT
         iny
         lda     #$30
-        ldx     $25
-        bne     LA48E
+        ldx     FACEXP
+        bne     FOUT37                  ;Branch if FAC is not zero
 ; ----------------------------------------------------------------------------
-LA48B:  jmp     LA5B2                           ; A48B 4C B2 A5                 L..
+LA48B_ZERO:
+        jmp     FOUT19
 ; ----------------------------------------------------------------------------
-LA48E:  lda     #$00                            ; A48E A9 00                    ..
-        cpx     #$80                            ; A490 E0 80                    ..
-        beq     LA496                           ; A492 F0 02                    ..
-        bcs     LA49F                           ; A494 B0 09                    ..
-LA496:  lda     #<LA46B                         ; A496 A9 6B                    .k
-        ldy     #>LA46B                         ; A498 A0 A4                    ..
-        jsr     L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF ; A49A 20 2E 9F                  ..
-        lda     #$F1                            ; A49D A9 F1                    ..
-LA49F:  sta     $21                             ; A49F 85 21                    .!
-LA4A1:  lda     #<LA463                         ; A4A1 A9 63                    .c
-        ldy     #>LA463                         ; A4A3 A0 A4                    ..
-        jsr     LA2DC_X38_UNKNOWN_INDIRECT_STUFF_LOAD ; A4A5 20 DC A2                  ..
-        beq     LA4C8                           ; A4A8 F0 1E                    ..
-        bpl     LA4BE                           ; A4AA 10 12                    ..
-LA4AC:  lda     #<LA45B                         ; A4AC A9 5B                    .[
-        ldy     #>LA45B                         ; A4AE A0 A4                    ..
-        jsr     LA2DC_X38_UNKNOWN_INDIRECT_STUFF_LOAD ; A4B0 20 DC A2                  ..
-LA4B3:  beq     LA4B7                           ; A4B3 F0 02                    ..
-        bpl     LA4C5                           ; A4B5 10 0E                    ..
-LA4B7:  jsr     LA0C1                           ; A4B7 20 C1 A0                  ..
-        dec     $21                             ; A4BA C6 21                    .!
-        bne     LA4AC                           ; A4BC D0 EE                    ..
-LA4BE:  jsr     LA0E5                           ; A4BE 20 E5 A0                  ..
-        inc     $21                             ; A4C1 E6 21                    .!
-        bne     LA4A1                           ; A4C3 D0 DC                    ..
-LA4C5:  jsr     L9F38                           ; A4C5 20 38 9F                  8.
-LA4C8:  jsr     LA338_X50                           ; A4C8 20 38 A3                  8.
-        ldx     #$01                            ; A4CB A2 01                    ..
-        lda     $21
+FOUT37: lda     #$00
+        cpx     #$80
+        beq     LA496_SMALL
+        bcs     LA49F_SET_DECCNT        ;Branch if FAC is 1 or more
+LA496_SMALL:
+        lda     #<NMIL
+        ldy     #>NMIL
+        jsr     FMULT_ROM                            ;FAC is less than 1: multiply it by 1E15
+        lda     #$F1                    ;And start the decimal exponent at -15
+LA49F_SET_DECCNT:
+        sta     DECCNT
+FOUT4:  lda     #<N9999
+        ldy     #>N9999
+        jsr     FCOMP
+        beq     BIGGES
+        bpl     FOUT9
+FOUT3:  lda     #<N0999
+        ldy     #>N0999
+        jsr     FCOMP
+        beq     FOUT38
+        bpl     FOUT5
+FOUT38: jsr     MUL10
+        dec     DECCNT
+        bne     FOUT3
+FOUT9:  jsr     DIV10
+        inc     DECCNT
+        bne     FOUT4
+FOUT5:  jsr     FADDH
+BIGGES: jsr     QINT                    ;FAC is now a 15-digit integer
+        ldx     #$01
+        lda     DECCNT
         clc
-        adc     #$10                            ; A4D0 69 10                    i.
-LA4D2:  bmi     LA4DD                           ; A4D2 30 09                    0.
-        cmp     #$11                            ; A4D4 C9 11                    ..
-        bcs     LA4DE                           ; A4D6 B0 06                    ..
-        adc     #$FF                            ; A4D8 69 FF                    i.
-        tax                                     ; A4DA AA                       .
-        lda     #$02                            ; A4DB A9 02                    ..
-LA4DD:  sec                                     ; A4DD 38                       8
-LA4DE:  sbc     #$02                            ; A4DE E9 02                    ..
-        sta     $22                             ; A4E0 85 22                    ."
-        stx     $21                             ; A4E2 86 21                    .!
-        txa                                     ; A4E4 8A                       .
-        beq     LA4E9                           ; A4E5 F0 02                    ..
-        bpl     LA4FC                           ; A4E7 10 13                    ..
-LA4E9:  ldy     $3B                             ; A4E9 A4 3B                    .;
-        lda     #$2E                            ; A4EB A9 2E                    ..
-        iny                                     ; A4ED C8                       .
-        sta     $FF,y                           ; A4EE 99 FF 00                 ...
-        txa                                     ; A4F1 8A                       .
-        beq     LA4FA                           ; A4F2 F0 06                    ..
-        lda     #$30                            ; A4F4 A9 30                    .0
-        iny                                     ; A4F6 C8                       .
-        sta     $FF,y                           ; A4F7 99 FF 00                 ...
-LA4FA:  sty     $3B                             ; A4FA 84 3B                    .;
-LA4FC:  ldy     #$00                            ; A4FC A0 00                    ..
-        ldx     #$80                            ; A4FE A2 80                    ..
-LA500:  lda     $2C                             ; A500 A5 2C                    .,
-        clc                                     ; A502 18                       .
-        adc     LA5CD,y                         ; A503 79 CD A5                 y..
-        sta     $2C                             ; A506 85 2C                    .,
-        lda     $2B                             ; A508 A5 2B                    .+
-        adc     LA5CC,y                         ; A50A 79 CC A5                 y..
-        sta     $2B                             ; A50D 85 2B                    .+
-        lda     $2A                             ; A50F A5 2A                    .*
-        adc     LA5CB,y                         ; A511 79 CB A5                 y..
-        sta     $2A                             ; A514 85 2A                    .*
-        lda     $29                             ; A516 A5 29                    .)
-        adc     LA5CA,y                         ; A518 79 CA A5                 y..
-        sta     $29                             ; A51B 85 29                    .)
-        lda     $28                             ; A51D A5 28                    .(
-        adc     LA5C9,y                         ; A51F 79 C9 A5                 y..
-        sta     $28                             ; A522 85 28                    .(
-        lda     $27                             ; A524 A5 27                    .'
-        adc     LA5C8,y                         ; A526 79 C8 A5                 y..
-        sta     $27                             ; A529 85 27                    .'
-        lda     $26                             ; A52B A5 26                    .&
-        adc     LA5C7,y                         ; A52D 79 C7 A5                 y..
-        sta     $26                             ; A530 85 26                    .&
-        inx                                     ; A532 E8                       .
-        bcs     LA539                           ; A533 B0 04                    ..
-        bpl     LA500                           ; A535 10 C9                    ..
-        bmi     LA53B                           ; A537 30 02                    0.
-LA539:  bmi     LA500                           ; A539 30 C5                    0.
-LA53B:  txa                                     ; A53B 8A                       .
-        bcc     LA542                           ; A53C 90 04                    ..
+        adc     #$10
+        bmi     FOUTPI
+        cmp     #$11
+        bcs     FOUT6
+        adc     #$FF
+        tax
+        lda     #$02
+FOUTPI: sec
+FOUT6:  sbc     #$02
+        sta     TENEXP
+        stx     DECCNT
+        txa
+        beq     FOUT39
+        bpl     LA4FC_DIGITS
+FOUT39: ldy     FBUFPT
+        lda     #$2E
+        iny
+        sta     FBUFFR-1,y
+        txa
+        beq     FOUT16
+        lda     #$30
+        iny
+        sta     FBUFFR-1,y
+FOUT16: sty     FBUFPT
+LA4FC_DIGITS:
+        ldy     #$00
+        ldx     #$80
+FOULDY: lda     FACLO
+        clc
+        adc     FOUTBL+6,y
+        sta     FACLO
+        lda     FACHO+5
+        adc     FOUTBL+5,y
+        sta     FACHO+5
+        lda     FACHO+4
+        adc     FOUTBL+4,y
+        sta     FACHO+4
+        lda     FACHO+3
+        adc     FOUTBL+3,y
+        sta     FACHO+3
+        lda     FACHO+2
+        adc     FOUTBL+2,y
+        sta     FACHO+2
+        lda     FACHO+1
+        adc     FOUTBL+1,y
+        sta     FACHO+1
+        lda     FACHO
+        adc     FOUTBL,y
+        sta     FACHO
+        inx
+        bcs     LA539_NEGATIVE
+        bpl     FOULDY
+        bmi     LA53B_GOT_DIGIT
+LA539_NEGATIVE:
+        bmi     FOULDY
+LA53B_GOT_DIGIT:
+        txa
+        bcc     LA542_POSITIVE
         eor     #$ff
         adc     #$0a
-LA542:  adc     #$2F                            ; A542 69 2F                    i/
-        iny                                     ; A544 C8                       .
-        iny                                     ; A545 C8                       .
-        iny                                     ; A546 C8                       .
-        iny                                     ; A547 C8                       .
-        iny                                     ; A548 C8                       .
-        iny                                     ; A549 C8                       .
-        iny                                     ; A54A C8                       .
-LA54B:  sty     $3D                             ; A54B 84 3D                    .=
-        ldy     $3B                             ; A54D A4 3B                    .;
-        iny                                     ; A54F C8                       .
-        tax                                     ; A550 AA                       .
-        and     #$7F                            ; A551 29 7F                    ).
-        sta     $FF,y                           ; A553 99 FF 00                 ...
-        dec     $21                             ; A556 C6 21                    .!
-        BNE     LA560
-        LDA     #$2e
-        INY
-        STA     $00ff,Y
-LA560:  sty     $3B                             ; A560 84 3B                    .;
-        ldy     $3D                             ; A562 A4 3D                    .=
-LA564:  txa                                     ; A564 8A                       .
-        eor     #$FF                            ; A565 49 FF                    I.
-        and     #$80                            ; A567 29 80                    ).
-        tax                                     ; A569 AA                       .
-        cpy     #$69                            ; A56A C0 69                    .i
-        beq     LA572                           ; A56C F0 04                    ..
-        cpy     #$93                            ; A56E C0 93                    ..
-        bne     LA500                           ; A570 D0 8E                    ..
-LA572:  ldy     $3B                             ; A572 A4 3B                    .;
-LA574:  lda     $00ff,Y
-        dey
-        cmp     #$30                            ; A578 C9 30                    .0
-        beq     LA574                           ; A57A F0 F8                    ..
-        cmp     #$2E                            ; A57C C9 2E                    ..
-        beq     LA581                           ; A57E F0 01                    ..
-        iny                                     ; A580 C8                       .
-LA581:  lda     #$2B                            ; A581 A9 2B                    .+
-        ldx     $22                             ; A583 A6 22                    ."
-        beq     LA5B5                           ; A585 F0 2E                    ..
-        bpl     LA591                           ; A587 10 08                    ..
-        lda     #$00                            ; A589 A9 00                    ..
-        sec                                     ; A58B 38                       8
-        sbc     $22                             ; A58C E5 22                    ."
-        tax                                     ; A58E AA                       .
-        lda     #$2d
-LA591:  sta     stack+1,y                       ; A591 99 01 01                 ...
-        lda     #$45                            ; A594 A9 45                    .E
-        sta     stack,y                         ; A596 99 00 01                 ...
-        txa                                     ; A599 8A                       .
-        ldx     #$2F                            ; A59A A2 2F                    ./
-        sec                                     ; A59C 38                       8
-LA59D:  inx                                     ; A59D E8                       .
-        sbc     #$0A                            ; A59E E9 0A                    ..
-        bcs     LA59D                           ; A5A0 B0 FB                    ..
-        adc     #$3A                            ; A5A2 69 3A                    i:
-        sta     stack+3,y                       ; A5A4 99 03 01                 ...
-        txa                                     ; A5A7 8A                       .
-        sta     stack+2,y                       ; A5A8 99 02 01                 ...
-        lda     #$00                            ; A5AB A9 00                    ..
-        sta     stack+4,y                       ; A5AD 99 04 01                 ...
-        beq     LA5BA                           ; A5B0 F0 08                    ..
-LA5B2:  sta     $FF,y                           ; A5B2 99 FF 00                 ...
-LA5B5:  lda     #$00                            ; A5B5 A9 00                    ..
-        sta     stack,y                         ; A5B7 99 00 01                 ...
-LA5BA:  lda     #$00                            ; A5BA A9 00                    ..
-        ldy     #$01                            ; A5BC A0 01                    ..
-        rts                                     ; A5BE 60                       `
-; ----------------------------------------------------------------------------
-LA5BF:  bra     LA5C1                           ; A5BF 80 00                    ..
-
-LA5C1:  brk                                     ; A5C1 00                       .
-        brk                                     ; A5C2 00                       .
-        brk                                     ; A5C3 00                       .
-        brk                                     ; A5C4 00                       .
-        brk                                     ; A5C5 00                       .
-        brk                                     ; A5C6 00                       .
-LA5C7:  .byte   $FF                             ; A5C7 FF                       .
-LA5C8:  .byte   $A5                             ; A5C8 A5                       .
-LA5C9:  .byte   $0C                             ; A5C9 0C                       .
-LA5CA:  .byte   $EF                             ; A5CA EF                       .
-LA5CB:  .byte   $85                             ; A5CB 85                       .
-LA5CC:  .byte   $C0                             ; A5CC C0                       .
-LA5CD:  brk                                     ; A5CD 00                       .
-        brk                                     ; A5CE 00                       .
-        ora     #$18                            ; A5CF 09 18                    ..
-        lsr     $A072                           ; A5D1 4E 72 A0                 Nr.
-        brk                                     ; A5D4 00                       .
-        bbs7    $FF,LA5EF                       ; A5D5 FF FF 17                 ...
-        .byte   $2B                             ; A5D8 2B                       +
-        phy                                     ; A5D9 5A                       Z
-LA5DA:  beq     LA5DC                           ; A5DA F0 00                    ..
-LA5DC:  brk                                     ; A5DC 00                       .
-        brk                                     ; A5DD 00                       .
-        rmb1    $48                             ; A5DE 17 48                    .H
-        ror     $E8,x                           ; A5E0 76 E8                    v.
-        brk                                     ; A5E2 00                       .
-LA5E3:  bbs7    $FF,LA5E3                       ; A5E3 FF FF FD                 ...
-        .byte   $AB                             ; A5E6 AB                       .
-        .byte   $F4                             ; A5E7 F4                       .
-        trb     a:$00                           ; A5E8 1C 00 00                 ...
-LA5EB:  brk                                     ; A5EB 00                       .
-        brk                                     ; A5EC 00                       .
-        .byte   $3B                             ; A5ED 3B                       ;
-        txs                                     ; A5EE 9A                       .
-LA5EF:  dex                                     ; A5EF CA                       .
-        brk                                     ; A5F0 00                       .
-        .byte   $FF                             ; A5F1 FF                       .
-LA5F2:  .byte   $FF                             ; A5F2 FF                       .
-LA5F3:  bbs7    $FA,LA5FF+1                     ; A5F3 FF FA 0A                 ...
-        .byte   $1F                             ; A5F6 1F                       .
-LA5F7:  brk                                     ; A5F7 00                       .
-        brk                                     ; A5F8 00                       .
-LA5F9:  brk                                     ; A5F9 00                       .
-        brk                                     ; A5FA 00                       .
-LA5FB:  brk                                     ; A5FB 00                       .
-LA5FC:  tya                                     ; A5FC 98                       .
-        stx     $80,y                           ; A5FD 96 80                    ..
-LA5FF:  .byte   $FF                             ; A5FF FF                       .
-        .byte   $FF                             ; A600 FF                       .
-LA601:  bbs7    $FF,LA5F3+1                     ; A601 FF FF F0                 ...
-LA604:  lda     a:$C0,x                         ; A604 BD C0 00                 ...
-        brk                                     ; A607 00                       .
-        brk                                     ; A608 00                       .
-        brk                                     ; A609 00                       .
-        ora     ($86,x)                         ; A60A 01 86                    ..
-        ldy     #$FF                            ; A60C A0 FF                    ..
-        .byte   $FF                             ; A60E FF                       .
-        .byte   $FF                             ; A60F FF                       .
-LA610:  bbs7    $FF,LA5EB                       ; A610 FF FF D8                 ...
-        .byte   $F0                             ; A613 F0                       .
-LA614:  brk                                     ; A614 00                       .
-        brk                                     ; A615 00                       .
-        brk                                     ; A616 00                       .
-        brk                                     ; A617 00                       .
-        brk                                     ; A618 00                       .
-        .byte   $03                             ; A619 03                       .
-        inx                                     ; A61A E8                       .
-        .byte   $FF                             ; A61B FF                       .
-        .byte   $FF                             ; A61C FF                       .
-LA61D:  .byte $FF
-        .byte $FF
-        .byte $FF
-LA620:  bbs7    $9C,LA623                       ; A620 FF 9C 00                 ...
-LA623:  brk                                     ; A623 00                       .
-        brk                                     ; A624 00                       .
-        brk                                     ; A625 00                       .
-        brk                                     ; A626 00                       .
-        brk                                     ; A627 00                       .
-        asl     a                               ; A628 0A                       .
-        .byte   $FF                             ; A629 FF                       .
-        .byte   $FF                             ; A62A FF                       .
-LA62B:  .byte $FF, $FF, $FF                     ; A62B FF FF FF                 ...
-LA62E:  .byte $FF, $FF, $FF                     ; A62E FF FF FF                 ...
-LA631:  .byte $FF, $FF, $FF                     ; A631 FF FF FF                 ...
-        .byte $DF, $0A, $80                     ; A634 DF 0A 80                 ...
-        brk                                     ; A637 00                       .
-LA638:  brk                                     ; A638 00                       .
-        brk                                     ; A639 00                       .
-        brk                                     ; A63A 00                       .
-        .byte   $03                             ; A63B 03                       .
-LA63C:  .byte   $4B                             ; A63C 4B                       K
-        cpy     #$FF                            ; A63D C0 FF                    ..
-        .byte   $FF                             ; A63F FF                       .
-        .byte   $FF                             ; A640 FF                       .
-LA641:  .byte $FF, $FF, $73
-        rts                                     ; A644 60                       `
-; ----------------------------------------------------------------------------
-        brk                                     ; A645 00                       .
-LA646:  brk                                     ; A646 00                       .
-        brk                                     ; A647 00                       .
-        brk                                     ; A648 00                       .
-        brk                                     ; A649 00                       .
-        asl     $FF10                           ; A64A 0E 10 FF                 ...
-        .byte   $FF                             ; A64D FF                       .
-        .byte   $FF                             ; A64E FF                       .
-LA64F:  bbs7    $FF,LA64F                       ; A64F FF FF FD                 ...
-        tay                                     ; A652 A8                       .
-        brk                                     ; A653 00                       .
-        brk                                     ; A654 00                       .
-        brk                                     ; A655 00                       .
-        brk                                     ; A656 00                       .
-        brk                                     ; A657 00                       .
-        brk                                     ; A658 00                       .
-        .byte $3c
-; ----------------------------------------------------------------------------
-LA65A_X24:  jsr LA1DB_X40
-        bra LA66B_X26
-; ----------------------------------------------------------------------------
-LA65F_X66:  bra LA66B_X26
-; ----------------------------------------------------------------------------
-LA661_X20:  jsr     LA27B_X48                           ; A661 20 7B A2                  {.
-        lda     #<LA5BF                         ; A664 A9 BF                    ..
-        ldy     #>LA5BF                         ; A666 A0 A5                    ..
-        jsr     LA1DD_X42_INDIRECT_STUFF_LOAD                           ; A668 20 DD A1                  ..
-LA66B_X26:  bne     LA670                           ; A66B D0 03                    ..
-        jmp     LA72B_X28                           ; A66D 4C 2B A7                 L+.
-; ----------------------------------------------------------------------------
-LA670:  lda     $30                             ; A670 A5 30                    .0
-        bne     LA677                           ; A672 D0 03                    ..
-        jmp     L9D6E                           ; A674 4C 6E 9D                 Ln.
-; ----------------------------------------------------------------------------
-LA677:  ldx     #$41                            ; A677 A2 41                    .A
-        ldy     #$00                            ; A679 A0 00                    ..
-        jsr     LA227                           ; A67B 20 27 A2                  '.
-        lda     $38                             ; A67E A5 38                    .8
-        bpl     LA691                           ; A680 10 0F                    ..
-        jsr     LA369_X1E                       ; A682 20 69 A3                  i.
-        lda     #<MEM_0041                      ; A685 A9 41                    .A
-        ldy     #>MEM_0041                      ; A687 A0 00                    ..
-        jsr     LA2DC_X38_UNKNOWN_INDIRECT_STUFF_LOAD ; A689 20 DC A2                  ..
-        bne     LA691                           ; A68C D0 03                    ..
-        tya                                     ; A68E 98                       .
-        ldy     $00                             ; A68F A4 00                    ..
-LA691:  jsr     LA26D                           ; A691 20 6D A2                  m.
-        tya                                     ; A694 98                       .
-        pha                                     ; A695 48                       H
-        jsr     L9EF0_X1C                           ; A696 20 F0 9E                  ..
-        lda     #$41                            ; A699 A9 41                    .A
-        ldy     #$00                            ; A69B A0 00                    ..
-        jsr     L9F60_X14                           ; A69D 20 60 9F                  `.
-        jsr     LA72B_X28                           ; A6A0 20 2B A7                  +.
-        pla                                     ; A6A3 68                       h
-        lsr     a                               ; A6A4 4A                       J
-LA6A5:  bcc     LA6B1                           ; A6A5 90 0A                    ..
-LA6A7_X22:  lda     $25                             ; A6A7 A5 25                    .%
-        beq     LA6B1                           ; A6A9 F0 06                    ..
-        lda     $2D                             ; A6AB A5 2D                    .-
-        eor     #$FF                            ; A6AD 49 FF                    I.
-        sta     $2D                             ; A6AF 85 2D                    .-
-LA6B1:  rts                                     ; A6B1 60                       `
-; ----------------------------------------------------------------------------
-;TODO probably data
-LA6B2:  sta     ($38,x)                         ; A6B2 81 38                    .8
-        tax                                     ; A6B4 AA                       .
-        .byte   $3B                             ; A6B5 3B                       ;
-        and     #$5C                            ; A6B6 29 5C                    )\
-        rmb1    $EE                             ; A6B8 17 EE                    ..
-LA6BA:
-        ora     $4A59                           ; A6BA 0D 59 4A                 .YJ
-        brk                                     ; A6BD 00                       .
-        brk                                     ; A6BE 00                       .
-        brk                                     ; A6BF 00                       .
-        brk                                     ; A6C0 00                       .
-        brk                                     ; A6C1 00                       .
-        brk                                     ; A6C2 00                       .
-        ;TODO probably data
-        eor     $DE61,x                         ; A6C3 5D 61 DE                 ]a.
-        lda     ($87)                           ; A6C6 B2 87                    ..
-LA6C8:  sbc     ($4C,x)                         ; A6C8 E1 4C                    .L
-        trb     $7461                           ; A6CA 1C 61 74                 .at
-        adc     $63                             ; A6CD 65 63                    ec
-        txs                                     ; A6CF 9A                       .
-        sta     $14D9                           ; A6D0 8D D9 14                 ...
-        adc     $72                             ; A6D3 65 72                    er
-        rmb6    INSRT                           ; A6D5 67 A8                    g.
-        ldy     $765C                           ; A6D7 AC 5C 76                 .\v
-        .byte   $44                             ; A6DA 44                       D
-        adc     #$5A                            ; A6DB 69 5A                    iZ
-        sta     ($9E)                           ; A6DD 92 9E                    ..
-        stz     $3EAF                           ; A6DF 9C AF 3E                 ..>
-        tsb     $316D                           ; A6E2 0C 6D 31                 .m1
-        rts                                     ; A6E5 60                       `
-; ----------------------------------------------------------------------------
-;TODO probably data
-        ora     ($1D),y                         ; A6E6 11 1D                    ..
-        rol     $0E41                           ; A6E8 2E 41 0E                 .A.
-        bvs     $A76C                           ; A6EB 70 7F                    p.
-        sbc     $FE                             ; A6ED E5 FE                    ..
-        bit     $8645                           ; A6EF 2C 45 86                 ,E.
-        bit     $74                             ; A6F2 24 74                    $t
-LA6F4:  and     ($84,x)                         ; A6F4 21 84                    !.
-        bit     #$7C                            ; A6F6 89 7C                    .|
-        rol     $3C,x                           ; A6F8 36 3C                    6<
-        bmi     $A773                           ; A6FA 30 77                    0w
-        rol     LFFC3_CLOSE                     ; A6FC 2E C3 FF                 ...
-        bit     $3953,x                         ; A6FF 3C 53 39                 <S9
-        .byte   $82                             ; A702 82                       .
-        ply                                     ; A703 7A                       z
-        ora     $5B95,x                         ; A704 1D 95 5B                 ..[
-        adc     $73D2,x                         ; A707 7D D2 73                 }.s
-        sty     $7C                             ; A70A 84 7C                    .|
-        .byte   $63                             ; A70C 63                       c
-        cli                                     ; A70D 58                       X
-        lsr     SAL                             ; A70E 46 B8                    F.
-        and     $05                             ; A710 25 05                    %.
-        sed                                     ; A712 F8                       .
-        ror     $FD75,x                         ; A713 7E 75 FD                 ~u.
-        bbs6    $FC,LA72F                       ; A716 EF FC 16                 ...
-        bit     L8074                           ; A719 2C 74 80                 ,t.
-        and     ($72),y                         ; A71C 31 72                    1r
-LA71E:  rmb1    $F7                             ; A71E 17 F7                    ..
-        cmp     ($CF),y                         ; A720 D1 CF                    ..
-        jmp     (MEM_0081,x)                    ; A722 7C 81 00                 |..
-LA725:  brk                                     ; A725 00                       .
-        brk                                     ; A726 00                       .
-        brk                                     ; A727 00                       .
-        brk                                     ; A728 00                       .
-        brk                                     ; A729 00                       .
-        brk                                     ; A72A 00                       .
-LA72B_X28:
-        lda     #<LA6B2                            ; A72B A9 B2                    ..
-        ldy     #>LA6B2                            ; A72D A0 A6                    ..
-LA72F:  jsr L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF
-        lda     $3a
-        adc     #$50
-        bcc     LA73B
-        jsr     LA292                           ; A738 20 92 A2                  ..
-LA73B:  sta     $14                             ; A73B 85 14                    ..
-        jsr     LA27E                           ; A73D 20 7E A2                  ~.
-        lda     $25                             ; A740 A5 25                    .%
-        cmp     #$88                            ; A742 C9 88                    ..
-LA744:  bcc     LA749                           ; A744 90 03                    ..
-LA746:  jsr     LA0B3                           ; A746 20 B3 A0                  ..
-LA749:  jsr     LA369_X1E                       ; A749 20 69 A3                  i.
-        lda     $00
-        clc                                     ; A74E 18                       .
-        adc     #$81                            ; A74F 69 81                    i.
-        beq     LA746                           ; A751 F0 F3                    ..
-        sec                                     ; A753 38                       8
-        sbc     #$01                            ; A754 E9 01                    ..
-        pha                                     ; A756 48                       H
-        ldx     #$08                            ; A757 A2 08                    ..
-LA759:  lda     $30,x                           ; A759 B5 30                    .0
-        ldy     $25,x                           ; A75B B4 25                    .%
-        sta     $25,x                           ; A75D 95 25                    .%
-        sty     $30,x                           ; A75F 94 30                    .0
-        dex                                     ; A761 CA                       .
-        bpl     LA759                           ; A762 10 F5                    ..
-        lda     $14                             ; A764 A5 14                    ..
-        sta     $3A                             ; A766 85 3A                    .:
-        jsr     L9CA7_X0E                           ; A768 20 A7 9C                  ..
-        jsr     LA6A7_X22
-        lda     #<LA6BA                            ; A76E A9 BA                    ..
-        ldy     #>LA6BA                            ; A770 A0 A6                    ..
-        jsr     LA794
-        lda     #$00                            ; A775 A9 00                    ..
-        sta     $39                             ; A777 85 39                    .9
-        pla                                     ; A779 68                       h
-        jsr     LA098                           ; A77A 20 98 A0                  ..
-        rts                                     ; A77D 60                       `
-; ----------------------------------------------------------------------------
-LA77E_UNKNOWN_OTHER_INDIRECT_STUFF:
-        sta     $3B                             ; A77E 85 3B                    .;
-        sty     $3C                             ; A780 84 3C                    .<
-        jsr     LA220                           ; A782 20 20 A2                   .
-        lda     #$15                            ; A785 A9 15                    ..
-        jsr     L9F60_X14                           ; A787 20 60 9F                  `.
-        jsr     LA798                           ; A78A 20 98 A7                  ..
-        lda     #$15                            ; A78D A9 15                    ..
-        ldy     #$00                            ; A78F A0 00                    ..
-        jmp     L9F60_X14                           ; A791 4C 60 9F                 L`.
-; ----------------------------------------------------------------------------
-LA794:  sta     $3B                             ; A794 85 3B                    .;
-        sty     $3C                             ; A796 84 3C                    .<
-LA798:  jsr     LA21D                           ; A798 20 1D A2                  ..
-        lda     ($3B),y                         ; A79B B1 3B                    .;
-        sta     $2E                             ; A79D 85 2E                    ..
-        ldy     $3B                             ; A79F A4 3B                    .;
-        iny                                     ; A7A1 C8                       .
-        tya                                     ; A7A2 98                       .
-        bne     LA7A7                           ; A7A3 D0 02                    ..
-        inc     $3C                             ; A7A5 E6 3C                    .<
-LA7A7:  sta     $3B                             ; A7A7 85 3B                    .;
-        ldy     $3C                             ; A7A9 A4 3C                    .<
-LA7AB:  jsr     L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF                           ; A7AB 20 2E 9F                  ..
-        lda     $3B                             ; A7AE A5 3B                    .;
-        ldy     $3C                             ; A7B0 A4 3C                    .<
-        clc                                     ; A7B2 18                       .
-        adc     #$08                            ; A7B3 69 08                    i.
-        BCC     $a7b8
+LA542_POSITIVE:
+        adc     #$2F
         iny
-        sta     $3B                             ; A7B8 85 3B                    .;
-        sty     $3C                             ; A7BA 84 3C                    .<
-        jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12                           ; A7BC 20 3C 9F                  <.
-        lda     #$1D                            ; A7BF A9 1D                    ..
-        ldy     #$00                            ; A7C1 A0 00                    ..
-        dec     $2E                             ; A7C3 C6 2E                    ..
-        bne     LA7AB                           ; A7C5 D0 E4                    ..
-        rts                                     ; A7C7 60                       `
+        iny
+        iny
+        iny
+        iny
+        iny
+        iny
+LA54B_STORE_DIGIT:
+        sty     FOUT_TMP
+        ldy     FBUFPT
+        iny
+        tax
+        and     #$7F
+        sta     FBUFFR-1,y
+        dec     DECCNT
+        bne     LA560
+        lda     #$2e
+        iny
+        sta     FBUFFR-1,y
+LA560:  sty     FBUFPT
+        ldy     FOUT_TMP
+LA564_NEXT_POWER:
+        txa
+        eor     #$FF
+        and     #$80
+        tax
+        cpy     #FDCEND-FOUTBL
+        beq     LA572_DIGITS_DONE
+        cpy     #TIMEND-FOUTBL
+        bne     FOULDY
+LA572_DIGITS_DONE:
+        ldy     FBUFPT
+LA574_STRIP_ZEROS:
+        lda     FBUFFR-1,y
+        dey
+        cmp     #$30
+        beq     LA574_STRIP_ZEROS
+        cmp     #$2E
+        beq     LA581_EXPONENT
+        iny
+LA581_EXPONENT:
+        lda     #$2B
+        ldx     TENEXP
+        beq     FOUT17
+        bpl     LA591_PUT_EXPONENT
+        lda     #$00
+        sec
+        sbc     TENEXP
+        tax
+        lda     #$2d
+LA591_PUT_EXPONENT:
+        sta     FBUFFR+1,y
+        lda     #$45
+        sta     FBUFFR,y
+        txa
+        ldx     #$2F
+        sec
+LA59D_TENS_LOOP:
+        inx
+        sbc     #$0A
+        bcs     LA59D_TENS_LOOP
+        adc     #$3A
+        sta     FBUFFR+3,y
+        txa
+        sta     FBUFFR+2,y
+        lda     #$00
+        sta     FBUFFR+4,y
+        beq     FOUT20
+FOUT19: sta     FBUFFR-1,y
+FOUT17: lda     #$00
+        sta     FBUFFR,y
+FOUT20: lda     #$00
+        ldy     #$01
+        rts
 ; ----------------------------------------------------------------------------
-LA7C8:  tya                                     ; A7C8 98                       .
-        and     $44,x                           ; A7C9 35 44                    5D
-        ply                                     ; A7CB 7A                       z
-        brk                                     ; A7CC 00                       .
-        brk                                     ; A7CD 00                       .
-        brk                                     ; A7CE 00                       .
-        brk                                     ; A7CF 00                       .
-LA7D0:  pla                                     ; A7D0 68                       h
-        plp                                     ; A7D1 28                       (
-        lda     ($46),y                         ; A7D2 B1 46                    .F
-        brk                                     ; A7D4 00                       .
-        brk                                     ; A7D5 00                       .
-        brk                                     ; A7D6 00                       .
-        brk                                     ; A7D7 00                       .
-LA7D8_X5C:  jsr     LA29A_X36                           ; A7D8 20 9A A2                  ..
-LA7DB_X3A:  bmi     LA81A                           ; A7DB 30 3D                    0=
-        bne     LA805                           ; A7DD D0 26                    .&
-        lda     VIA1_T1CL                       ; A7DF AD 04 F8                 ...
-        sta     $26                             ; A7E2 85 26                    .&
-        lda     VIA1_T1CH                       ; A7E4 AD 05 F8                 ...
-        sta     $2B                             ; A7E7 85 2B                    .+
-        lda     VIA1_T2CL                       ; A7E9 AD 08 F8                 ...
-        sta     $2A                             ; A7EC 85 2A                    .*
-        lda     VIA2_T2CL                       ; A7EE AD 88 F8                 ...
-        sta     $29                             ; A7F1 85 29                    .)
-        lda     VIA2_T1CL                       ; A7F3 AD 84 F8                 ...
-        sta     $28                             ; A7F6 85 28                    .(
-        lda     VIA1_T2CL                       ; A7F8 AD 08 F8                 ...
-        sta     $27                             ; A7FB 85 27                    .'
-        lda     VIA1_T2CH                       ; A7FD AD 09 F8                 ...
-        sta     $2C                             ; A800 85 2C                    .,
-        jmp     LA832                           ; A802 4C 32 A8                 L2.
-; ----------------------------------------------------------------------------
-LA805:  lda     #<MEM_03AC                         ; A805 A9 AC                    ..
-        ldy     #>MEM_03AC                         ; A807 A0 03                    ..
-        jsr     LA1DD_X42_INDIRECT_STUFF_LOAD       ; A809 20 DD A1                  ..
-        lda     #<LA7C8                         ; A80C A9 C8                    ..
-        ldy     #>LA7C8                         ; A80E A0 A7                    ..
-        jsr     L9F2E_PROBABLY_JSR_TO_INDIRECT_STUFF    ; A810 20 2E 9F                  ..
-        lda     #<LA7D0                         ; A813 A9 D0                    ..
-        ldy     #>LA7D0                         ; A815 A0 A7                    ..
-        jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12  ; A817 20 3C 9F                  <.
-LA81A:  ldx     $2C                             ; A81A A6 2C                    .,
-        lda     $26                             ; A81C A5 26                    .&
-        sta     $2C                             ; A81E 85 2C                    .,
-        stx     $26                             ; A820 86 26                    .&
-        ldx     $2A                             ; A822 A6 2A                    .*
-        lda     $29                             ; A824 A5 29                    .)
-        sta     $2A                             ; A826 85 2A                    .*
-        stx     $29                             ; A828 86 29                    .)
-        ldx     $27                             ; A82A A6 27                    .'
-        lda     $2B                             ; A82C A5 2B                    .+
-        sta     $27                             ; A82E 85 27                    .'
-        stx     $2B                             ; A830 86 2B                    .+
-LA832:  lda     #$00                            ; A832 A9 00                    ..
-        sta     $2D                             ; A834 85 2D                    .-
-        lda     $25                             ; A836 A5 25                    .%
-        sta     $3A                             ; A838 85 3A                    .:
-        lda     #$80                            ; A83A A9 80                    ..
-        sta     $25                             ; A83C 85 25                    .%
-        jsr     L9D40                           ; A83E 20 40 9D                  @.
-        ldx     #>LAC03                         ; A841 A2 AC                    ..
-        ldy     #<LAC03                         ; A843 A0 03                    ..
-LA845:  jmp     LA227                           ; A845 4C 27 A2                 L'.
-; ----------------------------------------------------------------------------
-LA848_X2A:  lda     #<LA8C4                         ; A848 A9 C4                    ..
-        ldy     #>LA8C4                          ; A84A A0 A8                    ..
-        jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12  ; A84C 20 3C 9F                  <.
-LA84F_X2C:  jsr     LA27B_X48                           ; A84F 20 7B A2                  {.
-        lda     #<LA8CC                            ; A852 A9 CC                    ..
-        ldy     #>LA8CC                            ; A854 A0 A8                    ..
-        ldx     $38                             ; A856 A6 38                    .8
-        jsr     LA0EE                           ; A858 20 EE A0                  ..
-        jsr     LA27B_X48                           ; A85B 20 7B A2                  {.
-        jsr     LA369_X1E                           ; A85E 20 69 A3                  i.
-        lda     #$00                            ; A861 A9 00                    ..
-        sta     $39                             ; A863 85 39                    .9
-        jsr     L9CA7_X0E                           ; A865 20 A7 9C                  ..
-        lda     #<LA8D4                         ; A868 A9 D4                    ..
-        ldy     #>LA8D4
-        jsr     L9F48_JSR_INDIRECT_STUFF_AND_JMP_L9CA7_X0E                           ; A86C 20 48 9F                  H.
-        lda     $2D                             ; A86F A5 2D                    .-
-        pha                                     ; A871 48                       H
-        bpl     LA881                           ; A872 10 0D                    ..
-        jsr     L9F38                           ; A874 20 38 9F                  8.
-        lda     $2D                             ; A877 A5 2D                    .-
-        bmi     LA884                           ; A879 30 09                    0.
-        lda     $04                             ; A87B A5 04                    ..
-        eor     #$FF                            ; A87D 49 FF                    I.
-        sta     $04                             ; A87F 85 04                    ..
-LA881:  jsr     LA6A7_X22                           ; A881 20 A7 A6                  ..
-LA884:  lda     #<LA8D4                         ; A884 A9 D4                    ..
-        ldy     #>LA8D4                         ; A886 A0 A8                    ..
-        jsr     L9F3C_JSR_INDIRECT_STUFF_AND_JMP_L9CBE_X12                           ; A888 20 3C 9F                  <.
-        pla                                     ; A88B 68                       h
-        bpl     LA891                           ; A88C 10 03                    ..
-        jsr     LA6A7_X22                           ; A88E 20 A7 A6                  ..
-LA891:  lda     #<LA8DC                         ; A891 A9 DC                    ..
-        ldy     #>LA8DC                         ; A893 A0 A8                    ..
-        jmp     LA77E_UNKNOWN_OTHER_INDIRECT_STUFF                           ; A895 4C 7E A7                 L~.
-; ----------------------------------------------------------------------------
-LA898_X2E:  jsr     LA220                           ; A898 20 20 A2                   .
-        lda     #$00                            ; A89B A9 00                    ..
-        sta     $04                             ; A89D 85 04                    ..
-        jsr     LA84F_X2C                           ; A89F 20 4F A8                  O.
-        ldx     #$41                            ; A8A2 A2 41                    .A
-        ldy     #$00                            ; A8A4 A0 00                    ..
-        jsr     LA845                           ; A8A6 20 45 A8                  E.
-        lda     #<MEM_0015                      ; A8A9 A9 15                    ..
-        ldy     #>MEM_0015                      ; A8AB A0 00                    ..
-        jsr     LA1DD_X42_INDIRECT_STUFF_LOAD   ; A8AD 20 DD A1                  ..
-        lda     #$00                            ; A8B0 A9 00                    ..
-        sta     $2D                             ; A8B2 85 2D                    .-
-        lda     $04                             ; A8B4 A5 04                    ..
-        jsr     LA8C0                           ; A8B6 20 C0 A8                  ..
-        lda     #$41                            ; A8B9 A9 41                    .A
-        ldy     #$00                            ; A8BB A0 00                    ..
-        jmp     LA0F6_X18                           ; A8BD 4C F6 A0                 L..
-; ----------------------------------------------------------------------------
-LA8C0:  pha                                     ; A8C0 48                       H
-        jmp     LA881                           ; A8C1 4C 81 A8                 L..
-; ----------------------------------------------------------------------------
-;TODO probably data
-LA8C4:  sta     ($49,x)                         ; A8C4 81 49                    .I
-        bbr0    $DA,$A86B                       ; A8C6 0F DA A2                 ...
-        and     ($68,x)                         ; A8C9 21 68                    !h
-        iny                                     ; A8CB C8                       .
+FHALF:
+        .byte   $80,$00,$00,$00,$00,$00,$00,$00 ;0.5
 
-LA8CC:  .byte   $83                             ; A8CC 83                       .
-        eor     #$0F                            ; A8CD 49 0F                    I.
-        phx                                     ; A8CF DA                       .
-        ldx     #$21                            ; A8D0 A2 21                    .!
-        pla                                     ; A8D2 68                       h
-        iny                                     ; A8D3 C8                       .
-LA8D4:  bbr7    $00,LA8D7                       ; A8D4 7F 00 00                 ...
-LA8D7:  brk                                     ; A8D7 00                       .
-        brk                                     ; A8D8 00                       .
-        brk                                     ; A8D9 00                       .
-        brk                                     ; A8DA 00                       .
-        brk                                     ; A8DB 00                       .
-LA8DC:  ora     #$7A                            ; A8DC 09 7A                    .z
-        cmp     $20                             ; A8DE C5 20                    .
-        and     ($08,x)                         ; A8E0 21 08                    !.
-        .byte   $FC                             ; A8E2 FC                       .
-        tax                                     ; A8E3 AA                       .
-        trb     $7D                             ; A8E4 14 7D                    .}
-        eor     $76,x                           ; A8E6 55 76                    Uv
-        ora     $C957,y                         ; A8E8 19 57 C9                 .W.
-        txs                                     ; A8EB 9A                       .
-        ldy     LB780                           ; A8EC AC 80 B7                 ...
-        dec     $DC,x                           ; A8EF D6 DC                    ..
-        sed                                     ; A8F1 F8                       .
-        tax                                     ; A8F2 AA                       .
-        lda     L82FE,y                         ; A8F3 B9 FE 82                 ...
-        stz     $7A,x                           ; A8F6 74 7A                    tz
-        inc     a                               ; A8F8 1A                       .
-        pla                                     ; A8F9 68                       h
-        .byte   $0C                             ; A8FA 0C                       .
-LA8FB:  ror     a                               ; A8FB 6A                       j
-        .byte   $F4                             ; A8FC F4                       .
-        sty     $F1                             ; A8FD 84 F1                    ..
-        .byte   $83                             ; A8FF 83                       .
-        smb2    $EF                             ; A900 A7 EF                    ..
-        .byte   $44                             ; A902 44                       D
-        sec                                     ; A903 38                       8
-        .byte   $DC                             ; A904 DC                       .
-        stx     $28                             ; A905 86 28                    .(
-        bit     $431A,x                         ; A907 3C 1A 43                 <.C
-        smb7    $3B                             ; A90A F7 3B                    .;
-        sed                                     ; A90C F8                       .
-        smb0    $99                             ; A90D 87 99                    ..
-        adc     #$66                            ; A90F 69 66                    if
-        .byte   $73                             ; A911 73                       s
-        ora     $EC,x                           ; A912 15 EC                    ..
-        .byte   $23                             ; A914 23                       #
-        smb0    $23                             ; A915 87 23                    .#
-        and     $E3,x                           ; A917 35 E3                    5.
-        .byte   $3B                             ; A919 3B                       ;
-        lda     a:$57                           ; A91A AD 57 00                 .W.
-        stx     $A5                             ; A91D 86 A5                    ..
-        eor     $31E7,x                         ; A91F 5D E7 31                 ].1
-        and     L90F2                           ; A922 2D F2 90                 -..
-        .byte   $83                             ; A925 83                       .
-        eor     #$0F                            ; A926 49 0F                    I.
-        phx                                     ; A928 DA                       .
-        ldx     #$21                            ; A929 A2 21                    .!
-        pla                                     ; A92B 68                       h
-        iny                                     ; A92C C8                       .
-LA92D_X30:  lda     $2D                             ; A92D A5 2D                    .-
-        pha                                     ; A92F 48                       H
-        bpl     LA935                           ; A930 10 03                    ..
-        jsr     LA6A7_X22                           ; A932 20 A7 A6                  ..
-LA935:  lda     $25                             ; A935 A5 25                    .%
-        pha                                     ; A937 48                       H
-        cmp     #$81                            ; A938 C9 81                    ..
-        bcc     LA943                           ; A93A 90 07                    ..
-        lda     #<L9E7F                         ; A93C A9 7F                    ..
-        ldy     #>L9E7F                         ; A93E A0 9E                    ..
-        jsr     L9F54_JSR_INDIRECT_STUFF_AND_JMP_LA0F9_X1A  ; A940 20 54 9F                  T.
-LA943:  lda     #<LA95D                         ; A943 A9 5D                    .]
-        ldy     #>LA95D                         ; A945 A0 A9                    ..
-        jsr     LA77E_UNKNOWN_OTHER_INDIRECT_STUFF  ; A947 20 7E A7                  ~.
-        pla                                     ; A94A 68                       h
-        cmp     #$81                            ; A94B C9 81                    ..
-        bcc     LA956                           ; A94D 90 07                    ..
-        lda     #<LA8C4                         ; A94F A9 C4                    ..
-        ldy     #>LA8C4                         ; A951 A0 A8                    ..
-        jsr     L9F48_JSR_INDIRECT_STUFF_AND_JMP_L9CA7_X0E  ; A953 20 48 9F                  H.
-LA956:  pla                                     ; A956 68                       h
-        bpl     LA95C                           ; A957 10 03                    ..
-        jmp     LA6A7_X22                           ; A959 4C A7 A6                 L..
+;Powers of ten, as 7-byte integers of alternating sign, that FOUT adds
+;to FAC to peel off one decimal digit at a time
+FOUTBL:
+        .byte   $FF,$A5,$0C,$EF,$85,$C0,$00 ;-100000000000000
+        .byte   $00,$09,$18,$4E,$72,$A0,$00 ;10000000000000
+        .byte   $FF,$FF,$17,$2B,$5A,$F0,$00 ;-1000000000000
+        .byte   $00,$00,$17,$48,$76,$E8,$00 ;100000000000
+        .byte   $FF,$FF,$FD,$AB,$F4,$1C,$00 ;-10000000000
+        .byte   $00,$00,$00,$3B,$9A,$CA,$00 ;1000000000
+        .byte   $FF,$FF,$FF,$FA,$0A,$1F,$00 ;-100000000
+        .byte   $00,$00,$00,$00,$98,$96,$80 ;10000000
+        .byte   $FF,$FF,$FF,$FF,$F0,$BD,$C0 ;-1000000
+        .byte   $00,$00,$00,$00,$01,$86,$A0 ;100000
+        .byte   $FF,$FF,$FF,$FF,$FF,$D8,$F0 ;-10000
+        .byte   $00,$00,$00,$00,$00,$03,$E8 ;1000
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$9C ;-100
+        .byte   $00,$00,$00,$00,$00,$00,$0A ;10
+        .byte   $FF,$FF,$FF,$FF,$FF,$FF,$FF ;-1
+;Like FOUTBL, but for peeling off hours, minutes and seconds from a count
+;of jiffies (for TI$ in other CBM BASICs).  FOUT can stop at the end of
+;this table, but nothing in the KERNAL makes it start here.
+FDCEND:
+        .byte   $FF,$FF,$FF,$FF,$DF,$0A,$80 ;-2160000
+        .byte   $00,$00,$00,$00,$03,$4B,$C0 ;216000
+        .byte   $FF,$FF,$FF,$FF,$FF,$73,$60 ;-36000
+        .byte   $00,$00,$00,$00,$00,$0E,$10 ;3600
+        .byte   $FF,$FF,$FF,$FF,$FF,$FD,$A8 ;-600
+        .byte   $00,$00,$00,$00,$00,$00,$3C ;60
+TIMEND:
 ; ----------------------------------------------------------------------------
-LA95C:  rts                                     ; A95C 60                       `
+;FAC = ARG to the power of the number in memory
+FPWR:   jsr     MOVFM
+        bra     FPWRT
 ; ----------------------------------------------------------------------------
-;TODO probably data
-LA95D:  tsb     $6275                           ; A95D 0C 75 62                 .ub
-        inc     $07BA,x                         ; A960 FE BA 07                 ...
-        trb     $3A                             ; A963 14 3A                    .:
-        tay                                     ; A965 A8                       .
-        sei                                     ; A966 78                       x
-        dec     $D8,x                           ; A967 D6 D8                    ..
-        dec     $5116                           ; A969 CE 16 51                 ..Q
-        eor     $7A14                           ; A96C 4D 14 7A                 M.z
-        rol     $7DD1,x                         ; A96F 3E D1 7D                 >.}
-        .byte   $BD                             ; A972 BD                       .
-        .byte   $4C                             ; A973 4C                       L
-LA974:  rol     $88,x                           ; A974 36 88                    6.
-        .byte   $7B                             ; A976 7B                       {
-        .byte   $D7                             ; A977 D7                       .
-LA978:  cpy     $23                             ; A978 C4 23                    .#
-        .byte   $CB                             ; A97A CB                       .
-        ora     ($6B,x)                         ; A97B 01 6B                    .k
-        .byte   $9C                             ; A97D 9C                       .
-LA97E:  jmp     ($1734,x)                       ; A97E 7C 34 17                 |4.
-        asl     a                               ; A981 0A                       .
-        dec     a                               ; A982 3A                       :
-        .byte   $DC                             ; A983 DC                       .
-        eor     ($78,x)                         ; A984 41 78                    Ax
-        ;TODO probably data
-        jmp     ($81F7,x)                       ; A986 7C F7 81                 |..
-        .byte   $A3                             ; A989 A3                       .
-        cmp     ($36,x)                         ; A98A C1 36                    .6
-        rmb2    $00                             ; A98C 27 00                    '.
-        adc     $AE19,x                         ; A98E 7D 19 AE                 }..
-        adc     ($16,x)                         ; A991 61 16                    a.
-        nop                                     ; A993 EA                       .
-        tsx                                     ; A994 BA                       .
-        eor     $B97D                           ; A995 4D 7D B9                 M}.
-        rts                                     ; A998 60                       `
+;FAC = ARG to the power of the number in memory (APPL).
+;BUG: the call that would get the number from memory is missing, so this is
+;the same as function $26, FAC = ARG to the power of FAC.
+FPWR_APPL:
+        bra     FPWRT
 ; ----------------------------------------------------------------------------
-;TODO probably data
-        bbs0    $78,LA9F9                       ; A999 8F 78 5D                 .x]
-        .byte   $0B                             ; A99C 0B                       .
-        tsx                                     ; A99D BA                       .
-        adc     $7263,x                         ; A99E 7D 63 72                 }cr
-        ora     ($44)                           ; A9A1 12 44                    .D
-        .byte   $A1                             ; A9A3 A1                       .
-LA9A4:  sta     $B4                             ; A9A4 85 B4                    ..
-        ror     $4792,x                         ; A9A6 7E 92 47                 ~.G
-        .byte   $FB                             ; A9A9 FB                       .
-        .byte   $62                             ; A9AA 62                       b
-        asl     $0D,x                           ; A9AB 16 0D                    ..
-        .byte   $43                             ; A9AD 43                       C
-        ror     LCC4C,x                         ; A9AE 7E 4C CC                 ~L.
-        bbs3    $F0,LA974                       ; A9B1 BF F0 C0                 ...
-        ply                                     ; A9B4 7A                       z
-        stz     $7F                             ; A9B5 64 7F                    d.
-        tax                                     ; A9B7 AA                       .
-        tax                                     ; A9B8 AA                       .
-        tax                                     ; A9B9 AA                       .
-LA9BA:  stx     $B07D                           ; A9BA 8E 7D B0                 .}.
-        cpy     #$80                            ; A9BD C0 80                    ..
-        .byte   $7F                             ; A9BF 7F                       .
-        .byte   $FF                             ; A9C0 FF                       .
-        .byte   $ff, $ff, $f5, $b9, $2c
+;FAC = square root of FAC, done as FAC to the power of 0.5
+SQR:    jsr     MOVAF
+        lda     #<FHALF
+        ldy     #>FHALF
+        jsr     MOVFRM
+;FAC = ARG to the power of FAC.  Call with the flags set from FACEXP.
+FPWRT:  bne     LA670_NOT_ZERO          ;Branch if the exponent (FAC) is not zero
+        jmp     EXP
 ; ----------------------------------------------------------------------------
-LA9C6_X76:  jsr     LA02B_X3C
+LA670_NOT_ZERO:
+        lda     ARGEXP
+        bne     FPWRT1                  ;Branch if the base (ARG) is not zero
+        jmp     ZEROF1
 ; ----------------------------------------------------------------------------
-LA9C9_X78:  jsr     L9BF6_X00
-        lda     $2C                             ; A9CC A5 2C                    .,
-        sta     $00                             ; A9CE 85 00                    ..
-        lda     $2B                             ; A9D0 A5 2B                    .+
-        sta     $01                             ; A9D2 85 01                    ..
-        jsr     LA26B_X46                           ; A9D4 20 6B A2                  k.
-        jsr     L9BF6_X00                           ; A9D7 20 F6 9B                  ..
-        lda     $2C                             ; A9DA A5 2C                    .,
-        eor     $00                             ; A9DC 45 00                    E.
-        tay                                     ; A9DE A8                       .
-        lda     $2B                             ; A9DF A5 2B                    .+
-LA9E1:  eor     $01                             ; A9E1 45 01                    E.
-        jmp     L9BDA_X02                           ; A9E3 4C DA 9B                 L..
+FPWRT1: ldx     #TEMPF3
+        ldy     #$00
+        jsr     MOVMF                   ;TEMPF3 = the exponent
+        lda     ARGSGN
+        bpl     FPWR1                   ;Branch if the base is positive
+        jsr     INT                     ;A negative base needs a whole number for an exponent
+        lda     #<TEMPF3
+        ldy     #>TEMPF3
+        jsr     FCOMP
+        bne     FPWR1
+        tya
+        ldy     INTEGR
+FPWR1:  jsr     MOVFA1
+        tya
+        pha
+        jsr     LOG                     ;e ^ (LOG(base) * exponent)
+        lda     #TEMPF3
+        ldy     #$00
+        jsr     FMULT
+        jsr     EXP
+        pla
+        lsr     a
+        bcc     NEGRTS
+;FAC = -FAC
+NEGOP:  lda     FACEXP
+        beq     NEGRTS
+        lda     FACSGN
+        eor     #$FF
+        sta     FACSGN
+NEGRTS: rts
+; ----------------------------------------------------------------------------
+LOGEB2:
+        .byte   $81,$38,$AA,$3B,$29,$5C,$17,$EE ;1.4426950408889634 = 1/LOG(2)
+
+;Coefficients for EXP
+EXPCON:
+        .byte   $0D                     ;Degree of the polynomial: 14 coefficients follow
+        .byte   $59,$4A,$00,$00,$00,$00,$00,$00 ;1.4352963262354024e-12
+        .byte   $5D,$61,$DE,$B2,$87,$E1,$4C,$1C ;2.56784359934882e-11
+        .byte   $61,$74,$65,$63,$9A,$8D,$D9,$14 ;4.44553827187081e-10
+        .byte   $65,$72,$67,$A8,$AC,$5C,$76,$44 ;7.054911620801122e-09
+        .byte   $69,$5A,$92,$9E,$9C,$AF,$3E,$0C ;1.0178086009239697e-07
+        .byte   $6D,$31,$60,$11,$1D,$2E,$41,$0E ;1.3215486790144305e-06
+        .byte   $70,$7F,$E5,$FE,$2C,$45,$86,$24 ;1.5252733804059836e-05
+        .byte   $74,$21,$84,$89,$7C,$36,$3C,$30 ;0.00015403530393381606
+        .byte   $77,$2E,$C3,$FF,$3C,$53,$39,$82 ;0.0013333558146428441
+        .byte   $7A,$1D,$95,$5B,$7D,$D2,$73,$84 ;0.009618129107628465
+        .byte   $7C,$63,$58,$46,$B8,$25,$05,$F8 ;0.055504108664821576
+        .byte   $7E,$75,$FD,$EF,$FC,$16,$2C,$74 ;0.2402265069591007
+        .byte   $80,$31,$72,$17,$F7,$D1,$CF,$7C ;0.6931471805599454
+        .byte   $81,$00,$00,$00,$00,$00,$00,$00 ;1
+; ----------------------------------------------------------------------------
+;FAC = e to the power of FAC
+EXP:
+        lda     #<LOGEB2
+        ldy     #>LOGEB2
+        jsr     FMULT_ROM
+        lda     FACOV
+        adc     #$50
+        bcc     STOLD
+        jsr     INCRND
+STOLD:  sta     OLDOV
+        jsr     MOVEF
+        lda     FACEXP
+        cmp     #$88
+        bcc     EXP1
+GOMLDV: jsr     MLDVEX
+EXP1:   jsr     INT
+        lda     INTEGR
+        clc
+        adc     #$81
+        beq     GOMLDV
+        sec
+        sbc     #$01
+        pha
+        ldx     #$08
+SWAPLP: lda     ARGEXP,x
+        ldy     FACEXP,x
+        sta     FACEXP,x
+        sty     ARGEXP,x
+        dex
+        bpl     SWAPLP
+        lda     OLDOV
+        sta     FACOV
+        jsr     FSUBT
+        jsr     NEGOP
+        lda     #<EXPCON
+        ldy     #>EXPCON
+        jsr     POLY
+        lda     #$00
+        sta     ARISGN
+        pla
+        jsr     MLDEXP
+        rts
+; ----------------------------------------------------------------------------
+;Evaluate a polynomial in FAC squared, then multiply by FAC.
+;The address of the coefficients is in A (low byte) and Y (high byte).  They
+;are read as the KERNAL sees memory.  The first byte is the degree.
+POLYX:
+        sta     FBUFPT
+        sty     FBUFPT+1
+        jsr     MOV1F
+        lda     #TEMPF1
+        jsr     FMULT
+        jsr     POLY1
+        lda     #TEMPF1
+        ldy     #$00
+        jmp     FMULT
+; ----------------------------------------------------------------------------
+;Evaluate a polynomial in FAC.  See POLYX.
+POLY:   sta     FBUFPT
+        sty     FBUFPT+1
+POLY1:  jsr     MOV2F
+        lda     (FBUFPT),y
+        sta     SGNFLG
+        ldy     FBUFPT
+        iny
+        tya
+        bne     POLY3
+        inc     FBUFPT+1
+POLY3:  sta     FBUFPT
+        ldy     FBUFPT+1
+POLY2:  jsr     FMULT_ROM
+        lda     FBUFPT
+        ldy     FBUFPT+1
+        clc
+        adc     #$08
+        bcc     LA7B8
+        iny
+LA7B8:  sta     FBUFPT
+        sty     FBUFPT+1
+        jsr     FADD_ROM
+        lda     #TEMPF2
+        ldy     #$00
+        dec     SGNFLG
+        bne     POLY2
+        rts
+; ----------------------------------------------------------------------------
+;Multiplier and increment for RND
+RMULC:
+        .byte   $98,$35,$44,$7A,$00,$00,$00,$00 ;11879546
+RADDC:
+        .byte   $68,$28,$B1,$46,$00,$00,$00,$00 ;3.927677738602142e-08
+;FAC = random number between 0 and 1.
+;
+;If FAC is positive, the next number in the sequence is made from the seed
+;in RNDX.  If FAC is zero, the number is made from the VIA timers.  If FAC
+;is negative, FAC itself is scrambled to make the number, which starts a
+;repeatable sequence.  The result is always saved in RNDX as the next seed.
+RND:    jsr     SIGN
+RND_A:  bmi     RND1                    ;Branch if FAC is negative
+        bne     QSETNR                  ;Branch if FAC is positive
+        lda     VIA1_T1CL
+        sta     FACHO
+        lda     VIA1_T1CH
+        sta     FACHO+5
+        lda     VIA1_T2CL
+        sta     FACHO+4
+        lda     VIA2_T2CL
+        sta     FACHO+3
+        lda     VIA2_T1CL
+        sta     FACHO+2
+        lda     VIA1_T2CL
+        sta     FACHO+1
+        lda     VIA1_T2CH
+        sta     FACLO
+        jmp     STRNEX
+; ----------------------------------------------------------------------------
+QSETNR: lda     #<RNDX
+        ldy     #>RNDX
+        jsr     MOVFRM
+        lda     #<RMULC
+        ldy     #>RMULC
+        jsr     FMULT_ROM
+        lda     #<RADDC
+        ldy     #>RADDC
+        jsr     FADD_ROM
+RND1:   ldx     FACLO                   ;Swap bytes of the mantissa around
+        lda     FACHO
+        sta     FACLO
+        stx     FACHO
+        ldx     FACHO+4
+        lda     FACHO+3
+        sta     FACHO+4
+        stx     FACHO+3
+        ldx     FACHO+1
+        lda     FACHO+5
+        sta     FACHO+1
+        stx     FACHO+5
+STRNEX: lda     #$00
+        sta     FACSGN
+        lda     FACEXP
+        sta     FACOV
+        lda     #$80
+        sta     FACEXP
+        jsr     NORMAL
+        ldx     #<RNDX
+        ldy     #>RNDX
+GMOVMF: jmp     MOVMF
+; ----------------------------------------------------------------------------
+;FAC = cosine of FAC
+COS:    lda     #<PI2
+        ldy     #>PI2
+        jsr     FADD_ROM
+;FAC = sine of FAC
+SIN:    jsr     MOVAF
+        lda     #<TWOPI
+        ldy     #>TWOPI
+        ldx     ARGSGN
+        jsr     FDIVF
+        jsr     MOVAF
+        jsr     INT
+        lda     #$00
+        sta     ARISGN
+        jsr     FSUBT
+        lda     #<FR4
+        ldy     #>FR4
+        jsr     FSUB_ROM
+        lda     FACSGN
+        pha
+        bpl     SIN1
+        jsr     FADDH
+        lda     FACSGN
+        bmi     SIN2
+        lda     TANSGN
+        eor     #$FF
+        sta     TANSGN
+SIN1:   jsr     NEGOP
+SIN2:   lda     #<FR4
+        ldy     #>FR4
+        jsr     FADD_ROM
+        pla
+        bpl     SIN3
+        jsr     NEGOP
+SIN3:   lda     #<SINCON
+        ldy     #>SINCON
+        jmp     POLYX
+; ----------------------------------------------------------------------------
+;FAC = tangent of FAC
+TAN:    jsr     MOV1F
+        lda     #$00
+        sta     TANSGN
+        jsr     SIN
+        ldx     #TEMPF3
+        ldy     #$00
+        jsr     GMOVMF
+        lda     #<TEMPF1
+        ldy     #>TEMPF1
+        jsr     MOVFRM
+        lda     #$00
+        sta     FACSGN
+        lda     TANSGN
+        jsr     COSC
+        lda     #TEMPF3
+        ldy     #$00
+        jmp     FDIV
+; ----------------------------------------------------------------------------
+COSC:   pha
+        jmp     SIN1
+; ----------------------------------------------------------------------------
+PI2:
+        .byte   $81,$49,$0F,$DA,$A2,$21,$68,$C8 ;1.5707963267948968 = PI/2
+TWOPI:
+        .byte   $83,$49,$0F,$DA,$A2,$21,$68,$C8 ;6.283185307179587 = 2*PI
+FR4:
+        .byte   $7F,$00,$00,$00,$00,$00,$00,$00 ;0.25
+
+;Coefficients for SIN
+SINCON:
+        .byte   $09                     ;Degree of the polynomial: 10 coefficients follow
+        .byte   $7A,$C5,$20,$21,$08,$FC,$AA,$14 ;-0.012031585942120619
+        .byte   $7D,$55,$76,$19,$57,$C9,$9A,$AC ;0.1042291622081398
+        .byte   $80,$B7,$D6,$DC,$F8,$AA,$B9,$FE ;-0.7181223017785001
+        .byte   $82,$74,$7A,$1A,$68,$0C,$6A,$F4 ;3.81995258484828
+        .byte   $84,$F1,$83,$A7,$EF,$44,$38,$DC ;-15.094642576822984
+        .byte   $86,$28,$3C,$1A,$43,$F7,$3B,$F8 ;42.058693944897634
+        .byte   $87,$99,$69,$66,$73,$15,$EC,$23 ;-76.70585975306136
+        .byte   $87,$23,$35,$E3,$3B,$AD,$57,$00 ;81.60524927607503
+        .byte   $86,$A5,$5D,$E7,$31,$2D,$F2,$90 ;-41.341702240399755
+        .byte   $83,$49,$0F,$DA,$A2,$21,$68,$C8 ;6.283185307179587
+; ----------------------------------------------------------------------------
+;FAC = arctangent of FAC
+ATN:    lda     FACSGN
+        pha
+        bpl     ATN1
+        jsr     NEGOP
+ATN1:   lda     FACEXP
+        pha
+        cmp     #$81
+        bcc     ATN2
+        lda     #<FONE
+        ldy     #>FONE
+        jsr     FDIV_ROM
+ATN2:   lda     #<ATNCON
+        ldy     #>ATNCON
+        jsr     POLYX
+        pla
+        cmp     #$81
+        bcc     ATN3
+        lda     #<PI2
+        ldy     #>PI2
+        jsr     FSUB_ROM
+ATN3:   pla
+        bpl     ATN4
+        jmp     NEGOP
+; ----------------------------------------------------------------------------
+ATN4:   rts
+; ----------------------------------------------------------------------------
+;Coefficients for ATN
+ATNCON:
+        .byte   $0C                     ;Degree of the polynomial: 13 coefficients follow
+        .byte   $75,$62,$FE,$BA,$07,$14,$3A,$A8 ;0.0004329586526045
+        .byte   $78,$D6,$D8,$CE,$16,$51,$4D,$14 ;-0.0032783034460567998
+        .byte   $7A,$3E,$D1,$7D,$BD,$4C,$36,$88 ;0.0116466262745151
+        .byte   $7B,$D7,$C4,$23,$CB,$01,$6B,$9C ;-0.026338643940147802
+        .byte   $7C,$34,$17,$0A,$3A,$DC,$41,$78 ;0.0439672851187115
+        .byte   $7C,$F7,$81,$A3,$C1,$36,$27,$00 ;-0.0604263683957329
+        .byte   $7D,$19,$AE,$61,$16,$EA,$BA,$4D ;0.075039633285397
+        .byte   $7D,$B9,$60,$8F,$78,$5D,$0B,$BA ;-0.0905162056548131
+        .byte   $7D,$63,$72,$12,$44,$A1,$85,$B4 ;0.11105741760201479
+        .byte   $7E,$92,$47,$FB,$62,$16,$0D,$43 ;-0.1428527144066838
+        .byte   $7E,$4C,$CC,$BF,$F0,$C0,$7A,$64 ;0.19999980837757858
+        .byte   $7F,$AA,$AA,$AA,$8E,$7D,$B0,$C0 ;-0.3333333300532515
+        .byte   $80,$7F,$FF,$FF,$FF,$F5,$B9,$2C ;0.9999999999906535
+; ----------------------------------------------------------------------------
+;XOR operator.  Both operands are converted to signed 16-bit integers.
+XOROP_MEM:
+        jsr     CONUPK
+; ----------------------------------------------------------------------------
+XOROP:  jsr     AYINT
+        lda     FACLO
+        sta     INTEGR
+        lda     FACHO+5
+        sta     INTEGR+1
+        jsr     MOVFA
+        jsr     AYINT
+        lda     FACLO
+        eor     INTEGR
+        tay
+        lda     FACHO+5
+        eor     INTEGR+1
+        jmp     GIVAYF
 ; ----------------------------------------------------------------------------
 LA9E6:  php                                     ; A9E6 08                       .
         sty     BAD                           ; A9E7 8C A0 03                 ...
@@ -7737,17 +7687,17 @@ LB393_SET_LSXP_FF_SET_CARRY:
 ; ----------------------------------------------------------------------------
 ; Keyboard Matrix Tables
 ; There are 5 tables representing combinations of the MODIFIER keys:
-; 1. NO MODIFIER				NOTE:
-; 2. SHIFT					    Keys shown assume TEXT mode
-; 3. CAPS-LOCK					IE: $41 is "a" (which is opposite to ASCII)
+; 1. NO MODIFIER                                NOTE:
+; 2. SHIFT                                          Keys shown assume TEXT mode
+; 3. CAPS-LOCK                                  IE: $41 is "a" (which is opposite to ASCII)
 ; 4. COMMODORE
 ; 5. CTRL
 ;
-; KEY: GR=Graphic Symbol			Character Changes:
-;      S- Shifted				      126/$7E = PI
-;      C- Control				      127/$7F = "|" (pipe)
-;      {} Unknown Code				166/$A6 = "{"
-;						                  168/$A8 = "}"
+; KEY: GR=Graphic Symbol                        Character Changes:
+;      S- Shifted                                     126/$7E = PI
+;      C- Control                                     127/$7F = "|" (pipe)
+;      {} Unknown Code                          166/$A6 = "{"
+;                                                                 168/$A8 = "}"
 ;
 ;NORMAL (no modifier key)                         C0     C1    C2    C3    C4    C5    C6    C7
 KBD_MATRIX_NORMAL:                              ; ----- ----- ----- ----- ----- ----- ----- -----
@@ -7788,10 +7738,10 @@ KBD_MATRIX_CBMKEY:                              ; ----- ----- ----- ----- ----- 
         .byte   $8A,$B1,$AE,$AD,$24,$B0,$B3,$23 ; F4    GR    GR    GR    $     GR    GR    #
         .byte   $BD,$A3,$BB,$BC,$26,$AC,$B2,$25 ; GR    GR    GR    GR    &     GR    GR    %
         .byte   $BE,$B8,$B4,$BF,$28,$A5,$B7,$27 ; GR    GR    GR    GR    (     GR    GR    '
-        .byte   $AA,$B9,$A1,$A7,$5F,$B5,$A2,$29 ; GR    GR    GR    GR    ~?    GR    GR    )		; ? "~" not in original set
+        .byte   $AA,$B9,$A1,$A7,$5F,$B5,$A2,$29 ; GR    GR    GR    GR    ~?    GR    GR    )           ; ? "~" not in original set
         .byte   $2C,$5C,$A6,$2E,$91,$B6,$AF,$11 ; ,     \     {     .     UP    GR    GR    DOWN
-        .byte   $A4,$7C,$FF,$1B,$1D,$A8,$7F,$9D ; GR    |     PI    ESC   RIGHT }     GR    LEFT	; $7C=Pipe
-        .byte   $8B,$AB,$8A,$A0,$32,$89,$93,$31 ; F6    GR    F4?   GR    2     F2    CLS   1		; ? Is F4 an error?
+        .byte   $A4,$7C,$FF,$1B,$1D,$A8,$7F,$9D ; GR    |     PI    ESC   RIGHT }     GR    LEFT        ; $7C=Pipe
+        .byte   $8B,$AB,$8A,$A0,$32,$89,$93,$31 ; F6    GR    F4?   GR    2     F2    CLS   1           ; ? Is F4 an error?
 
 ;CTRL key                                         C0    C1    C2    C3    C4    C5    C6    C7
 KBD_MATRIX_CTRL:                                ; ----- ----- ----- ----- ----- ----- ----- -----
@@ -7801,7 +7751,7 @@ KBD_MATRIX_CTRL:                                ; ----- ----- ----- ----- ----- 
         .byte   $16,$15,$08,$02,$38,$07,$19,$37 ; CT-V  CT-U  LOCK  CT-B  8     CT-G  CT-Y  7
         .byte   $0E,$0F,$0B,$0D,$1E,$0A,$09,$39 ; TEXT  CT-O  CT-K  RETRN UARRW CT-J  CT-I  9
         .byte   $12,$1C,$1B,$92,$91,$0C,$10,$11 ; RVS   CT-\  ESC   R-OFF UP    CT-L  CT-P  DOWN
-        .byte   $1F,$2B,$3D,$1B,$1D,$1D,$2A,$9D ; {$1F} +     =     ESC   RIGHT RIGHT *     LEFT	; Why CTRL-] = RIGHT?
+        .byte   $1F,$2B,$3D,$1B,$1D,$1D,$2A,$9D ; {$1F} +     =     ESC   RIGHT RIGHT *     LEFT        ; Why CTRL-] = RIGHT?
         .byte   $8B,$11,$8C,$20,$32,$89,$13,$31 ; F6    CT-Q  F8    SPACE 2     F2    HOME  1
 ; ------------------------------------------------------------------------------------------------
 
@@ -10288,11 +10238,11 @@ LC337_RTC_WRITE_REGISTER_NIB:
 ; ----------------------------------------------------------------------------
 ;Called with RTC register number in Y
 ;Called with bits to strobe high->low in A
-;	pa7 = rtc "stop"
-;	pa6 = rtc "address write"
-;	pa5 = rtc "write"
-;	pa4 = rtc "read"
-;	pa0-3 = rtc data
+;       pa7 = rtc "stop"
+;       pa6 = rtc "address write"
+;       pa5 = rtc "write"
+;       pa4 = rtc "read"
+;       pa0-3 = rtc data
 ;Set RTC bits in Y, then Set->Clear RTC bits in A
 RTC_SET_AND_CLEAR_BITS:
         pha
@@ -12947,13 +12897,17 @@ LFB37:  sta     MMU_MODE_KERN
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-LFB41:  sta     MMU_MODE_KERN
-        jsr     L9B1B_JMP_L9B1E_X
+KR_MATH_DISPATCH:
+        sta     MMU_MODE_KERN
+        jsr     MATH_DISPATCH
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-LFB4B:  sta     MMU_MODE_APPL
-        jmp     (MEM_0300)
+;Report an error from the math package: jump through IERROR in APPL mode with
+;the BASIC error number in X.
+JMP_IERROR:
+        sta     MMU_MODE_APPL
+        jmp     (IERROR)
 ; ----------------------------------------------------------------------------
 PRIMM00:
 ; This stuff prints (zero terminated) string after the JSR to the screen (by
@@ -13445,7 +13399,7 @@ UNUSED:
 ; ----------------------------------------------------------------------------
         jmp     LFB37                           ; FF4E 4C 37 FB                 L7.
 ; ----------------------------------------------------------------------------
-        jmp     LFB41  ;giant table of indirect access stuff  ; FF51 4C 41 FB                 LA.
+        jmp     KR_MATH_DISPATCH  ;Floating point math package (see MATH_DISPATCH)  ; FF51 4C 41 FB                 LA.
 ; ----------------------------------------------------------------------------
         jmp     PRIMM00   ;print immediate      ; FF54 4C 51 FB                 LQ.
 ; ----------------------------------------------------------------------------
