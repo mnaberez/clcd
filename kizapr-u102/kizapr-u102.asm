@@ -11778,18 +11778,18 @@ PRADR2: lda     FORMAT
         bne     PRADR2
 PRADR3: asl     FORMAT
         bcc     PRADR4
-        lda     CHAR1,x       ;todo should be CHAR1-1
+        lda     CHAR1-1,x
         jsr     KR_ShowChar_
         pha
         lda     $03A2
         cmp     #$7C
         bne     LCD2C
         pla
-        lda     CHAR2,x       ;todo should be CHAR2-1
+        lda     CHAR2_7C-1,x            ;JMP (abs,X) has a table of its own
         beq     PRADR4
         bra     LCD32
 LCD2C:  pla
-LCD2D:  lda     LCE18,x
+LCD2D:  lda     CHAR2-1,x
         beq     PRADR4
 LCD32:  jsr     KR_ShowChar_
 PRADR4:  dex
@@ -11890,10 +11890,17 @@ NMODE:  .byte   $40,$22,$45,$33,$D8,$2F,$45,$39 ; CDBF 40 22 45 33 D8 2F 45 39  
         .byte   $10,$22,$44,$33,$D8,$0F,$44,$09 ; CDF7 10 22 44 33 D8 0F 44 09  ."D3..D.
         .byte   $62,$13,$7F,$A9                 ; CDFF 62 13 7F A9              b...
 NMODE2: .byte   $00,$21,$81,$82,$00,$00,$59,$4D ; CE03 00 21 81 82 00 00 59 4D  .!....YM
-        .byte   $49,$92,$86,$4A,$85,$9D,$4E     ; CE0B 49 92 86 4A 85 9D 4E     I..J..N
-CHAR1:  .byte   $91,$2C,$29,$2C,$23,$28         ; CE12 91 2C 29 2C 23 28        .,),#(
-LCE18:  .byte   $24,$59,$00,$58,$24,$24         ; CE18 24 59 00 58 24 24        $Y.X$$
-CHAR2:  .byte   $00,$58,$00,$58,$24,$24,$00     ; CE1E 00 58 00 58 24 24 00     .X.X$$.
+        .byte   $49,$92,$86,$4A,$85,$9D,$4E,$91
+;Characters printed around an operand: a pair for each of the six mode bits
+;in FORMAT.  The bits are taken with X = 6 down to 1, so the tables are read
+;at CHAR1-1,X and CHAR2-1,X, as in the TED-series monitor.
+CHAR1:  .byte   $2C,$29,$2C,$23,$28,$24         ;,  )  ,  #  (  $
+CHAR2:  .byte   $59,$00,$58,$24,$24,$00         ;Y     X  $  $
+;CHAR2 for JMP (abs,X), opcode $7C, which is new in the 65C02.  It has the
+;same mode as an (indirect),Y operand, with X in place of Y, so the monitor
+;shows it as JMP ($nnnn),X and expects it to be typed that way.
+CHAR2_7C:
+        .byte   $58,$00,$58,$24,$24,$00         ;X     X  $  $
 LCE25_PRNME:
         .byte   $11, $48, $13, $ca, $15, $1a, $19, $08
         .byte   $19, $28, $19, $a4, $1a, $aa, $1b, $94
@@ -12042,18 +12049,18 @@ AS230:  asl     FORMAT                           ; D004 0E B4 03                
         lda     #$7C                            ; D009 A9 7C                    .|
         cmp     WRAP                             ; D00B C5 D0                    ..
         beq     LD022                           ; D00D F0 13                    ..
-        lda     CHAR1,x                         ; D00F BD 12 CE                 ...
+        lda     CHAR1-1,x                       ; D00F BD 12 CE                 ...
         jsr     TSTRX
-        lda     LCE18,x                         ; D015 BD 18 CE                 ...
+        lda     CHAR2-1,x                       ; D015 BD 18 CE                 ...
         BEQ     AS240
 LD01A:  jsr     TSTRX                           ; D01A 20 B4 D0                  ..
 AS240:  dex                                     ; D01D CA                       .
         bne     AS210                           ; D01E D0 CD                    ..
         bra     AS300                           ; D020 80 13                    ..
 ; ----------------------------------------------------------------------------
-LD022:  lda     CHAR1,x                         ; D022 BD 12 CE                 ...
+LD022:  lda     CHAR1-1,x                       ; D022 BD 12 CE                 ...
         jsr     TSTRX                           ; D025 20 B4 D0                  ..
-        lda     CHAR2,x                         ; D028 BD 1E CE                 ...
+        lda     CHAR2_7C-1,x                    ; D028 BD 1E CE                 ...
         beq     AS240                           ; D02B F0 F0                    ..
         bra     LD01A                           ; D02D 80 EB                    ..
 AS250:  jsr     TST2                           ; D02F 20 B1 D0                  ..
