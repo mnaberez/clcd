@@ -131,6 +131,7 @@ MODKEY          := $00AD  ;"Modifier" key byte read directly from keyboard shift
 FNADR           := $00AE
 EAL             := $00B2
 EAH             := $00B3
+MEMUSS          := $00B4  ;2 bytes: load address given to LOAD in X/Y, used when the secondary address is 0
 STAL            := $00B6
 STAH            := $00B7
 SAL             := $00B8
@@ -150,12 +151,15 @@ LENGTH          := $00CF
 WRAP            := $00D0
 TMPC            := $00D1
 MSAL            := $00D2
+MAPPED_PAGE     := $00D9  ;2 bytes: number of the 256-byte RAM page selected by MAP_RAM_PAGE (also a scratch pointer)
+V1541_TMP       := $00E0  ;2 bytes: scratch pointer and counter for the Virtual 1541
 V1541_FNADR     := $00E2  ;2 bytes
-V1541_DEFAULT_CHAN := $00E6
-V1541_ACTIV_FLAGS := $00E7  ; \
-V1541_ACTIV_E8    := $00E8  ;  Active Channel
-V1541_ACTIV_E9    := $00E9  ;  4 bytes
-V1541_ACTIV_EA    := $00EA  ; /
+MAPPED_PAGE_PTR := $00E4  ;2 bytes: pointer to the RAM page selected by MAP_RAM_PAGE, as seen in the KERN window
+V1541_ACTIV_CHAN := $00E6   ;Number of the channel whose state is in the 4 bytes below
+V1541_ACTIV_FLAGS := $00E7              ;\ State of the active channel: flags ($10 = open for reading, $20 = open for writing, $40 = PRG, $80 = special entry; 0 = closed)
+V1541_ACTIV_ID    := $00E8  ;   id of the file (0=directory)
+V1541_ACTIV_SEQ    := $00E9 ;   sequence number of the current block
+V1541_ACTIV_OFFS    := $00EA ;/  offset in that block of the last byte read or written (0=none yet)
 BLNCT             := $00EF  ;Counter for cursor blink
 CHAR_UNDER_CURSOR := $00F0  ;Character under the cursor; used with blinking
 MEM_00F4          := $00F4  ;Keyboard scan related
@@ -165,12 +169,28 @@ FBUFFR            := $0100 ;FOUT builds its string at the bottom of the stack pa
 ROM_ENV_A         := $0204
 ROM_ENV_X         := $0205
 ROM_ENV_Y         := $0206
-V1541_DATA_BUF    := $0218 ;basic line for dir listing, other unknown uses
-V1541_CHAN_BUF    := $024D ;71 bytes, all data for all channels, see V1541_SELECT_CHANNEL_A
-V1541_CMD_BUF     := $0295 ;command sent to command channel
-V1541_CMD_LEN     := $02d5
-V1541_02D6      := $02d6
-V1541_02D7      := $02d7
+V1541_LAST_FILE_ID := $0207 ;Same location as SAVED_SP: file id most recently assigned by V1541_NEW_FILE_ID
+RAM_PAGES         := $0208 ;2 bytes: size of RAM in 256-byte pages, as measured by KL_RAMTAS
+V1541_BOTTOM_PAGE := $020A ;2 bytes: lowest RAM page used by the Virtual 1541, which grows down from the top of RAM
+MEMTOP_PAGE       := $020C ;2 bytes: RAM page that holds the top of application memory
+V1541_BLOCK_ID    := $020E ;File id from the header of the block at MAPPED_PAGE_PTR
+V1541_BLOCK_SEQ   := $020F ;Sequence number from the header of the block at MAPPED_PAGE_PTR
+V1541_ERR_CODE    := $0210 ;CBM DOS error number for the status message read from channel 15
+V1541_ERR_TRACK   := $0211 ;"Track" number for the status message
+V1541_ERR_SECTOR  := $0212 ;"Sector" number for the status message
+V1541_DIR_CHKSUM  := $0213 ;3 bytes: checksum of the blocks of the directory
+MAPPED_PAGE_OFFS  := $0216 ;KERN window offset that maps the page at MAPPED_PAGE_PTR
+V1541_ERR_POS     := $0217 ;Position of the next character of the status message to be read
+V1541_DATA_BUF    := $0218 ;32 bytes: directory entry, or a line of the directory listing
+V1541_DIR_PATTERN := $0238 ;20 bytes: filename pattern for the directory listing, followed by a 0 if shorter
+V1541_DIR_TYPE    := $024C ;File type given with the directory listing pattern (stored but never tested)
+V1541_CHAN_BUF    := $024D ;72 bytes: 4 bytes of state for each of the 18 channels (see V1541_SELECT_CHANNEL_A)
+V1541_CMD_BUF     := $0295 ;64 bytes: command sent to the command channel; bitmap of file ids during validate
+V1541_CMD_LEN     := $02D5 ;Number of characters in V1541_CMD_BUF
+V1541_DIR_STATE      := $02D6 ;Directory listing: part to produce next (0, 2, 4, 6, 8; see V1541_READ_DIR_BYTE)
+V1541_DIR_LINE_POS      := $02D7 ;Directory listing: 1 + index in V1541_DATA_BUF of the next byte to return (0=line finished)
+V1541_DIR_LINE_OK := $02D8 ;Directory listing: $FF if V1541_DATA_BUF still holds the line being returned, 0 if not
+V1541_VARS_CHKSUM := $02D9 ;2 bytes: sum of $0208-02D9 made at power off; never verified
 LAT             := $02DB
 SAT             := $02F3
 FAT             := $02E7
@@ -238,11 +258,18 @@ MemBotHiByte    := $039B
 V1541_BYTE_TO_WRITE := $039E
 V1541_FNLEN     := $039F
 BAD             := $03A0
+V1541_NAME_PREFIX := $03A0 ;Virtual 1541 filename parser: '$' or '@' if the name started with one, else 0
 MON_MMU_MODE    := $03A1  ;0=MMU_MODE_RAM, 1=MMU_MODE_APPL, 2=MMU_MODE_KERN
-V1541_FILE_MODE := $03A3
-V1541_FILE_TYPE := $03A4
+V1541_NAME_START := $03A1 ;Virtual 1541 filename parser: index of the first character of the name itself
+V1541_NAME_END  := $03A2  ;Virtual 1541 filename parser: index just past the last character of the name
+V1541_FILE_MODE := $03A3  ;Virtual 1541 filename parser: mode given after a comma (R, W, A, M) or 0
+V1541_FILE_TYPE := $03A4  ;Virtual 1541 filename parser: file type given after a comma (S, P) or 0
+V1541_NAME_FLAGS := $03A5 ;Virtual 1541 filename parser: result flags (see V1541_PARSE_NAME)
+V1541_SAVED_SEQ := $03A6  ;Block sequence number saved by V1541_DIR_READ_ENTRY (see V1541_SWAP_POSITION)
+V1541_SAVED_OFFS := $03A7 ;Offset in block saved by V1541_DIR_READ_ENTRY (see V1541_SWAP_POSITION)
 RNDX        := $03AC
 SXREG           := $039D
+V1541_EOF       := $039D  ;Same location as SXREG: bit 7 set = the byte just read was the last byte of the file
 FORMAT          := $03B4
 MEM_03B7        := $03B7
 MEM_03C0        := $03C0
@@ -347,6 +374,8 @@ MOD_CAPS   = 2
 MOD_STOP   = 1
 
 ;CBM DOS error codes
+doserr_00_ok              = $00 ;00 ok
+doserr_01_files_scratched = $01 ;01 files scratched (not an error)
 doserr_20_read_err        = $14 ;20 read error (block header not found)
 doserr_25_write_err       = $19 ;25 write error (write-verify error)
 doserr_26_write_prot_on   = $1a ;26 write protect on
@@ -355,6 +384,8 @@ doserr_31_invalid_cmd     = $1f ;31 invalid command
 doserr_32_syntax_err      = $20 ;32 syntax error (long line)
 doserr_33_syntax_err      = $21 ;33 syntax error (invalid filename)
 doserr_34_syntax_err      = $22 ;34 syntax error (no file given)
+doserr_39_syntax_err      = $27 ;39 syntax error (never reported by the Virtual 1541)
+doserr_52_file_too_large  = $34 ;52 file too large
 doserr_60_write_file_open = $3c ;60 write file open
 doserr_61_file_not_open   = $3d ;61 file not open
 doserr_62_file_not_found  = $3e ;62 file not found
@@ -366,10 +397,10 @@ doserr_71_dir_error       = $47 ;71 directory error
 doserr_72_disk_full       = $48 ;72 disk full
 doserr_73_dos_mismatch    = $49 ;73 power-on message
 
-doschan_14_cmd_app   = $0e ;14 unknown channel, seems to be used by "command.cmd" app
+doschan_14_cmd_app   = $0e ;14 command file: a file of keystrokes read by GET_KEY_NONBLOCKING (see ROM_ENTRY_COMMAND)
 doschan_15_command   = $0f ;15 normal cbm dos command channel
 doschan_16_directory = $10 ;16 directory channel
-doschan_17_unknown   = $11 ;17 unknown channel
+doschan_17_load   = $11    ;17 internal channel used by LOAD
 
 ;Virtual 1541 file types and modes
 ftype_p_prg     = 'P'   ;Program
@@ -1180,7 +1211,7 @@ L8510:  ldx     #$FF
 L8516:  jsr     L889A
         jsr     L83ED
         jsr     L8644_CHECK_BUTTON
-        jsr     L86E9_MAYBE_V1541_SHUTDOWN
+        jsr     V1541_PREPARE_FOR_POWER_OFF
         sei
         tsx
         stx     $0207
@@ -1212,7 +1243,7 @@ KL_RESET:
         bne     L8582_COULD_NOT_RESTORE_STATE
         sec
         jsr     LCDsetupGetOrSet
-        jsr     L870F_CHECK_V1541_DISK_INTACT
+        jsr     V1541_CHECK_DISK_INTACT
         bcs     L8582_COULD_NOT_RESTORE_STATE ;Branch if not intact
         jsr     SCAN_ROMS
         bne     L8582_COULD_NOT_RESTORE_STATE
@@ -1249,7 +1280,7 @@ L8582_COULD_NOT_RESTORE_STATE:
         bne     L85C0
         jmp     L87C5
 ; ----------------------------------------------------------------------------
-L85C0:  jsr     L870F_CHECK_V1541_DISK_INTACT
+L85C0:  jsr     V1541_CHECK_DISK_INTACT
         bcc     L85E2 ;branch if intact
         jsr     PRIMM
         .byte   "YOUR DISK IS NOT INTACT",$0d,$07,0
@@ -1297,7 +1328,7 @@ L8685:  stz     $0200
         jsr     L87BA_INIT_KEYB_AND_EDITOR
         jsr     KL_RESTOR
         jsr     LFDDF_JSR_LFFE7_CLALL
-        jsr     L8C6F_V1541_I_INITIALIZE
+        jsr     V1541_I_INITIALIZE
         stz     $0384
 ; Set MEMTOP vector to $0FFF
         ldy     #>$0FFF
@@ -1331,7 +1362,7 @@ L86C2:  lda     $D9
         inc     a
         bne     L86CA
         inx
-L86CA:  jsr     L8A87
+L86CA:  jsr     MAP_RAM_PAGE
         ldy     #$00
 L86CF:  lda     ($E4),y
         ldx     #$01
@@ -1351,59 +1382,72 @@ L86E3_NOT_EQUAL:
         plp
         rts
 ; ----------------------------------------------------------------------------
-;Called only from L84FA_MAYBE_SHUTDOWN
-L86E9_MAYBE_V1541_SHUTDOWN:
-        jsr     L8C6F_V1541_I_INITIALIZE
-        jsr     L86F6_V1541_UNKNOWN
-        sta     $02D9
-        sty     $02DA
+;Called only from POWER_OFF.  Initializes the Virtual 1541 (the same as its
+;"I" command) and checksums its variables.  Nothing ever verifies this
+;checksum, but RAM_CHECKSUM, which POWER_OFF calls next, covers the same bytes.
+V1541_PREPARE_FOR_POWER_OFF:
+        jsr     V1541_I_INITIALIZE
+        jsr     V1541_SUM_VARS
+        sta     V1541_VARS_CHKSUM
+        sty     V1541_VARS_CHKSUM+1
         rts
 
-;Called only from routine directly above (L86E9_MAYBE_V1541_SHUTDOWN)
-L86F6_V1541_UNKNOWN:
+;Add up the 210 bytes of Virtual 1541 variables at $0208-02D9.
+;Returns the sum in A (low) and Y (high), and Z=1 if it is the same as
+;V1541_VARS_CHKSUM.  Called only from the routine directly above.
+V1541_SUM_VARS:
         cld
         lda     #$00
         tay
         ldx     #$D1
-L86FC:  clc
-        adc     $0208,x
+L86FC_LOOP:
+        clc
+        adc     RAM_PAGES,x
         bcc     L8703
         iny
 L8703:  dex
-        bpl     L86FC
-        cmp     $02D9
+        bpl     L86FC_LOOP
+        cmp     V1541_VARS_CHKSUM
         bne     L870E
-        cpy     $02DA
+        cpy     V1541_VARS_CHKSUM+1
 L870E:  rts
 ; ----------------------------------------------------------------------------
-;carry clear = intact, set = not intact
-L870F_CHECK_V1541_DISK_INTACT:
-        jsr     L8E46
-        bcc     L8745
-        lda     $020A
-        ldx     $020B
-        bne     L8720
+;Check that the Virtual 1541's disk is still good.
+;
+;Returns:     Carry clear = intact
+;             Carry set = not intact: its checksum is wrong, or its bounds do
+;                         not make sense for the RAM that is present
+V1541_CHECK_DISK_INTACT:
+        jsr     V1541_VERIFY_DIR_CHECKSUM
+        bcc     L8745_NOT_INTACT        ;Branch if the checksum is wrong
+        lda     V1541_BOTTOM_PAGE
+        ldx     V1541_BOTTOM_PAGE+1
+        bne     L8720_BOTTOM_OK
         cmp     #$10
-        bcc     L8745
-L8720:  jsr     KL_RAMTAS
-        cmp     $0208
-        bne     L8745
-        cpx     $0209
-        bne     L8745
-        cpx     $020B
-        bcc     L8745
-        bne     L8739
-        cmp     $020A
-        bcc     L8745
-L8739:  cpx     #$02
-        bcc     L8743
-        bne     L8745
+        bcc     L8745_NOT_INTACT        ;Branch if the disk starts inside the system RAM (below page $10)
+L8720_BOTTOM_OK:
+        jsr     KL_RAMTAS               ;A/X = number of RAM pages present now
+        cmp     RAM_PAGES
+        bne     L8745_NOT_INTACT        ;Branch if the amount of RAM has changed
+        cpx     RAM_PAGES+1
+        bne     L8745_NOT_INTACT
+        cpx     V1541_BOTTOM_PAGE+1
+        bcc     L8745_NOT_INTACT        ;Branch if the disk starts above the top of RAM
+        bne     L8739_CHECK_MAX
+        cmp     V1541_BOTTOM_PAGE
+        bcc     L8745_NOT_INTACT
+L8739_CHECK_MAX:
+        cpx     #$02                    ;There can't be more than 128K ($0200 pages)
+        bcc     L8743_INTACT
+        bne     L8745_NOT_INTACT
         cmp     #$00
-        bne     L8745
-L8743:  clc
+        bne     L8745_NOT_INTACT
+L8743_INTACT:
+        clc
         rts
 ; ----------------------------------------------------------------------------
-L8745:  sec
+L8745_NOT_INTACT:
+        sec
         rts
 ; ----------------------------------------------------------------------------
 KL_IOINIT:
@@ -1531,7 +1575,7 @@ L87CA:  stz     $00,x
         lsr     $00
         ror     a
         jsr     PRINT_BCD_NIBS ;Print the "128" in "128 KBYTE SYSTEM ESTABLISHED"
-        jsr     L8E5C
+        jsr     V1541_CHECKSUM_DIR
         jsr PRIMM
         .byte   " KBYTE SYSTEM ESTABLISHED",$0d,0
         jsr     LD411
@@ -1629,7 +1673,7 @@ L88DF:  lda     #$80
         sta     $0384
         rts
 ; ----------------------------------------------------------------------------
-L88E5:  jsr     L8A87
+L88E5:  jsr     MAP_RAM_PAGE
         lda     #$FF
         sta     $0384
         lda     #$05
@@ -1741,420 +1785,566 @@ L89A8:  tax
         txa
         rts
 ; ----------------------------------------------------------------------------
-L89AF:  jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
-        bcs     L89B5 ;branch if no error
+; Virtual 1541 (RAM disk), device 1
+;
+; The disk is made of 256-byte blocks at the top of RAM.  It starts at page
+; V1541_BOTTOM_PAGE and ends at the top of RAM (page RAM_PAGES).  It grows
+; down, one page at a time, toward the top of application memory
+; (MEMTOP_PAGE), and it shrinks again when blocks are deleted.  The blocks are
+; in no particular order.  A new block is always added at the bottom.  A block
+; is deleted by swapping it with the bottom block and then moving the bottom
+; up.  To find a block, the whole disk is searched (V1541_FIND_BLOCK).
+;
+; Each block starts with a 3-byte header:
+;   +0  File id.  The directory is file 0.  Other files are 1-255.
+;   +1  Sequence number of this block within its file, counting from 0
+;   +2  Offset in this block of the last byte in use (3-255), or 0 if the
+;       block is full and another block follows it.  2 = no data yet.
+;   +3  253 bytes of data
+;
+; The directory (file 0) is a list of entries:
+;   +0  Flags:  $80 = special entry (see below)
+;               $40 = PRG file (otherwise SEQ)
+;               $20 = file is open for writing (shown as a "*" splat file)
+;               $10 = never set by the KERNAL but treated like $20
+;   +1  File id
+;   +2  24-bit checksum of all the blocks of the file, low byte first
+;   +5  Filename of up to 16 characters, followed by a 0
+;
+; Nothing in the KERNAL creates an entry with flag $80, but they are allowed
+; for: such an entry owns no blocks, bytes 1-4 are copied to the channel as
+; they are, it can't be read or written through a channel, it can't be
+; replaced or appended to ("WRITE PROTECT"), and byte 3 is shown as its size
+; in a directory listing.
+;
+; There are 18 channels.  Each has 4 bytes of state (see V1541_ACTIV_FLAGS).
+; The state of the selected channel is kept in the zero page.  The state of
+; the others is in V1541_CHAN_BUF.
+;   0-13  Ordinary files, selected by the low 4 bits of the secondary address
+;   14    Command file: a file of keystrokes read by GET_KEY_NONBLOCKING
+;   15    Command channel
+;   16    Used internally to read and write the directory
+;   17    Used internally by LOAD
+;
+; The internal routines return carry set for success.  On failure they
+; return carry clear and a CBM DOS error number in A.
+; ----------------------------------------------------------------------------
+;Make the disk one page bigger, if there is space.
+;Returns carry set and MAPPED_PAGE_PTR pointing to the new bottom page, or
+;carry clear and A=25 if there is no space.
+; ----------------------------------------------------------------------------
+V1541_GROW:
+        jsr     V1541_CHECK_SPACE
+        bcs     V1541_GROW_NO_CHECK ;branch if no error
         rts
+;Make the disk one page bigger without checking that there is space.
 ; ----------------------------------------------------------------------------
-L89B5:  lda     $020A
-L89B8:  bne     L89BD
-        dec     $020B
-L89BD:  dec     $020A
-        jsr     LD3F6
-        jmp     L8A81
+V1541_GROW_NO_CHECK:
+        lda     V1541_BOTTOM_PAGE
+        bne     L89BD_NO_BORROW
+        dec     V1541_BOTTOM_PAGE+1
+L89BD_NO_BORROW:
+        dec     V1541_BOTTOM_PAGE
+        jsr     UPDATE_FREE_PAGES       ;Recalculate FREE_PAGES
+        jmp     V1541_FIRST_BLOCK       ;Select the new bottom page
 ; ----------------------------------------------------------------------------
-L89C6:  jsr     L89AF
-        bcc     L89E1
-        lda     V1541_ACTIV_E8
-        sta     $020E
-        sta     ($E4)
-        lda     V1541_ACTIV_E9
-        sta     $020F
+;Add a new, empty block for the file and sequence number of the active channel.
+V1541_NEW_BLOCK:
+        jsr     V1541_GROW
+        bcc     L89E1_RTS               ;Branch if there is no space
+        lda     V1541_ACTIV_ID
+        sta     V1541_BLOCK_ID
+        sta     (MAPPED_PAGE_PTR)       ;Header byte 0 = file id
+        lda     V1541_ACTIV_SEQ
+        sta     V1541_BLOCK_SEQ
         ldy     #$01
-        sta     ($E4),y
+        sta     (MAPPED_PAGE_PTR),y     ;Header byte 1 = sequence number
         iny
         lda     #$02
-        sta     ($E4),y
+        sta     (MAPPED_PAGE_PTR),y     ;Header byte 2 = offset of last byte in use (none yet)
         sec
-L89E1:  rts
+L89E1_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-L89E2:  jsr     L8A81
-L89E5:  lda     $020E
+;Delete every block of the file whose id is in V1541_DATA_BUF+1.
+V1541_DELETE_FILE_BLOCKS:
+        jsr     V1541_FIRST_BLOCK       ;Start (again) with the bottom block
+L89E5_LOOP:
+        lda     V1541_BLOCK_ID
         cmp     V1541_DATA_BUF+1
-        bne     L89F2
-        jsr     L89FF
-        bra     L89E2
-L89F2:  jsr     L8A61
-        bcs     L89E5
+        bne     L89F2_NEXT
+        jsr     V1541_DELETE_BLOCK      ;Delete this block; the bottom block takes its place
+        bra     V1541_DELETE_FILE_BLOCKS
+L89F2_NEXT:
+        jsr     V1541_NEXT_BLOCK
+        bcs     L89E5_LOOP              ;Loop until the top of the disk
         sec
         rts
 ; ----------------------------------------------------------------------------
-L89F9:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
-        bcs     L89FF ;branch if no error
+;Find the block of the active channel (V1541_ACTIV_ID, V1541_ACTIV_SEQ)
+;and delete it.  Returns carry clear if it does not exist.
+V1541_FIND_AND_DELETE_BLOCK:
+        jsr     V1541_FIND_BLOCK
+        bcs     V1541_DELETE_BLOCK ;branch if no error
         rts
 ; ----------------------------------------------------------------------------
-L89FF:  lda     $0216
-        pha
-        lda     $E5
-        pha
-        jsr     L8A81
-        stz     $D9
+;Delete the block at MAPPED_PAGE_PTR: swap its contents with the bottom
+;block, then make the disk one page smaller.  The deleted block's data is
+;left in the page that is given up.
+V1541_DELETE_BLOCK:
+        lda     MAPPED_PAGE_OFFS
+        pha                             ;Push KERN window offset of the block being deleted
+        lda     MAPPED_PAGE_PTR+1
+        pha                             ;Push high byte of its address in the KERN window
+        jsr     V1541_FIRST_BLOCK       ;Select the bottom block
+        stz     MAPPED_PAGE             ;MAPPED_PAGE is also used as a pointer to the block being deleted
         pla
-        sta     $DA
+        sta     MAPPED_PAGE+1
         ldy     #$00
-L8A10:  lda     ($E4),y
+L8A10_SWAP_LOOP:
+        lda     (MAPPED_PAGE_PTR),y     ;Get a byte of the bottom block
         tax
         pla
-L8A14:  pha
-        sta     MMU_OFFS_KERN_W
-        lda     ($D9),y
-L8A1A:  pha
+        pha
+        sta     MMU_OFFS_KERN_W         ;Map the block being deleted
+        lda     (MAPPED_PAGE),y
+        pha
         txa
-        sta     ($D9),y
-        lda     $0216
-        sta     MMU_OFFS_KERN_W
+        sta     (MAPPED_PAGE),y         ;Bottom block's byte goes into the block being deleted
+        lda     MAPPED_PAGE_OFFS
+        sta     MMU_OFFS_KERN_W         ;Map the bottom block
         pla
-        sta     ($e4),y
+        sta     (MAPPED_PAGE_PTR),y     ;Deleted block's byte goes into the bottom block
         iny
-        bne     L8A10
+        bne     L8A10_SWAP_LOOP
         pla
-        inc     $020A
-        bne     L8A33
-        inc     $020B
-L8A33:  jsr     LD3F6
-        jmp     L8A81
+        inc     V1541_BOTTOM_PAGE       ;The disk now starts one page higher
+        bne     L8A33_NO_CARRY
+        inc     V1541_BOTTOM_PAGE+1
+L8A33_NO_CARRY:
+        jsr     UPDATE_FREE_PAGES       ;Recalculate FREE_PAGES
+        jmp     V1541_FIRST_BLOCK       ;Select the new bottom page
 ; ----------------------------------------------------------------------------
-L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR:
-        ldx     $020B
-        lda     $020A
-        bne     L8A42
+;Check that the disk can grow by one page.
+;Returns carry clear and A=25 if the page below the disk is not above the top
+;page of application memory.
+V1541_CHECK_SPACE:
+        ldx     V1541_BOTTOM_PAGE+1
+        lda     V1541_BOTTOM_PAGE
+        bne     L8A42_NO_BORROW
         dex
-L8A42:  dec     a
-        cpx     $020D
+L8A42_NO_BORROW:
+        dec     a                       ;X/A = page below the bottom of the disk
+        cpx     MEMTOP_PAGE+1
+        bne     L8A4E_25_WRITE_ERROR    ;Branch unless the high bytes are equal.  Carry is set if the page is above MEMTOP_PAGE (free).
+        cmp     MEMTOP_PAGE
         bne     L8A4E_25_WRITE_ERROR
-        cmp     $020C
-        bne     L8A4E_25_WRITE_ERROR
-        clc
+        clc                             ;No space
 L8A4E_25_WRITE_ERROR:
         lda     #doserr_25_write_err ;25 write error (write-verify error)
         rts
 ; ----------------------------------------------------------------------------
-        cld                                     ; 8A51 D8                       .
-        sec                                     ; 8A52 38                       8
-        lda     $0208                           ; 8A53 AD 08 02                 ...
-        sbc     $020A                           ; 8A56 ED 0A 02                 ...
-        tax                                     ; 8A59 AA                       .
-        lda     $0209                           ; 8A5A AD 09 02                 ...
-        sbc     $020B                           ; 8A5D ED 0B 02                 ...
-        rts                                     ; 8A60 60                       `
+;Unused.  Returns the number of blocks on the disk in X (low) and A (high).
+        cld
+        sec
+        lda     RAM_PAGES
+        sbc     V1541_BOTTOM_PAGE
+        tax
+        lda     RAM_PAGES+1
+        sbc     V1541_BOTTOM_PAGE+1
+        rts
 ; ----------------------------------------------------------------------------
-L8A61:  ldx     $DA                             ; 8A61 A6 DA                    ..
-        lda     $D9                             ; 8A63 A5 D9                    ..
-        inc     a                               ; 8A65 1A                       .
-        bne     L8A69                           ; 8A66 D0 01                    ..
-        inx                                     ; 8A68 E8                       .
-L8A69:  cpx     $0209                           ; 8A69 EC 09 02                 ...
-        bcc     L8A77                           ; 8A6C 90 09                    ..
-        bne     L8A75                           ; 8A6E D0 05                    ..
-        cmp     $0208                           ; 8A70 CD 08 02                 ...
-        bcc     L8A77                           ; 8A73 90 02                    ..
-L8A75:  clc                                     ; 8A75 18                       .
-        rts                                     ; 8A76 60                       `
+;Move on to the next block (the page above the current one).
+;Returns carry clear if the current block is the last one before the top of RAM.
+V1541_NEXT_BLOCK:
+        ldx     MAPPED_PAGE+1
+        lda     MAPPED_PAGE
+        inc     a
+        bne     L8A69_NO_CARRY
+        inx
+L8A69_NO_CARRY:
+        cpx     RAM_PAGES+1
+        bcc     L8A77_SELECT
+        bne     L8A75_NO_MORE
+        cmp     RAM_PAGES
+        bcc     L8A77_SELECT
+L8A75_NO_MORE:
+        clc
+        rts
 ; ----------------------------------------------------------------------------
-L8A77:  stx     $DA                             ; 8A77 86 DA                    ..
-        sta     $D9                             ; 8A79 85 D9                    ..
-        inc     $E5                             ; 8A7B E6 E5                    ..
-        bmi     L8A87                           ; 8A7D 30 08                    0.
-        bra     L8AA9                           ; 8A7F 80 28                    .(
+L8A77_SELECT:
+        stx     MAPPED_PAGE+1
+        sta     MAPPED_PAGE
+        inc     MAPPED_PAGE_PTR+1       ;Next page in the KERN window
+        bmi     MAP_RAM_PAGE            ;Branch if past the end of the window: map the next 16K
+        bra     V1541_REMAP_BLOCK       ;Otherwise just read the header of the block
 
-L8A81:  ldx     $020B                           ; 8A81 AE 0B 02                 ...
+;Select the bottom page of the disk.
+;Returns Z=1 if the disk is empty.
+V1541_FIRST_BLOCK:
+        ldx     V1541_BOTTOM_PAGE+1
 
-L8A84:  lda     $020A                           ; 8A84 AD 0A 02                 ...
+        lda     V1541_BOTTOM_PAGE
 
-L8A87:  sta     $D9                             ; 8A87 85 D9                    ..
-        stx     $DA                             ; 8A89 86 DA                    ..
-        sec                                     ; 8A8B 38                       8
-        cld                                     ; 8A8C D8                       .
-        sbc     #$40                            ; 8A8D E9 40                    .@
-        bcs     L8A92                           ; 8A8F B0 01                    ..
-        dex                                     ; 8A91 CA                       .
-L8A92:  sta     $E5                             ; 8A92 85 E5                    ..
-        txa                                     ; 8A94 8A                       .
-        asl     $E5                             ; 8A95 06 E5                    ..
-        rol     a                               ; 8A97 2A                       *
-        asl     $E5                             ; 8A98 06 E5                    ..
-        rol     a                               ; 8A9A 2A                       *
-        asl     a                               ; 8A9B 0A                       .
-        asl     a                               ; 8A9C 0A                       .
-        asl     a                               ; 8A9D 0A                       .
-        asl     a                               ; 8A9E 0A                       .
-        sta     $0216                           ; 8A9F 8D 16 02                 ...
-        sec                                     ; 8AA2 38                       8
-        ror     $E5                             ; 8AA3 66 E5                    f.
-        lsr     $E5                             ; 8AA5 46 E5                    F.
-        stz     $E4                             ; 8AA7 64 E4                    d.
-L8AA9:  lda     $0216                           ; 8AA9 AD 16 02                 ...
-        sta     MMU_OFFS_KERN_W                 ; 8AAC 8D 00 FF                 ...
-L8AAF:  ldy     #$01                            ; 8AAF A0 01                    ..
-        lda     ($E4)                           ; 8AB1 B2 E4                    ..
-        tax                                     ; 8AB3 AA                       .
-        sta     $020E                           ; 8AB4 8D 0E 02                 ...
-        lda     ($E4),y                         ; 8AB7 B1 E4                    ..
-        tay                                     ; 8AB9 A8                       .
-        lda     $020A                           ; 8ABA AD 0A 02                 ...
-        eor     $0208                           ; 8ABD 4D 08 02                 M..
-        bne     L8ACD                           ; 8AC0 D0 0B                    ..
-        lda     $020B                           ; 8AC2 AD 0B 02                 ...
-        eor     $0209                           ; 8AC5 4D 09 02                 M..
-        bne     L8ACD                           ; 8AC8 D0 03                    ..
-        ldy     #$FF                            ; 8ACA A0 FF                    ..
-        tax                                     ; 8ACC AA                       .
-L8ACD:  stx     $020E                           ; 8ACD 8E 0E 02                 ...
-        sty     $020F                           ; 8AD0 8C 0F 02                 ...
-        sec                                     ; 8AD3 38                       8
-        rts                                     ; 8AD4 60                       `
+;Map a page of RAM into the KERN window.  The whole 16K that contains the
+;page is mapped at $4000-7FFF.
+;
+;Call with:   A/X = page number (low/high); address in the 256K space / 256
+;Returns:     MAPPED_PAGE = page number
+;             MAPPED_PAGE_PTR = address of the page in the KERN window
+;             MAPPED_PAGE_OFFS = KERN window offset that was set
+;             V1541_BLOCK_ID, V1541_BLOCK_SEQ = bytes 0 and 1 of the page, or
+;                 0 and $FF with Z=1 if the disk is empty
+;             Carry set
+MAP_RAM_PAGE:
+        sta     MAPPED_PAGE
+        stx     MAPPED_PAGE+1
+        sec
+        cld
+        sbc     #$40                    ;The KERN window starts at $4000, so subtract $40 pages
+        bcs     L8A92_NO_BORROW
+        dex
+L8A92_NO_BORROW:
+        sta     MAPPED_PAGE_PTR+1
+        txa
+        asl     MAPPED_PAGE_PTR+1
+        rol     a
+        asl     MAPPED_PAGE_PTR+1
+        rol     a                       ;A = number of the 16K (64 pages) holding the page, minus 1
+        asl     a
+        asl     a
+        asl     a
+        asl     a                       ;Times 16 = KERN window offset in kilobytes
+        sta     MAPPED_PAGE_OFFS
+        sec
+        ror     MAPPED_PAGE_PTR+1
+        lsr     MAPPED_PAGE_PTR+1       ;High byte of pointer = $40 + (page mod 64)
+        stz     MAPPED_PAGE_PTR
+;Map the page at MAPPED_PAGE_PTR again (something else may have changed the
+;KERN window) and read the header of the block in it.
+V1541_REMAP_BLOCK:
+        lda     MAPPED_PAGE_OFFS
+        sta     MMU_OFFS_KERN_W
+        ldy     #$01
+        lda     (MAPPED_PAGE_PTR)
+        tax
+        sta     V1541_BLOCK_ID          ;Redundant: it is stored again below
+        lda     (MAPPED_PAGE_PTR),y
+        tay
+        lda     V1541_BOTTOM_PAGE
+        eor     RAM_PAGES
+        bne     L8ACD_STORE             ;Branch if the disk is not empty
+        lda     V1541_BOTTOM_PAGE+1
+        eor     RAM_PAGES+1
+        bne     L8ACD_STORE
+        ldy     #$FF                    ;The disk is empty: pretend the header is file 0, sequence $FF,
+        tax                             ;which no search will match.  Z=1.
+L8ACD_STORE:
+        stx     V1541_BLOCK_ID
+        sty     V1541_BLOCK_SEQ
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-;maybe returns a cbm dos error code
-L8AD5_MAYBE_READS_BLOCK_HEADER:
-        jsr     L8AA9
-        jsr     L8AEE
-        beq     L8AFA
-        jsr     L8A81
-L8AE0:  jsr     L8AEE
-        beq     L8AFA
-        jsr     L8A61
-        bcs     L8AE0
+;Find the block of the active channel: the one with file id V1541_ACTIV_ID
+;and sequence number V1541_ACTIV_SEQ.  The block at MAPPED_PAGE_PTR is tried
+;first, then the whole disk is searched from the bottom up.
+;Returns carry set if found, or carry clear and A=20 if not.
+V1541_FIND_BLOCK:
+        jsr     V1541_REMAP_BLOCK
+        jsr     V1541_IS_BLOCK_WANTED
+        beq     L8AFA_RTS
+        jsr     V1541_FIRST_BLOCK
+L8AE0_LOOP:
+        jsr     V1541_IS_BLOCK_WANTED
+        beq     L8AFA_RTS
+        jsr     V1541_NEXT_BLOCK
+        bcs     L8AE0_LOOP
         clc
         lda     #doserr_20_read_err ;20 read error (block header not found)
         rts
 ; ----------------------------------------------------------------------------
-L8AEE:  lda     V1541_ACTIV_E8
-        cmp     $020E
-        bne     L8AFA
-        lda     V1541_ACTIV_E9
-        cmp     $020F
-L8AFA:  rts
+;Returns Z=1 (and carry set) if the block at MAPPED_PAGE_PTR is the one that
+;the active channel wants.
+V1541_IS_BLOCK_WANTED:
+        lda     V1541_ACTIV_ID
+        cmp     V1541_BLOCK_ID
+        bne     L8AFA_RTS
+        lda     V1541_ACTIV_SEQ
+        cmp     V1541_BLOCK_SEQ
+L8AFA_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-        cpx     $DA                             ; 8AFB E4 DA                    ..
-        bne     L8B08                           ; 8AFD D0 09                    ..
-        cmp     $D9                             ; 8AFF C5 D9                    ..
-        bne     L8B08                           ; 8B01 D0 05                    ..
-        jsr     L8AA9                           ; 8B03 20 A9 8A                  ..
-        bra     L8B0B                           ; 8B06 80 03                    ..
-L8B08:  jsr     L8A87                           ; 8B08 20 87 8A                  ..
-L8B0B:  stz     $020E                           ; 8B0B 9C 0E 02                 ...
-        stz     $020F                           ; 8B0E 9C 0F 02                 ...
-        sec                                     ; 8B11 38                       8
-        rts                                     ; 8B12 60                       `
+;Unused.  Maps page A/X (unless it is already selected) and forgets the
+;header of the block in it.
+        cpx     MAPPED_PAGE+1
+        bne     L8B08
+        cmp     MAPPED_PAGE
+        bne     L8B08
+        jsr     V1541_REMAP_BLOCK
+        bra     L8B0B
+L8B08:  jsr     MAP_RAM_PAGE
+L8B0B:  stz     V1541_BLOCK_ID
+        stz     V1541_BLOCK_SEQ
+        sec
+        rts
 ; ----------------------------------------------------------------------------
-;maybe returns cbm dos error code in a
-L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL:
-        lda     $0207
+;Find a file id that is not in use and put it in V1541_DATA_BUF+1.  The
+;search starts with the id most recently assigned and skips 0.
+;Returns carry clear and A=72 if all 255 ids are in use.
+V1541_NEW_FILE_ID:
+        lda     V1541_LAST_FILE_ID
         bne     L8B1D_LOOP
-        inc     $0207
-        bra     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL
+        inc     V1541_LAST_FILE_ID
+        bra     V1541_NEW_FILE_ID
 
 L8B1D_LOOP:
         pha
-        jsr     L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR
+        jsr     V1541_DIR_FIND_ID                                   ;Is there a directory entry with this id?
         pla
-        bcs     L8B27 ;branch if no error
-        sec
-        bra     L8B31_STORE_0207_0219_THEN_72_DISK_FULL
+        bcs     L8B27_IN_USE            ;Branch if so
+        sec                             ;Carry set = this id is free
+        bra     L8B31_DONE
 
-L8B27:  inc     a
-        bne     L8B2B
+L8B27_IN_USE:
         inc     a
-L8B2B:  cmp     $0207
-        bne     L8B1D_LOOP
-        clc
-L8B31_STORE_0207_0219_THEN_72_DISK_FULL:
-        sta     $0207
+        bne     L8B2B_NOT_ZERO
+        inc     a
+L8B2B_NOT_ZERO:
+        cmp     V1541_LAST_FILE_ID
+        bne     L8B1D_LOOP              ;Loop until back at the starting id
+        clc                             ;Carry clear = no free id
+L8B31_DONE:
+        sta     V1541_LAST_FILE_ID
         sta     V1541_DATA_BUF+1
         lda     #doserr_72_disk_full ;72 disk full
         rts
 ; ----------------------------------------------------------------------------
 ;CHRIN to Virtual 1541
 V1541_CHRIN:
-        jsr     L8B40_V1541_INTERNAL_CHRIN
+        jsr     V1541_INTERNAL_CHRIN
         jmp     V1541_KERNAL_CALL_DONE
 
-L8B40_V1541_INTERNAL_CHRIN:
+V1541_INTERNAL_CHRIN:
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-        bcs     L8B46 ;branch if no error
+        bcs     V1541_READ_BYTE ;branch if no error
         rts
 ; ----------------------------------------------------------------------------
-L8B46:  lda     V1541_ACTIV_FLAGS
-        bit     #$10
-        bne     L8B50
+;Read a byte from the active channel.
+;Returns carry set and the byte in A.  V1541_EOF bit 7 is set if that was
+;the last byte of the file.
+V1541_READ_BYTE:
+        lda     V1541_ACTIV_FLAGS
+        bit     #$10                    ;Open for reading?
+        bne     L8B50_OPEN
         lda     #doserr_61_file_not_open
         clc
         rts
 ; ----------------------------------------------------------------------------
-L8B50:  lda     V1541_DEFAULT_CHAN
+L8B50_OPEN:
+        lda     V1541_ACTIV_CHAN
         cmp     #doschan_15_command ;command channel?
-        bne     L8B59
-        jmp     L9AA5_V1541_CHRIN_CMD_CHAN
+        bne     L8B59_NOT_CMD_CHAN
+        jmp     V1541_CHRIN_CMD_CHAN
 ; ----------------------------------------------------------------------------
-L8B59:  lda     V1541_ACTIV_FLAGS
-        bit     #$80 ;eof?
-        bne     L8BA0_CHRIN_EOF  ;branch if eof
+L8B59_NOT_CMD_CHAN:
+        lda     V1541_ACTIV_FLAGS
+        bit     #$80                    ;Special ($80) entry?
+        bne     L8BA0_CHRIN_EOF         ;Branch if so: it reads as an empty file
         ;not eof
-        lda     V1541_ACTIV_E8
-        bne     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO
-        jmp     L939A
+        lda     V1541_ACTIV_ID
+        bne     V1541_READ_FILE_BYTE
+        jmp     V1541_READ_DIR_BYTE     ;File 0 is the directory: return a byte of the directory listing
 ; ----------------------------------------------------------------------------
-L8B66_CHRIN_V1541_ACTIV_E8_NONZERO:
-        stz     SXREG
-        lda     V1541_ACTIV_EA
-        bne     L8B7F
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+;Read the next byte of the file of the active channel, with no checks.
+V1541_READ_FILE_BYTE:
+        stz     V1541_EOF
+        lda     V1541_ACTIV_OFFS
+        bne     L8B7F_IN_BLOCK          ;Branch if a block is being read
+        jsr     V1541_FIND_BLOCK               ;Nothing read yet: find the first block
         bcs     L8B7B_CHRIN_NO_ERROR ;branch if no error
-        dec     SXREG
+        dec     V1541_EOF               ;The file has no blocks at all: V1541_EOF = $FF
         lda     #$0D      ;carriage return if error or eof
         sec
         rts
 ; ----------------------------------------------------------------------------
-L8B79:  inc     V1541_ACTIV_E9
+L8B79_NEXT_BLOCK:
+        inc     V1541_ACTIV_SEQ
 L8B7B_CHRIN_NO_ERROR:
-        lda     #$02
-        sta     V1541_ACTIV_EA
-L8B7F:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        lda     #$02                    ;Offset 2 = just before the first data byte
+        sta     V1541_ACTIV_OFFS
+L8B7F_IN_BLOCK:
+        jsr     V1541_FIND_BLOCK
         bcc     L8B9F_RTS ;branch if error
         ldy     #$02
-        lda     ($E4),y
-        beq     L8B8E
-        cmp     V1541_ACTIV_EA
-        beq     L8B92
-L8B8E:  inc     V1541_ACTIV_EA
-        beq     L8B79
-L8B92:  lda     V1541_ACTIV_EA
-        cmp     ($E4),y
-        bne     L8B9B
-        ror     SXREG
-L8B9B:  tay
-        lda     ($E4),y
+        lda     (MAPPED_PAGE_PTR),y     ;A = offset of the last byte in use, or 0 if the block is full
+        beq     L8B8E_ADVANCE           ;Branch if full
+        cmp     V1541_ACTIV_OFFS
+        beq     L8B92_GET               ;Branch if already at the last byte: return it again
+L8B8E_ADVANCE:
+        inc     V1541_ACTIV_OFFS
+        beq     L8B79_NEXT_BLOCK        ;Branch if past the end of the block
+L8B92_GET:
+        lda     V1541_ACTIV_OFFS
+        cmp     (MAPPED_PAGE_PTR),y
+        bne     L8B9B_NOT_LAST          ;Branch if this is not the last byte
+        ror     V1541_EOF               ;Set bit 7 of V1541_EOF (carry is set by the compare)
+L8B9B_NOT_LAST:
+        tay
+        lda     (MAPPED_PAGE_PTR),y
         sec
-L8B9F_RTS:  rts
+L8B9F_RTS:
+        rts
 ; ----------------------------------------------------------------------------
 L8BA0_CHRIN_EOF:
-        lda     #$0D    ;CR is returned when reading past EOF
-        stz     SXREG
-        dec     SXREG
+        lda     #$0D                    ;Return a carriage return, with V1541_EOF set
+        stz     V1541_EOF
+        dec     V1541_EOF
         sec
         rts
 ; ----------------------------------------------------------------------------
 ;CHROUT to Virtual 1541
 V1541_CHROUT:
-        jsr     L8BB0_V1541_INTERNAL_CHROUT
+        jsr     V1541_INTERNAL_CHROUT
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L8BB0_V1541_INTERNAL_CHROUT:
+V1541_INTERNAL_CHROUT:
         sta     V1541_BYTE_TO_WRITE
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-        bcs     L8BB9 ;branch if no error
+        bcs     L8BB9_SELECTED ;branch if no error
         rts
 
-L8BB9:  lda     V1541_ACTIV_FLAGS
-        bit     #$20
-        bne     L8BC3
+L8BB9_SELECTED:
+        lda     V1541_ACTIV_FLAGS
+        bit     #$20                    ;Open for writing?
+        bne     L8BC3_OPEN
         lda     #doserr_61_file_not_open
 L8BC1_CLC_RTS:
         clc
         rts
 
-L8BC3:  bit     #$80
-        beq     L8BCB
+L8BC3_OPEN:
+        bit     #$80
+        beq     L8BCB_OK                ;Branch unless it is a special ($80) entry
 L8BC7_73_DOS_MISMATCH:
         lda     #doserr_73_dos_mismatch
         bra     L8BC1_CLC_RTS
 
-L8BCB:  lda     V1541_DEFAULT_CHAN
+L8BCB_OK:
+        lda     V1541_ACTIV_CHAN
         cmp     #doschan_15_command ;command channel?
-        bne     L8BD7_V1541_CHROUT_NOT_CMD_CHAN
-        jmp     L975D_V1541_CHROUT_CMD_CHAN
+        bne     L8BD7_WRITE
+        jmp     V1541_CHROUT_CMD_CHAN   ;Never reached: see V1541_CHROUT_CMD_CHAN
 ; ----------------------------------------------------------------------------
-L8BD4:  sta     V1541_BYTE_TO_WRITE
+;Write byte A to the file of the active channel, with no checks.
+;
+;BUG: if there is no space for a new block when a block fills up, the offset
+;is left at 0 and the full block is not marked as full.  A later write then
+;takes the "first block" path and adds a second block with the same sequence
+;number.
+;
+;BUG: the sequence number is one byte, so a file of more than 256 blocks
+;(64,768 bytes) wraps around to sequence 0.
+V1541_WRITE_FILE_BYTE:
+        sta     V1541_BYTE_TO_WRITE
         ;Fall through
 
-L8BD7_V1541_CHROUT_NOT_CMD_CHAN:
-        lda     V1541_ACTIV_EA
-        bne     L8BE1_WRITE_BYTE
-        jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
-        bcs     L8BF7 ;branch if no error
+L8BD7_WRITE:
+        lda     V1541_ACTIV_OFFS
+        bne     L8BE1_ADVANCE           ;Branch if the file already has a block
+        jsr     V1541_CHECK_SPACE
+        bcs     L8BF7_NEW_BLOCK         ;Branch if there is space for its first block
         rts
 ; ----------------------------------------------------------------------------
-L8BE1_WRITE_BYTE:
-        inc     V1541_ACTIV_EA
-        bne     L8BFE
-        jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
+L8BE1_ADVANCE:
+        inc     V1541_ACTIV_OFFS
+        bne     L8BFE_STORE             ;Branch if there is still space in the current block
+        jsr     V1541_CHECK_SPACE
         bcc     L8C0E_RTS ;branch if error
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        jsr     V1541_FIND_BLOCK
         bcc     L8C0E_RTS ;branch if error
         ldy     #$02
-        lda     #$00
-L8BF3:  sta     ($E4),y
-        inc     V1541_ACTIV_E9
-L8BF7:  ldy     #$03
-        sty     V1541_ACTIV_EA
-        jsr     L89C6
-L8BFE:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        lda     #$00                    ;The current block is full: mark it as full with more to follow
+        sta     (MAPPED_PAGE_PTR),y
+        inc     V1541_ACTIV_SEQ         ;Next sequence number
+L8BF7_NEW_BLOCK:
+        ldy     #$03
+        sty     V1541_ACTIV_OFFS        ;First data byte goes at offset 3
+        jsr     V1541_NEW_BLOCK
+L8BFE_STORE:
+        jsr     V1541_FIND_BLOCK
         ldy     #$02
-        lda     V1541_ACTIV_EA
-        sta     ($E4),y
+        lda     V1541_ACTIV_OFFS
+        sta     (MAPPED_PAGE_PTR),y     ;Header byte 2 = offset of the last byte in use
         tay
         lda     V1541_BYTE_TO_WRITE
-        sta     ($E4),y
+        sta     (MAPPED_PAGE_PTR),y
         sec
 L8C0E_RTS:
         rts
 ; ----------------------------------------------------------------------------
-L8C0F_DIR_RELATED:
+;Overwrite the next byte of the file of the active channel with A.
+;Unlike V1541_WRITE_FILE_BYTE, this never adds a block and it does not
+;change the length of the file.  Used to close up the directory.
+V1541_OVERWRITE_FILE_BYTE:
         pha
-        lda     V1541_ACTIV_EA
-L8C12:  inc     a
-        bne     L8C17
-        inc     V1541_ACTIV_E9
-L8C17:  cmp     #$03
-        bcc     L8C12
-L8C1B:  sta     V1541_ACTIV_EA
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        lda     V1541_ACTIV_OFFS
+L8C12_ADVANCE:
+        inc     a
+        bne     L8C17_SKIP_HEADER
+        inc     V1541_ACTIV_SEQ         ;Wrapped around: go on to the next block
+L8C17_SKIP_HEADER:
+        cmp     #$03
+        bcc     L8C12_ADVANCE           ;Skip offsets 0-2, the block header
+        sta     V1541_ACTIV_OFFS
+        jsr     V1541_FIND_BLOCK
         pla
         bcc     L8C27_71_DIR_ERROR ;branch if error
-        ldy     V1541_ACTIV_EA
-        sta     ($E4),y
+        ldy     V1541_ACTIV_OFFS
+        sta     (MAPPED_PAGE_PTR),y
 L8C27_71_DIR_ERROR:
         lda     #doserr_71_dir_error ;71 directory error
         rts
 
 ; ----------------------------------------------------------------------------
-L8C2A_JSR_V1541_SELECT_CHAN_17_JMP_L8C8B_CLEAR_ACTIVE_CHANNEL:
-        jsr     V1541_SELECT_CHAN_17
-        jmp     L8C8B_CLEAR_ACTIVE_CHANNEL
+V1541_SELECT_LOAD_CHANNEL_AND_CLEAR_IT:
+        jsr     V1541_SELECT_LOAD_CHANNEL
+        jmp     V1541_CLEAR_ACTIVE_CHANNEL
 
 V1541_SELECT_DIR_CHANNEL_AND_CLEAR_IT:
         jsr     V1541_SELECT_DIR_CHANNEL
-        jmp     L8C8B_CLEAR_ACTIVE_CHANNEL
+        jmp     V1541_CLEAR_ACTIVE_CHANNEL
 ; ----------------------------------------------------------------------------
 
-;Get a channel's 4 bytes of data from the all-channels area
-;into the active area.  Returns carry clear on failure, set on success.
+;Select a channel: swap the 4 bytes of state of the old active channel out
+;to V1541_CHAN_BUF and those of the new one in.
+;Returns carry set if the channel is open, or carry clear and A=70 if not.
 V1541_SELECT_CHANNEL_GIVEN_SA:
         ;SA high nib is command, low nib is channel
         lda     SA
         and     #$0F
-L8C3A:  .byte   $2C ;skip next 2 bytes
+        .byte   $2C ;skip next 2 bytes
 
-V1541_SELECT_CHAN_17:
-        lda     #doschan_17_unknown
+V1541_SELECT_LOAD_CHANNEL:
+        lda     #doschan_17_load
         .byte   $2C ;skip next 2 bytes
 
 V1541_SELECT_DIR_CHANNEL:
         lda     #doschan_16_directory
 
 V1541_SELECT_CHANNEL_A:
-        cmp     V1541_DEFAULT_CHAN
+        cmp     V1541_ACTIV_CHAN
         beq     L8C66_70_NO_CHANNEL
 
         pha                               ;Save the requested channel number
-        lda     V1541_DEFAULT_CHAN                ;Get the current channel number
-        jsr     L8C4D_SWAP_ACTIV_AND_BUF  ;Save the active channel in its slot in all-channels buf
+        lda     V1541_ACTIV_CHAN                  ;Get the current channel number
+        jsr     V1541_SWAP_ACTIV_AND_BUF  ;Save the active channel in its slot in all-channels buf
 
-L8C4A:  pla                               ;Get the requested channel number back
-        sta     V1541_DEFAULT_CHAN                ;Set it as the active channel number
+        pla                               ;Get the requested channel number back
+        sta     V1541_ACTIV_CHAN                  ;Set it as the active channel number
                                           ;Fall through to get data from all-channels buf into active
 
 ;Get buffer index from channel number
-L8C4D_SWAP_ACTIV_AND_BUF:
+V1541_SWAP_ACTIV_AND_BUF:
         ;X = ((A+1)*4) - 1       Examples:
         inc     a               ;A=0 -> X=3
         asl     a               ;A=1 -> X=7
@@ -2177,7 +2367,7 @@ L8C54_LOOP:
 
 L8C66_70_NO_CHANNEL:
         lda     #doserr_70_no_channel
-L8C68:  clc
+        clc
         ldx     V1541_ACTIV_FLAGS
         beq     L8C6E_RTS
         sec
@@ -2185,24 +2375,31 @@ L8C6E_RTS:
         rts
 
 ; ----------------------------------------------------------------------------
-L8C6F_V1541_I_INITIALIZE:
+;"I" command: close all channels except 14, empty the command buffer and set
+;the status to 00,OK,000,000.  Channel 14 is selected first, so its state is
+;kept in the zero page while the others are cleared: a command file that is
+;being read stays open.
+V1541_I_INITIALIZE:
         lda     #doschan_14_cmd_app
         jsr     V1541_SELECT_CHANNEL_A
         ldx     #$47
-L8C76:  stz     V1541_CHAN_BUF,X
+L8C76_LOOP:
+        stz     V1541_CHAN_BUF,X
         dex
-L8C7A:  bpl     L8C76
-        stz     V1541_CMD_LEN
+        bpl     L8C76_LOOP
+        stz     V1541_CMD_LEN           ;Command buffer is empty
         inx     ;A=0
         txa     ;X=0
         tay     ;Y=0
         sec
-        jmp     L9964_STORE_XAY_CLEAR_0217
+        jmp     V1541_SET_STATUS
 ; ----------------------------------------------------------------------------
+;Select the channel given by SA, then close it by zeroing its state.
+;V1541_CLEAR_ACTIVE_CHANNEL closes the active channel.  Both return carry set.
 V1541_SELECT_CHANNEL_AND_CLEAR_IT:
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
 
-L8C8B_CLEAR_ACTIVE_CHANNEL:
+V1541_CLEAR_ACTIVE_CHANNEL:
         ldx     #$03
 L8C8B_LOOP:
         stz     V1541_ACTIV_FLAGS,x
@@ -2211,80 +2408,108 @@ L8C8B_LOOP:
         sec
         rts
 ; ----------------------------------------------------------------------------
-L8C92:  lda     #$00
-        jsr     L8C9F
-        bcc     L8C9E_RTS ;branch on error
-        jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
-        bra     L8C92
+;Close every channel (0-15) that is reading the directory, because the
+;directory is about to change.
+V1541_CLOSE_DIR_READERS:
+        lda     #$00                    ;File id 0 = the directory
+        jsr     V1541_FIND_CHANNEL_WITH_FILE
+        bcc     L8C9E_RTS               ;Branch if no more channels have it open
+        jsr     V1541_CLEAR_ACTIVE_CHANNEL
+        bra     V1541_CLOSE_DIR_READERS
 
-L8C9E_RTS:  rts
+L8C9E_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-L8C9F:  tay
+;Find a channel (15 down to 0) that has file id A open, skipping channels
+;with flag $80.  Returns carry set with that channel selected, or carry clear.
+V1541_FIND_CHANNEL_WITH_FILE:
+        tay
         ldx     #doschan_15_command
-L8CA2:  phy
+L8CA2_LOOP:
+        phy
         phx
         txa
         jsr     V1541_SELECT_CHANNEL_A
         plx
         ply
         lda     V1541_ACTIV_FLAGS
-        beq     L8CB6
+        beq     L8CB6_NEXT              ;Branch if this channel is closed
         bit     #$80
-        bne     L8CB6
-        cpy     V1541_ACTIV_E8
-        beq     L8CBA
-L8CB6:  dex
-        bpl     L8CA2
+        bne     L8CB6_NEXT
+        cpy     V1541_ACTIV_ID
+        beq     L8CBA_RTS
+L8CB6_NEXT:
+        dex
+        bpl     L8CA2_LOOP
         clc
-L8CBA:  rts
-; ----------------------------------------------------------------------------
-L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6:
-        stz     V1541_ACTIV_E9
-        stz     V1541_ACTIV_EA
-        stz     V1541_ACTIV_E8
-        bra     L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-; ----------------------------------------------------------------------------
-;returns cbm dos error code in A
-L8CC3:  jsr     L8CE6
-        bcc     L8CD1 ;branch if error
-        clc
-        bit     SXREG
-        bmi     L8CD1
-
-L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6:
-        jsr     L8CE6
-L8CD1:  ldx     V1541_ACTIV_EA
-        ldy     $03A7
-        stx     $03A7
-        sty     V1541_ACTIV_EA
-        ldx     V1541_ACTIV_E9
-        ldy     $03A6
-        stx     $03A6
-        sty     V1541_ACTIV_E9
+L8CBA_RTS:
         rts
 ; ----------------------------------------------------------------------------
-;returns cbm dos error code in A
-L8CE6:  ldx     V1541_ACTIV_EA
-        ldy     V1541_ACTIV_E9
-        stx     $03A7
-        sty     $03a6
-        stz     $02D8
+;Read the first directory entry into V1541_DATA_BUF.
+;Returns the same as V1541_DIR_NEXT.
+V1541_DIR_FIRST:
+        stz     V1541_ACTIV_SEQ         ;Rewind the active channel to the start...
+        stz     V1541_ACTIV_OFFS
+        stz     V1541_ACTIV_ID          ;...of file 0, the directory
+        bra     V1541_DIR_READ_AND_REWIND
+; ----------------------------------------------------------------------------
+;Read the next directory entry into V1541_DATA_BUF.
+;
+;Returns:     Carry set = V1541_DATA_BUF holds the entry, and the active
+;                         channel is positioned at the start of that entry
+;                         so that V1541_DIR_DELETE_ENTRY can remove it
+;             Carry clear = no entry: there are no more (V1541_EOF bit 7 is
+;                           set) or there was an error
+V1541_DIR_NEXT:
+        jsr     V1541_DIR_READ_ENTRY    ;Read the current entry again to get past it
+        bcc     V1541_SWAP_POSITION ;branch if error
+        clc
+        bit     V1541_EOF
+        bmi     V1541_SWAP_POSITION     ;Branch if it was the last one
+
+;Read the entry at the position of the active channel, then put the
+;channel back at the start of that entry.
+V1541_DIR_READ_AND_REWIND:
+        jsr     V1541_DIR_READ_ENTRY
+;Swap the position of the active channel with the saved position.
+V1541_SWAP_POSITION:
+        ldx     V1541_ACTIV_OFFS
+        ldy     V1541_SAVED_OFFS
+        stx     V1541_SAVED_OFFS
+        sty     V1541_ACTIV_OFFS
+        ldx     V1541_ACTIV_SEQ
+        ldy     V1541_SAVED_SEQ
+        stx     V1541_SAVED_SEQ
+        sty     V1541_ACTIV_SEQ
+        rts
+; ----------------------------------------------------------------------------
+;Read a directory entry from the active channel into V1541_DATA_BUF and
+;save the position where it started in V1541_SAVED_OFFS/V1541_SAVED_SEQ.
+;An entry is 5 bytes followed by a filename that ends with a 0.
+;Returns carry clear on a read error, if the directory ends in the first
+;5 bytes, or with A=67 if no 0 is found within 25 bytes.
+V1541_DIR_READ_ENTRY:
+        ldx     V1541_ACTIV_OFFS
+        ldy     V1541_ACTIV_SEQ
+        stx     V1541_SAVED_OFFS
+        sty     V1541_SAVED_SEQ
+        stz     V1541_DIR_LINE_OK       ;V1541_DATA_BUF no longer holds a line of the directory listing
         ldx     #$FF
 L8CF5_LOOP:
         inx
-        cpx     #$19
+        cpx     #$19                    ;More than 25 bytes?
         beq     L8D13_67_ILLEGAL_SYS_TS
         phx
-        jsr     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO
+        jsr     V1541_READ_FILE_BYTE
         plx
         bcc     L8D15_CLC_RTS ;branch if error
         sta     V1541_DATA_BUF,x
         cpx     #$05
-        bit     SXREG
-        bmi     L8D12_RTS
-        bcc     L8CF5_LOOP
+        bit     V1541_EOF               ;Was that the last byte of the directory?
+        bmi     L8D12_RTS               ;Branch if so, with carry set only if more than the 5 fixed bytes were read
+        bcc     L8CF5_LOOP              ;Branch to keep reading the 5 fixed bytes
         cmp     #$00
-        bne     L8CF5_LOOP
+        bne     L8CF5_LOOP              ;Then loop until the 0 that ends the filename
         sec
 L8D12_RTS:
         rts
@@ -2295,316 +2520,406 @@ L8D15_CLC_RTS:
         clc
         rts
 ; ----------------------------------------------------------------------------
-;maybe returns cbm dos error in a
-L8D17:  jsr     L8C92
+;Delete a directory entry.  The directory channel must be positioned at the
+;start of the entry (see V1541_DIR_NEXT).  Everything after the entry is
+;copied down over it, and the block at the end is deleted if it is no longer
+;needed.  Leaves the directory channel closed.
+V1541_DIR_DELETE_ENTRY:
+        jsr     V1541_CLOSE_DIR_READERS
         jsr     V1541_SELECT_DIR_CHANNEL
-        jsr     L8CE6
-        bcc     L8D3C ;branch if error
-L8D22:  bit     SXREG
-        bmi     L8D3C
-L8D27:  jsr     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO ;maybe returns cbm dos error in a
+        jsr     V1541_DIR_READ_ENTRY    ;Read the entry being deleted to get past it
+        bcc     L8D3C_TRUNCATE          ;Branch if it can't be read
+L8D22_CHECK_LAST:
+        bit     V1541_EOF
+        bmi     L8D3C_TRUNCATE          ;Branch if it was the last entry: nothing to copy
+L8D27_COPY_LOOP:
+        jsr     V1541_READ_FILE_BYTE               ;Read a byte from farther on
         bcc     L8D5A_RTS ;branch if error
-        jsr     L8CD1
-        jsr     L8C0F_DIR_RELATED ;maybe returns cbm dos error in a
+        jsr     V1541_SWAP_POSITION     ;Go to the write position
+        jsr     V1541_OVERWRITE_FILE_BYTE ;Store the byte there
         bcc     L8D5A_RTS
-        jsr     L8CD1
-        bit     SXREG
-        bpl     L8D27
-L8D3C:  jsr     L8CD1
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+        jsr     V1541_SWAP_POSITION     ;Go back to the read position
+        bit     V1541_EOF
+        bpl     L8D27_COPY_LOOP         ;Loop until the end of the directory
+L8D3C_TRUNCATE:
+        jsr     V1541_SWAP_POSITION     ;Go to the write position, which is the new end of the directory
+        jsr     V1541_FIND_BLOCK
         lda     #doserr_71_dir_error ;71 directory error
         bcc     L8D5A_RTS ;branch if error
-        lda     V1541_ACTIV_EA
-        beq     L8D50
+        lda     V1541_ACTIV_OFFS
+        beq     L8D50_DELETE_BLOCK      ;Branch if the directory is now completely empty
         ldy     #$02
-        sta     ($E4),y
-        inc     V1541_ACTIV_E9
-L8D50:  jsr     L89F9
+        sta     (MAPPED_PAGE_PTR),y     ;Header byte 2 = offset of the last byte in use
+        inc     V1541_ACTIV_SEQ         ;The block after this one is no longer needed
+L8D50_DELETE_BLOCK:
+        jsr     V1541_FIND_AND_DELETE_BLOCK
         jsr     V1541_SELECT_DIR_CHANNEL_AND_CLEAR_IT
-        jsr     L8E39
+        jsr     V1541_SET_DIR_CHECKSUM  ;Checksum the directory
         sec
 L8D5A_RTS:
         rts
 ; ----------------------------------------------------------------------------
-L8D5B_UNKNOWN_DIR_RELATED:
-        jsr     L8E10
+;Add the entry in V1541_DATA_BUF to the end of the directory, after setting
+;its checksum to that of the file's blocks and clearing its "open" flags.
+V1541_DIR_ADD_ENTRY:
+        jsr     V1541_SET_ENTRY_CHECKSUM
         lda     #$30
         trb     V1541_DATA_BUF
-L8D63:  jsr     L8E91
-        bcc     L8D9E_ERROR_OR_DONE ;branch if error
-        jsr     L8C92
+;Add the entry in V1541_DATA_BUF to the end of the directory as it is.
+V1541_DIR_APPEND_ENTRY:
+        jsr     V1541_CHECK_SPACE_FOR_ENTRY
+        bcc     L8D9E_ERROR_OR_DONE     ;Branch if there is no space for it
+        jsr     V1541_CLOSE_DIR_READERS
         jsr     V1541_SELECT_DIR_CHANNEL_AND_CLEAR_IT
-        lda     #$10 ;file is open for reading?
+        lda     #$10                    ;Open the directory for reading...
         sta     V1541_ACTIV_FLAGS
-L8D72:  jsr     L8B66_CHRIN_V1541_ACTIV_E8_NONZERO
-        bcs     L8D7A_NO_ERROR ;branch if no error
-        lda     #doserr_71_dir_error ;maybe: 71 directory error
+L8D72_SKIP_LOOP:
+        jsr     V1541_READ_FILE_BYTE
+        bcs     L8D7A_NO_ERROR          ;Branch if a byte was read
+        lda     #doserr_71_dir_error    ;The directory could not be read
         rts
 
 L8D7A_NO_ERROR:
-        lda     SXREG
-        bpl     L8D72
-        lda     #$20 ;file open for writing?
+        lda     V1541_EOF
+        bpl     L8D72_SKIP_LOOP         ;...and read to the end of it
+        lda     #$20                    ;Then start writing there
         tsb     V1541_ACTIV_FLAGS
         ldx     #$FF
 L8D85_LOOP:
         inx
         phx
         lda     V1541_DATA_BUF,x
-        jsr     L8BD4
+        jsr     V1541_WRITE_FILE_BYTE   ;Write the 5 fixed bytes...
         plx
         cpx     #$05
         bcc     L8D85_LOOP
         lda     V1541_DATA_BUF,x
-        bne     L8D85_LOOP
+        bne     L8D85_LOOP              ;...then the filename, up to and including its 0
         jsr     V1541_SELECT_DIR_CHANNEL_AND_CLEAR_IT
-        jsr     L8E39
+        jsr     V1541_SET_DIR_CHECKSUM  ;Checksum the directory
         sec
 L8D9E_ERROR_OR_DONE:
         rts
 ; ----------------------------------------------------------------------------
-;returns cbm dos error code in a
-;carry clear = file exists, carry set = not found
-L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE:
+;Find the first directory entry whose filename matches the name that was
+;parsed by V1541_PARSE_NAME (wildcards allowed).
+;
+;Returns:     Carry set = found.  A = flags of the entry, V1541_DATA_BUF holds
+;                         the entry, and the directory channel is positioned
+;                         at its start.
+;             Carry clear = not found.  A=62.
+V1541_DIR_FIND_NAME:
         jsr     V1541_SELECT_DIR_CHANNEL_AND_CLEAR_IT
-        jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-        bra     L8DAA
+        jsr     V1541_DIR_FIRST
+        bra     L8DAA_CHECK
 
-L8DA7:  jsr     L8CC3
+L8DA7_NEXT:
+        jsr     V1541_DIR_NEXT
 
-L8DAA:  bcc     L8DBA_62_FILE_NOT_FOUND ;branch if error from L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6 or L8CC3
-        jsr     L8FC3_COMPARE_FILENAME_INCL_WILDCARDS
+L8DAA_CHECK:
+        bcc     L8DBA_62_FILE_NOT_FOUND ;Branch if there are no more entries
+        jsr     V1541_MATCH_NAME
         bcc     L8DB5_NO_MATCH ;filename does not match
         lda     V1541_DATA_BUF
         rts
 
 L8DB5_NO_MATCH:
-        bit     SXREG
-        bpl     L8DA7
+        bit     V1541_EOF
+        bpl     L8DA7_NEXT
 L8DBA_62_FILE_NOT_FOUND:
         clc
         lda     #doserr_62_file_not_found
         rts
 ; ----------------------------------------------------------------------------
-;returns cbm dos error code in a
-L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR:
+;Find the directory entry that has file id A, skipping special ($80) entries.
+;Returns carry set if found, with V1541_DATA_BUF holding the entry and the
+;directory channel positioned at its start, or carry clear if not.  A=62
+;either way.
+V1541_DIR_FIND_ID:
         pha
         jsr     V1541_SELECT_DIR_CHANNEL_AND_CLEAR_IT
-        jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-        bra     L8DCA_SKIP_LD8C7
+        jsr     V1541_DIR_FIRST
+        bra     L8DCA_CHECK
 
-L8DC7:  jsr     L8CC3
+L8DC7_NEXT:
+        jsr     V1541_DIR_NEXT
 
-L8DCA_SKIP_LD8C7:
-        bcc     L8DDC_62_FILE_NOT_FOUND ;branch if error
+L8DCA_CHECK:
+        bcc     L8DDC_DONE              ;Branch if there are no more entries
         lda     V1541_DATA_BUF
         bit     #$80
-        bne     L8DC7
+        bne     L8DC7_NEXT
         tsx
         lda     V1541_DATA_BUF+1
         cmp     stack+1,x
-        bne     L8DC7
+        bne     L8DC7_NEXT
 
-L8DDC_62_FILE_NOT_FOUND:
+L8DDC_DONE:
         pla
         lda     #doserr_62_file_not_found
         rts
 ; ----------------------------------------------------------------------------
-;Returns number of blocks used in A
-L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1:
+;Count the blocks of a file.  The first entry point is for the file whose
+;id is in V1541_DATA_BUF+1.  The second is for file 0, the directory.
+;
+;Returns:     A = number of blocks, with Z=1 if there are none
+;             Y = byte 2 of the header of the file's last block (the offset
+;                 of its last byte in use), or 0 if every block is full
+V1541_COUNT_FILE_BLOCKS:
         lda     V1541_DATA_BUF+1
-        .byte   $2C
-L8DE4_SOMEHOW_GETS_FILE_BLOCKS_USED_2:
+        .byte   $2C                     ;Skip next instruction
+V1541_COUNT_DIR_BLOCKS:
         lda     #$00
         ldx     #$00
-        phx
-        phx
-        pha
-        jsr     L8A81
-        beq     L8E0A
-L8DF0:  tsx
-        lda     $020E
+        phx                             ;Push value to return in Y
+        phx                             ;Push block count
+        pha                             ;Push file id
+        jsr     V1541_FIRST_BLOCK
+        beq     L8E0A_DONE              ;Branch if the disk is empty
+L8DF0_LOOP:
+        tsx
+        lda     V1541_BLOCK_ID
         cmp     stack+1,x
-        bne     L8E05
-        inc     stack+2,x
+        bne     L8E05_NEXT              ;Branch if this block belongs to another file
+        inc     stack+2,x               ;Count it
         ldy     #$02
-        lda     ($E4),y
-        beq     L8E05
-        sta     stack+3,x
-L8E05:  jsr     L8A61
-        bcs     L8DF0
-L8E0A:  pla
+        lda     (MAPPED_PAGE_PTR),y
+        beq     L8E05_NEXT              ;Branch if it is a full block
+        sta     stack+3,x               ;Otherwise remember where its data ends
+L8E05_NEXT:
+        jsr     V1541_NEXT_BLOCK
+        bcs     L8DF0_LOOP
+L8E0A_DONE:
         pla
+        pla                             ;A = number of blocks
         ply
         cmp     #$00
         rts
 ; ----------------------------------------------------------------------------
-L8E10:  lda     V1541_DATA_BUF+1
-        jsr     L8E5E
+;Put the checksum of the file whose id is in V1541_DATA_BUF+1 into the
+;directory entry in V1541_DATA_BUF.
+V1541_SET_ENTRY_CHECKSUM:
+        lda     V1541_DATA_BUF+1
+        jsr     V1541_CHECKSUM_FILE
         sta     V1541_DATA_BUF+2
         stx     V1541_DATA_BUF+3
         sty     V1541_DATA_BUF+4
         rts
 ; ----------------------------------------------------------------------------
-L8E20_MAYBE_CHECKS_HEADER:
+;Verify that the blocks of the file whose id is in V1541_DATA_BUF+1 still
+;have the checksum that is in the directory entry in V1541_DATA_BUF.
+;Returns carry set if so, or carry clear and A=27 if not.
+V1541_VERIFY_FILE_CHECKSUM:
         lda     V1541_DATA_BUF+1
-        jsr     L8E5E
+        jsr     V1541_CHECKSUM_FILE
         cmp     V1541_DATA_BUF+2
-        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER
+        bne     L8E35_BAD
         cpx     V1541_DATA_BUF+3
-        bne     L8E35_27_CHECKSUM_ERROR_IN_HEADER
+        bne     L8E35_BAD
         cpy     V1541_DATA_BUF+4
-        beq     L8E36
-L8E35_27_CHECKSUM_ERROR_IN_HEADER:
+        beq     L8E36_DONE
+L8E35_BAD:
         clc
-L8E36:  lda     #doserr_27_read_error ;27 read error (checksum error in header)
+L8E36_DONE:
+        lda     #doserr_27_read_error ;27 read error (checksum error in header)
         rts
 ; ----------------------------------------------------------------------------
-L8E39:  jsr     L8E5C
-        sta     $0213
-        stx     $0214
-        sty     $0215
+;Remember the checksum of the directory in V1541_DIR_CHKSUM.
+V1541_SET_DIR_CHECKSUM:
+        jsr     V1541_CHECKSUM_DIR
+        sta     V1541_DIR_CHKSUM
+        stx     V1541_DIR_CHKSUM+1
+        sty     V1541_DIR_CHKSUM+2
         rts
 ; ----------------------------------------------------------------------------
-L8E46:  jsr     L8E5C
-        cmp     $0213
-        bne     L8E58
-        cpx     $0214
-        bne     L8E58
-        cpy     $0215
-        beq     L8E59
-L8E58:  clc
-L8E59:  lda     #$1B
+;Verify that the directory still has the checksum in V1541_DIR_CHKSUM.
+;Returns carry set if so, or carry clear and A=27 if not.
+V1541_VERIFY_DIR_CHECKSUM:
+        jsr     V1541_CHECKSUM_DIR
+        cmp     V1541_DIR_CHKSUM
+        bne     L8E58_BAD
+        cpx     V1541_DIR_CHKSUM+1
+        bne     L8E58_BAD
+        cpy     V1541_DIR_CHKSUM+2
+        beq     L8E59_DONE
+L8E58_BAD:
+        clc
+L8E59_DONE:
+        lda     #doserr_27_read_error
         rts
 ; ----------------------------------------------------------------------------
-L8E5C:  lda     #$00                            ; 8E5C A9 00                    ..
-L8E5E:  ldx     #$00                            ; 8E5E A2 00                    ..
-        phx                                     ; 8E60 DA                       .
-        phx                                     ; 8E61 DA                       .
-        pha                                     ; 8E62 48                       H
-        jsr     L8A81                           ; 8E63 20 81 8A                  ..
-        beq     L8E8D                           ; 8E66 F0 25                    .%
-        lda     #$00                            ; 8E68 A9 00                    ..
-L8E6A:  tsx                                     ; 8E6A BA                       .
-        ldy     stack+1,x                       ; 8E6B BC 01 01                 ...
-        cpy     $020E                           ; 8E6E CC 0E 02                 ...
-        bne     L8E86                           ; 8E71 D0 13                    ..
-        ldy     #$00                            ; 8E73 A0 00                    ..
-        clc                                     ; 8E75 18                       .
-L8E76:  adc     ($E4),y                         ; 8E76 71 E4                    q.
-        bcc     L8E83                           ; 8E78 90 09                    ..
-        clc                                     ; 8E7A 18                       .
-        inc     stack+2,x                       ; 8E7B FE 02 01                 ...
-        bne     L8E83                           ; 8E7E D0 03                    ..
-        inc     stack+3,x                       ; 8E80 FE 03 01                 ...
-L8E83:  iny                                     ; 8E83 C8                       .
-        bne     L8E76                           ; 8E84 D0 F0                    ..
-L8E86:  pha                                     ; 8E86 48                       H
-        jsr     L8A61                           ; 8E87 20 61 8A                  a.
-        pla                                     ; 8E8A 68                       h
-        bcs     L8E6A                           ; 8E8B B0 DD                    ..
-L8E8D:  plx                                     ; 8E8D FA                       .
-        plx                                     ; 8E8E FA                       .
-        ply                                     ; 8E8F 7A                       z
-        rts                                     ; 8E90 60                       `
+;Add up every byte (headers included) of every block of a file.
+;The first entry point is for file 0, the directory.  The second is for
+;the file whose id is in A.
+;Returns the 24-bit sum in A (low), X (middle) and Y (high).
+V1541_CHECKSUM_DIR:
+        lda     #$00
+V1541_CHECKSUM_FILE:
+        ldx     #$00
+        phx                             ;Push high byte of the sum
+        phx                             ;Push middle byte of the sum
+        pha                             ;Push file id
+        jsr     V1541_FIRST_BLOCK
+        beq     L8E8D_DONE              ;Branch if the disk is empty
+        lda     #$00
+L8E6A_BLOCK_LOOP:
+        tsx
+        ldy     stack+1,x
+        cpy     V1541_BLOCK_ID
+        bne     L8E86_NEXT              ;Branch if this block belongs to another file
+        ldy     #$00
+        clc
+L8E76_BYTE_LOOP:
+        adc     (MAPPED_PAGE_PTR),y
+        bcc     L8E83_NO_CARRY
+        clc
+        inc     stack+2,x
+        bne     L8E83_NO_CARRY
+        inc     stack+3,x
+L8E83_NO_CARRY:
+        iny
+        bne     L8E76_BYTE_LOOP
+L8E86_NEXT:
+        pha
+        jsr     V1541_NEXT_BLOCK
+        pla
+        bcs     L8E6A_BLOCK_LOOP
+L8E8D_DONE:
+        plx                             ;Discard file id
+        plx                             ;X = middle byte of the sum
+        ply                             ;Y = high byte of the sum
+        rts
 ; ----------------------------------------------------------------------------
-L8E91:  jsr     L8DE4_SOMEHOW_GETS_FILE_BLOCKS_USED_2
-        beq     L8EA7_BLOCKS_USED_0 ;branch if blocks used = 0
-        tya
+;Check that there is space to add the entry in V1541_DATA_BUF to the
+;directory.  Returns carry clear and A=25 if the directory needs another
+;block and the disk can't grow.  Otherwise returns carry set, with A=1 if
+;another block will be needed or A=0 if not.
+;
+;BUG: the loop that measures the filename reads V1541_DATA_BUF+5,X with X
+;starting at 5, so it starts with the sixth character of the name instead of
+;the first.  For a short name, it reads past the end into whatever follows.
+V1541_CHECK_SPACE_FOR_ENTRY:
+        jsr     V1541_COUNT_DIR_BLOCKS
+        beq     L8EA7_NEED_BLOCK        ;Branch if the directory has no blocks yet: it needs one
+        tya                             ;A = offset of the last byte in use in the directory's last block
         ldx     #$FF
 L8E99_LOOP:
         inc     a
-        beq     L8EA7_BLOCKS_USED_0 ;branch if just-incremented blocks used = 0
+        beq     L8EA7_NEED_BLOCK        ;Branch if the entry will not fit in that block
         inx
         cpx     #$05
-        bcc     L8E99_LOOP
+        bcc     L8E99_LOOP              ;Loop for the 5 fixed bytes
         lda     V1541_DATA_BUF+5,x
-        bne     L8E99_LOOP
+        bne     L8E99_LOOP              ;Then loop until the 0 that ends the filename
         rts
 
-L8EA7_BLOCKS_USED_0:
-        jsr     L8A39_V1541_DOESNT_WRITE_BUT_CONDITIONALLY_RETURNS_WRITE_ERROR
+L8EA7_NEED_BLOCK:
+        jsr     V1541_CHECK_SPACE
         bcc     L8EAE_RTS ;branch if error
         lda     #$01
 L8EAE_RTS:
         rts
 ; ----------------------------------------------------------------------------
-L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS:
+;Parse the filename at FNADR, FNLEN (in RAM).
+;Returns the same as V1541_PARSE_NAME.
+V1541_PARSE_FNADR:
         lda     FNADR
         ldx     FNADR+1
         ldy     FNLEN
-L8EB6:  sta     V1541_FNADR
+;Parse the filename at address A (low), X (high) with length Y.
+V1541_PARSE_NAME_AXY:
+        sta     V1541_FNADR
         stx     V1541_FNADR+1
         sty     V1541_FNLEN
         ;Fall through
 ; ----------------------------------------------------------------------------
-L8EBD_SETUP_FOR_FILE_ACCESS_AND_DO_DIR_SEARCH_STUFF:
-        stz     $03A5
+;Parse the filename at V1541_FNADR with length V1541_FNLEN.
+;
+;The syntax is:  [$ or @] [drive :] name [,type] [,mode] [= ...]
+;The drive may only be made of "0" and spaces.  Type is S or P.  Mode is R,
+;W, A or M.  Only the first letter of a type or mode word is allowed.
+;
+;Returns:     Carry clear = error; A = 33 (syntax error) 
+;             Carry set = ok; A = V1541_NAME_FLAGS:
+;                 $80 = there is a name (it is not empty)
+;                 $40 = the name has a wildcard (? or *)
+;                 $20 = the name is followed by "="
+;                 $02 = something other than "0" and spaces came first (a colon
+;                       counts too), so another colon is an error
+;                 $01 = there was a colon
+;             V1541_NAME_PREFIX = "$" or "@" if the filename started with it
+;             V1541_NAME_START, V1541_NAME_END = where the name is
+;             V1541_FILE_TYPE, V1541_FILE_MODE = letters given, or 0
+V1541_PARSE_NAME:
+        stz     V1541_NAME_FLAGS
         stz     V1541_FILE_MODE
         stz     V1541_FILE_TYPE
-        stz     BAD
+        stz     V1541_NAME_PREFIX
         lda     #V1541_FNADR ;ZP-address
-        sta     SINNER ;Y-index for (ZP),Y
+        sta     SINNER                  ;Make GO_RAM_LOAD_GO_KERN read through V1541_FNADR
         lda     V1541_FNLEN
-        bne     L8ED7
+        bne     L8ED7_NOT_EMPTY
 
 L8ED3_33_SYNTAX_ERROR:
         lda     #doserr_33_syntax_err ;33 invalid filename
         clc
         rts
 
-L8ED7:  ldy     #$00
-        jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
-        dey
+L8ED7_NOT_EMPTY:
+        ldy     #$00
+        jsr     V1541_GET_NAME_CHAR
+        dey                             ;Back to the first character
         bcc     L8ED3_33_SYNTAX_ERROR
         cmp     #'$'
-        beq     L8EE7_GOT_DOLLAR
+        beq     L8EE7_GOT_PREFIX
         cmp     #'@'
-        bne     L8EEB_GOT_AT
-L8EE7_GOT_DOLLAR:
-        iny
-        sta     BAD
-L8EEB_GOT_AT:
-        sty     MON_MMU_MODE
+        bne     L8EEB_SET_START
+L8EE7_GOT_PREFIX:
+        iny                             ;Skip the "$" or "@"
+        sta     V1541_NAME_PREFIX
+L8EEB_SET_START:
+        sty     V1541_NAME_START        ;The name starts here (so far)
 
 L8EEE_NEXT_CHAR:
-        sty     $03A2
+        sty     V1541_NAME_END          ;The name ends here (so far)
         cpy     V1541_FNLEN
-        bne     L8EF9
-        jmp     L8F86
+        bne     L8EF9_NAME_CHAR         ;Branch if there is more to look at
+        jmp     L8F86_END
 
-;Looks like filename parsing for directory listing LOAD"$0:*=P"
-L8EF9:  jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
+L8EF9_NAME_CHAR:
+        jsr     V1541_GET_NAME_CHAR
         bcc     L8ED3_33_SYNTAX_ERROR
         tax
         cpx     #' '
         beq     L8EEE_NEXT_CHAR
         cpx     #'0'
         beq     L8EEE_NEXT_CHAR
-        cpx     #'9'+1
-        bne     L8F14
+        cpx     #'9'+1                  ;Is it a colon?
+        bne     L8F14_NOT_COLON
         lda     #$03
-        tsb     $03A5
-        bne     L8ED3_33_SYNTAX_ERROR
-        bra     L8EEB_GOT_AT
-L8F14:  lda     #$02
-        tsb     $03A5
+        tsb     V1541_NAME_FLAGS
+        bne     L8ED3_33_SYNTAX_ERROR   ;Branch if this is the second colon, or the first one came too late
+        bra     L8EEB_SET_START         ;The name starts after the colon
+L8F14_NOT_COLON:
+        lda     #$02
+        tsb     V1541_NAME_FLAGS
         cpx     #'='
         beq     L8F81_GOT_EQUALS
         cpx     #'?'
-        beq     L8F25_GOT_QUESTION_OR_STAR
+        beq     L8F25_GOT_WILDCARD
         cpx     #'*'
-        bne     L8F2A
-L8F25_GOT_QUESTION_OR_STAR:
+        bne     L8F2A_NOT_WILDCARD
+L8F25_GOT_WILDCARD:
         lda     #$40
-        tsb     $03A5
-L8F2A:  cpx     #','
+        tsb     V1541_NAME_FLAGS
+L8F2A_NOT_WILDCARD:
+        cpx     #','
         bne     L8EEE_NEXT_CHAR
-        dey
+        dey                             ;A comma ends the name
 L8F2F_NEXT_CHAR:
         cpy     V1541_FNLEN
-        beq     L8F86
-        jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
+        beq     L8F86_END
+        jsr     V1541_GET_NAME_CHAR
         bcc     L8F5F_33_SYNTAX_ERROR
         cmp     #'='
         beq     L8F81_GOT_EQUALS
@@ -2616,11 +2931,11 @@ L8F2F_NEXT_CHAR:
 L8F45_LOOP:
         cpy     V1541_FNLEN
         bcs     L8F5F_33_SYNTAX_ERROR
-        jsr     L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME
+        jsr     V1541_GET_NAME_CHAR
         bcc     L8F5F_33_SYNTAX_ERROR
         cmp     #' '
         beq     L8F45_LOOP
-        and     #$DF
+        and     #$DF                    ;Make uppercase
 
         ldx     #$05
 L8F57_SPRWAM_SEARCH_LOOP:
@@ -2636,16 +2951,16 @@ L8F5F_33_SYNTAX_ERROR:
 ; ----------------------------------------------------------------------------
 L8F63_FOUND_IN_SPRWAM:
         cpx     #$02
-        bcs     L8F71_RWAM
+        bcs     L8F71_RWAM              ;Branch if it is a mode (R, W, A, M); otherwise it is a type (S, P)
         ;PR
         ldx     V1541_FILE_TYPE
-        bne     L8F5F_33_SYNTAX_ERROR
+        bne     L8F5F_33_SYNTAX_ERROR   ;Branch if a type was already given
         sta     V1541_FILE_TYPE
         bra     L8F2F_NEXT_CHAR
 L8F71_RWAM:
         ;RWAM
         ldx     V1541_FILE_MODE
-        bne     L8F5F_33_SYNTAX_ERROR
+        bne     L8F5F_33_SYNTAX_ERROR   ;Branch if a mode was already given
         sta     V1541_FILE_MODE
         bra     L8F2F_NEXT_CHAR
 
@@ -2655,36 +2970,39 @@ L8F7B_SPRWAM:
 
 L8F81_GOT_EQUALS:
         lda     #$20
-        tsb     $03A5
-L8F86:  lda     MON_MMU_MODE
-        cmp     $03A2
-        bcc     L8F96
-        stz     $03A2
-        stz     MON_MMU_MODE
-        bcs     L8F9B
-L8F96:  lda     #$80
-        tsb     $03A5
-L8F9B:  cld
+        tsb     V1541_NAME_FLAGS
+L8F86_END:
+        lda     V1541_NAME_START
+        cmp     V1541_NAME_END
+        bcc     L8F96_HAVE_NAME         ;Branch if the name is not empty
+        stz     V1541_NAME_END
+        stz     V1541_NAME_START
+        bcs     L8F9B_CHECK_LENGTH
+L8F96_HAVE_NAME:
+        lda     #$80
+        tsb     V1541_NAME_FLAGS
+L8F9B_CHECK_LENGTH:
+        cld
         clc
         lda     #$10
-        adc     MON_MMU_MODE
-        cmp     $03A2
+        adc     V1541_NAME_START
+        cmp     V1541_NAME_END
         lda     #doserr_33_syntax_err ;33 syntax error
-        bcc     L8FAC_RTS
-        lda     $03a5
-L8FAC_RTS:  rts
+        bcc     L8FAC_RTS               ;Branch if the name is longer than 16 characters
+        lda     V1541_NAME_FLAGS
+L8FAC_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-;Get the next character from the filename and check
-;if it contains a disallowed character.
-;
-;Returns A=char, carry=clear on error
-L8FAD_GET_AND_CHECK_NEXT_CHAR_OF_FILENAME:
+;Get the next character of the filename being parsed and advance Y.
+;Returns the character in A, with carry clear if it is a character that is
+;not allowed in a filename.
+V1541_GET_NAME_CHAR:
         jsr     GO_RAM_LOAD_GO_KERN  ;get the char
         iny
-L8FB1:  ldx     #$03
+        ldx     #$03
 L8FB3_LOOP:
-        cmp L8FBF_DIASLLOWED_FNAME_CHARS,X
-        bne L8FBA_NOT_EQU
+        cmp     L8FBF_DISALLOWED_FNAME_CHARS,X
+        bne     L8FBA_NOT_EQU
         clc ;Found a bad character
         rts
 L8FBA_NOT_EQU:
@@ -2693,22 +3011,24 @@ L8FBA_NOT_EQU:
         sec
         rts
 
-L8FBF_DIASLLOWED_FNAME_CHARS:
+L8FBF_DISALLOWED_FNAME_CHARS:
        .byte $00 ;null
        .byte $0d ;return
        .byte $22 ;quote
        .byte $8d ;shift-return
 ; ----------------------------------------------------------------------------
-;Compare filename at V1541_DATA_BUF+5 with indirect filename
-;carry set = filename matches
-L8FC3_COMPARE_FILENAME_INCL_WILDCARDS:
+;Compare the name that was parsed by V1541_PARSE_NAME with the filename of
+;the directory entry in V1541_DATA_BUF.  "?" in the parsed name matches any
+;one character and "*" matches everything from there on.
+;Returns carry set if they match.
+V1541_MATCH_NAME:
         ldx     #$00
-        ldy     MON_MMU_MODE
+        ldy     V1541_NAME_START
         lda     #V1541_FNADR ;ZP-address
         sta     SINNER
 L8FCD_LOOP:
         jsr     GO_RAM_LOAD_GO_KERN ;get char from filename
-L8FD0:  cmp     #'*'
+        cmp     #'*'
         beq     L8FE9_SUCCESS_FILENAME_MATCHES
         cmp     #'?'
         beq     L8FDD_ANY_ONE_CHAR
@@ -2716,601 +3036,742 @@ L8FD0:  cmp     #'*'
         bne     L8FF1_FAIL_FILENAME_DOES_NOT_MATCH
 L8FDD_ANY_ONE_CHAR:
         iny
-        cpy     $03A2
-        bne     L8FEB
+        cpy     V1541_NAME_END
+        bne     L8FEB_MORE              ;Branch if there is more of the parsed name
         inx
         lda     V1541_DATA_BUF+5,x
-        bne     L8FF1_FAIL_FILENAME_DOES_NOT_MATCH
+        bne     L8FF1_FAIL_FILENAME_DOES_NOT_MATCH ;Branch if the filename in the entry is longer
 L8FE9_SUCCESS_FILENAME_MATCHES:
         sec
         rts
-L8FEB:  inx
+L8FEB_MORE:
+        inx
         lda     V1541_DATA_BUF+5,X
-        bne     L8FCD_LOOP
+        bne     L8FCD_LOOP              ;Loop unless the filename in the entry is shorter
 L8FF1_FAIL_FILENAME_DOES_NOT_MATCH:
         clc
         rts
 ; ----------------------------------------------------------------------------
-L8FF3:  stz     $02D8
+;Copy the name that was parsed by V1541_PARSE_NAME into the directory entry
+;in V1541_DATA_BUF as its filename.
+V1541_COPY_NAME_TO_ENTRY:
+        stz     V1541_DIR_LINE_OK
         lda     #V1541_FNADR ;ZP-address
         sta     SINNER
         ldx     #$00
-        ldy     MON_MMU_MODE
+        ldy     V1541_NAME_START
 L9000_LOOP:
         jsr     GO_RAM_LOAD_GO_KERN
         sta     V1541_DATA_BUF+5,x
         inx
         iny
-        cpy     $03A2
+        cpy     V1541_NAME_END
         bne     L9000_LOOP
         stz     V1541_DATA_BUF+5,x
         rts
 ; ----------------------------------------------------------------------------
-;maybe returns cbm dos error code in A
-L9011_TEST_0218_AND_STORE_FILE_TYPE:
+;Check the type of the directory entry in V1541_DATA_BUF against the type
+;that was requested, if any.
+;Returns V1541_FILE_TYPE and X = type of the entry ("S" or "P"), with carry
+;clear and A=64 if a different type was requested.
+V1541_CHECK_FILE_TYPE:
         ldx     #ftype_s_seq
         lda     V1541_DATA_BUF
-        bit     #$40
+        bit     #$40                    ;Flag $40 = PRG
         beq     L901C_GOT_SEQ
         ldx     #ftype_p_prg
 L901C_GOT_SEQ:
-        lda     #'@'
+        lda     #doserr_64_file_type_mism
         cpx     V1541_FILE_TYPE
-        beq     L9029_STORE_TYPE_AND_RTS
+        beq     L9029_DONE               ;Branch if it is the type requested (carry is set)
         ldy     V1541_FILE_TYPE
-L9026:
-        beq     L9029_STORE_TYPE_AND_RTS
+        beq     L9029_DONE               ;Branch if no type was requested (carry is set)
         clc
-L9029_STORE_TYPE_AND_RTS:
+L9029_DONE:
         stx     V1541_FILE_TYPE
         rts
 ; ----------------------------------------------------------------------------
-L902D:  ldx     #$04
+;Copy the directory entry in V1541_DATA_BUF to the active channel: its flags
+;and file id.  For a special ($80) entry, bytes 2-4 are copied as well, the
+;last of them landing in the byte after the channel's state ($EB).
+V1541_ENTRY_TO_CHANNEL:
+        ldx     #$04
         lda     V1541_DATA_BUF
         bit     #$80
-        bne     L9038
+        bne     L9038_LOOP
         ldx     #$01
-L9038:  lda     V1541_DATA_BUF,x
+L9038_LOOP:
+        lda     V1541_DATA_BUF,x
         sta     V1541_ACTIV_FLAGS,x
         dex
-        bpl     L9038
+        bpl     L9038_LOOP
         rts
 ; ----------------------------------------------------------------------------
-L9041:  jsr     L8C92
-        stz     V1541_02D6
+;Get ready for a directory listing.  The name that was parsed by
+;V1541_PARSE_NAME becomes the pattern of the files to list.  The default is
+;"*".  Only one listing can be in progress at a time.
+V1541_SETUP_DIR_LISTING:
+        jsr     V1541_CLOSE_DIR_READERS
+        stz     V1541_DIR_STATE         ;Start with the header line
         lda     #'*'
-        sta     $0238
-        stz     $0239
-        stz     $024C
-        lda     $03A5
-L9055:  bit     #$80
-        beq     L907D_SEC_RTS
+        sta     V1541_DIR_PATTERN
+        stz     V1541_DIR_PATTERN+1
+        stz     V1541_DIR_TYPE
+        lda     V1541_NAME_FLAGS
+        bit     #$80
+        beq     L907D_SEC_RTS           ;Branch if no name was given
         ldx     #$00
-        ldy     MON_MMU_MODE
-L905E:  lda     #V1541_FNADR ;ZP-address
+        ldy     V1541_NAME_START
+L905E_COPY_LOOP:
+        lda     #V1541_FNADR ;ZP-address
         sta     SINNER
         jsr     GO_RAM_LOAD_GO_KERN
-        sta     $0238,x
+        sta     V1541_DIR_PATTERN,x
         iny
         inx
-        cpy     $03A2
-        bne     L905E
+        cpy     V1541_NAME_END
+        bne     L905E_COPY_LOOP
         cpx     #$14
-        bcs     L9077
-        stz     $0238,x
-L9077:  LDA     V1541_FILE_TYPE
-        sta     $024C
+        bcs     L9077                   ;Branch if the pattern is the full 20 characters
+        stz     V1541_DIR_PATTERN,x
+L9077:  lda     V1541_FILE_TYPE
+        sta     V1541_DIR_TYPE          ;BUG: stored, but never tested, so the type is ignored
 L907D_SEC_RTS:
         sec
         rts
 ; ----------------------------------------------------------------------------
+;Unused
         ldx     EAL
         ldy     EAH
         sec
         rts
 ; ----------------------------------------------------------------------------
-L9085_V1541_SAVE:
-        jsr     L908B_V1541_INTERNAL_SAVE
+;SAVE to the Virtual 1541.
+;
+;Call with:   STAL/STAH = start address ($0800 or above)
+;             EAL/EAH = end address + 1 ($F800 or below)
+;             FNADR, FNLEN = filename.  "@" in front replaces an existing
+;                            file, which keeps its type.  Otherwise ",S" makes
+;                            a SEQ file, which has no load address, and the
+;                            default is a PRG.
+;
+;The memory is read in MMU RAM mode.  The file is written in one go, so it
+;is never left open.
+V1541_SAVE:
+        jsr     V1541_INTERNAL_SAVE
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L908B_V1541_INTERNAL_SAVE:
+V1541_INTERNAL_SAVE:
         ldx     STAH
         lda     STAL
-        sta     SAL
+        sta     SAL                     ;The start address is the load address stored in a PRG file
         stx     SAH
-        cpx     #>$08F8
-        bcc     L90DD_25_WRITE_ERROR
-        cpx     #<$08F8
-        bcs     L90DD_25_WRITE_ERROR
+        cpx     #$08
+        bcc     L90DD_25_WRITE_ERROR    ;Branch if the start address is below $0800
+        cpx     #$F8
+        bcs     L90DD_25_WRITE_ERROR    ;Branch if the start address is $F800 or above
         lda     EAH
-        cmp     #>$F800
-        bcc     L90A7
+        cmp     #>$F800                 ;The end address + 1 must not be above $F800
+        bcc     L90A7_RANGE_OK
         bne     L90DD_25_WRITE_ERROR
         lda     EAL
         bne     L90DD_25_WRITE_ERROR
-L90A7:  jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
+L90A7_RANGE_OK:
+        jsr     V1541_PARSE_FNADR
         bcc     L90DA_33_SYNTAX_ERROR
         bit     #$80
-        beq     L90DA_33_SYNTAX_ERROR
+        beq     L90DA_33_SYNTAX_ERROR   ;Branch if there is no name
         bit     #$60
-        bne     L90DA_33_SYNTAX_ERROR
+        bne     L90DA_33_SYNTAX_ERROR   ;Branch if it has a wildcard or an "="
         lda     V1541_FILE_MODE
-        bne     L90DA_33_SYNTAX_ERROR
-        lda     BAD
-        beq     L90C2
+        bne     L90DA_33_SYNTAX_ERROR   ;Branch if a mode was given
+        lda     V1541_NAME_PREFIX
+        beq     L90C2_PREFIX_OK         ;The only prefix allowed is "@"
         cmp     #$40 ;'@'
         bne     L90DA_33_SYNTAX_ERROR
 
-L90C2:  jsr     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
-        bcc     L90EC_ERROR ;branch if error (file not found)
+L90C2_PREFIX_OK:
+        jsr     V1541_DIR_FIND_NAME
+        bcc     L90EC_NEW_FILE          ;Branch if there is no file with that name
 
-        lda     BAD
-        bne     L90D0_03A0_NOT_ZERO
+        lda     V1541_NAME_PREFIX
+        bne     L90D0_REPLACE           ;The file exists.  That is an error unless "@" was given.
         lda     #doserr_63_file_exists ;63 file exists
         bra     L90DF_ERROR
 
-L90D0_03A0_NOT_ZERO:
+L90D0_REPLACE:
         lda     V1541_DATA_BUF
         and     #$80
-        beq     L90E1
+        beq     L90E1_REPLACE_OK        ;Branch unless it is a special ($80) entry, which can't be replaced
         lda     #doserr_26_write_prot_on ;#26 write protect on
-        .byte   $2C
+        .byte   $2C                     ;Skip next instruction
 L90DA_33_SYNTAX_ERROR:
         lda     #doserr_33_syntax_err  ;33 syntax error (invalid filename)
-        .byte   $2C
+        .byte   $2C                     ;Skip next instruction
 L90DD_25_WRITE_ERROR:
         lda     #doserr_25_write_err ;25 write error (write-verify error)
 L90DF_ERROR:
         clc
         rts
 
-L90E1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE ;maybe returns cbm dos error code in A
-        bcc     L90DF_ERROR ;branch if error
-        jsr     L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1
-        inc     a ;increment number of blocks used
-        bra     L910D
+L90E1_REPLACE_OK:
+        jsr     V1541_CHECK_FILE_TYPE   ;Is the old file of the type being saved?
+        bcc     L90DF_ERROR             ;Branch if not
+        jsr     V1541_COUNT_FILE_BLOCKS ;A = number of blocks that deleting the old file will free
+        inc     a                       ;Plus 1: see below
+        bra     L910D_CHECK_SPACE
 
-L90EC_ERROR:
-        stz     BAD
-        jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL ;maybe returns cbm dos error code in A                               ; 90EF 20 13 8B                  ..
-L90F2:  bcc     L90DF_ERROR ;branch if error
-        jsr     L8FF3
-        stz     V1541_DATA_BUF
+L90EC_NEW_FILE:
+        stz     V1541_NAME_PREFIX       ;No file is being replaced
+        jsr     V1541_NEW_FILE_ID       ;Get a file id that is not in use
+        bcc     L90DF_ERROR             ;Branch if there is none
+        jsr     V1541_COPY_NAME_TO_ENTRY ;Put the name in the new directory entry
+        stz     V1541_DATA_BUF          ;Flags = 0 for a SEQ file...
         lda     V1541_FILE_TYPE
         cmp     #ftype_s_seq
-        beq     L9106
-        lda     #$40
+        beq     L9106_CHECK_DIR_SPACE
+        lda     #$40                    ;...or $40 for a PRG
         sta     V1541_DATA_BUF
-L9106:  jsr     L8E91
-        bcc     L90DF_ERROR
-        eor     #$01
-L910D:  pha                         ;push number of blocks used
-        jsr     L91A4
+L9106_CHECK_DIR_SPACE:
+        jsr     V1541_CHECK_SPACE_FOR_ENTRY
+        bcc     L90DF_ERROR             ;Branch if the directory can't take the entry
+        eor     #$01                    ;A = 1, less 1 if the directory needs another block
+L910D_CHECK_SPACE:
+        pha                             ;Push the number of blocks that are free to use, plus 1
+        jsr     V1541_COUNT_SAVE_BLOCKS ;Y = number of blocks that the data needs
         sty     V1541_DATA_BUF+2
-        pla                         ;pull number of blocks used
+        pla                             ;Pull the number of blocks that are free to use, plus 1
         clc
-        adc     $020A
-        ldx     $020B
-        bcc     L911F
+        adc     V1541_BOTTOM_PAGE       ;Compute which page will be just below the disk afterwards:
+        ldx     V1541_BOTTOM_PAGE+1
+        bcc     L911F_NO_CARRY
         inx
-L911F:  clc
-        sbc     V1541_DATA_BUF+2
-        bcs     L9126
+L911F_NO_CARRY:
+        clc
+        sbc     V1541_DATA_BUF+2        ;bottom + blocks free to use - blocks needed - 1
+        bcs     L9126_NO_BORROW
         dex
-L9126:  tay
-        bne     L912A
+L9126_NO_BORROW:
+        tay
+        bne     L912A_NO_BORROW_2
         dex
-L912A:  dec     a
-        cpx     $020D
-        bcc     L9137
-        bne     L913A
-        cmp     $020C
-        bcs     L913A
-L9137:  jmp     L90DD_25_WRITE_ERROR
+L912A_NO_BORROW_2:
+        dec     a
+        cpx     MEMTOP_PAGE+1           ;That page must not be below the top page of application memory
+        bcc     L9137_NO_SPACE
+        bne     L913A_SPACE_OK
+        cmp     MEMTOP_PAGE
+        bcs     L913A_SPACE_OK
+L9137_NO_SPACE:
+        jmp     L90DD_25_WRITE_ERROR
 ; ----------------------------------------------------------------------------
-L913A:  cpx     #$00
-        bne     L9145
-        cmp     STAH
-        bcs     L9145
-        jsr     L91D5
-L9145:  lda     BAD
-        beq     L9150
-        jsr     L89E2
-        jsr     L8D17 ;maybe returns cbm dos error in a
-L9150:  jsr     L91A4
+L913A_SPACE_OK:
+        cpx     #$00                    ;If the disk is going to grow down over the memory that is being
+        bne     L9145_NOT_IN_THE_WAY
+        cmp     STAH                    ;saved, move that memory down out of the way first
+        bcs     L9145_NOT_IN_THE_WAY
+        jsr     V1541_MOVE_SAVE_DATA
+L9145_NOT_IN_THE_WAY:
+        lda     V1541_NAME_PREFIX
+        beq     L9150_WRITE             ;Branch if no file is being replaced
+        jsr     V1541_DELETE_FILE_BLOCKS ;Delete the blocks of the old file...
+        jsr     V1541_DIR_DELETE_ENTRY  ;...and its directory entry
+L9150_WRITE:
+        jsr     V1541_COUNT_SAVE_BLOCKS
         cpy     #$00
-        beq     L91A1
+        beq     L91A1_ADD_ENTRY         ;Branch if there is no data at all: just add the directory entry
         dey
-        sty     V1541_DATA_BUF+2
-        sta     V1541_DATA_BUF+3
-        lda     #$E0 ;ZP-address
-        sta     SINNER
-L9163:  jsr     L89AF
+        sty     V1541_DATA_BUF+2        ;V1541_DATA_BUF+1 to +3 hold the header for each block: file id,
+        sta     V1541_DATA_BUF+3        ;sequence number (last block first), offset of last byte in use
+        lda     #V1541_TMP
+        sta     SINNER                  ;Make GO_RAM_LOAD_GO_KERN read through V1541_TMP
+L9163_BLOCK_LOOP:
+        jsr     V1541_GROW              ;Add a block at the bottom of the disk
         ldy     #$FF
-L9168:  jsr     GO_RAM_LOAD_GO_KERN
-        sta     ($E4),y
+L9168_COPY_LOOP:
+        jsr     GO_RAM_LOAD_GO_KERN
+        sta     (MAPPED_PAGE_PTR),y     ;Copy 255 bytes from RAM.  Only offsets 3-255 are real data.
         dey
-        bne     L9168
+        bne     L9168_COPY_LOOP
         ldy     #$02
-L9172:  lda     V1541_DATA_BUF+1,y
-        sta     ($E4),y
+L9172_HEADER_LOOP:
+        lda     V1541_DATA_BUF+1,y
+        sta     (MAPPED_PAGE_PTR),y     ;Write the 3-byte header over offsets 0-2
         dey
-        bpl     L9172
+        bpl     L9172_HEADER_LOOP
         sec
-        lda     $E0
-        sbc     #$FD
-        bcs     L9183
-        dec     $E1
-L9183:  sta     $E0
-        stz     V1541_DATA_BUF+3
+        lda     V1541_TMP
+        sbc     #$FD                    ;The block before this one holds the 253 bytes below
+        bcs     L9183_NO_BORROW
+        dec     V1541_TMP+1
+L9183_NO_BORROW:
+        sta     V1541_TMP
+        stz     V1541_DATA_BUF+3        ;Every block but the last is full
         ldy     V1541_DATA_BUF+2
-        dec     V1541_DATA_BUF+2
+        dec     V1541_DATA_BUF+2        ;Sequence number for the block before this one
         tya
-        bne     L9163
+        bne     L9163_BLOCK_LOOP        ;Loop until block 0 has been written
         bit     V1541_DATA_BUF
-        bvc     L91A1
+        bvc     L91A1_ADD_ENTRY         ;Branch if it is a SEQ file
         ldy     #$04
         lda     SAH
-        sta     ($E4),y
+        sta     (MAPPED_PAGE_PTR),y     ;PRG: the first two data bytes of block 0 are the load address
         dey
         lda     SAL
-        sta     ($E4),y
-L91A1:  jmp     L8D5B_UNKNOWN_DIR_RELATED
+        sta     (MAPPED_PAGE_PTR),y
+L91A1_ADD_ENTRY:
+        jmp     V1541_DIR_ADD_ENTRY     ;Checksum the file and add its directory entry
 ; ----------------------------------------------------------------------------
-L91A4:  ldx     STAH
+;Compute how many blocks are needed to save the memory from STAL/STAH up to
+;but not including EAL/EAH.  A PRG file needs 2 more bytes for its load
+;address.  Each block holds 253 bytes.
+;
+;Returns:     Y = number of blocks
+;             A = offset of the last byte in use in the last block
+;             V1541_TMP = address that goes with offset 0 of the last block
+;             Carry clear and A=52 if 256 blocks or more would be needed
+V1541_COUNT_SAVE_BLOCKS:
+        ldx     STAH
         lda     STAL
         bit     V1541_DATA_BUF
-        bvc     L91B3
+        bvc     L91B3_COUNT             ;Branch if it is a SEQ file
         sec
-        sbc     #$02
-        bcs     L91B3
+        sbc     #$02                    ;PRG: start 2 bytes early to leave space for the load address
+        bcs     L91B3_COUNT
         dex
-L91B3:  ldy     #$00
-L91B5:  cpx     EAH
-        bcc     L91BD
+L91B3_COUNT:
+        ldy     #$00
+L91B5_LOOP:
+        cpx     EAH
+        bcc     L91BD_ADD_BLOCK
         cmp     EAL
-        bcs     L91C9
-L91BD:  adc     #$FD
-        bcc     L91C2
+        bcs     L91C9_DONE              ;Branch if the end address has been reached
+L91BD_ADD_BLOCK:
+        adc     #$FD                    ;One more block: 253 bytes further on
+        bcc     L91C2_NO_CARRY
         inx
-L91C2:  iny
-        bne     L91B5
-        lda     #$34
+L91C2_NO_CARRY:
+        iny
+        bne     L91B5_LOOP
+        lda     #doserr_52_file_too_large
         clc
         rts
 ; ----------------------------------------------------------------------------
-L91C9:  dex
-        sta     $E0
-L91CC:  stx     $E1
+L91C9_DONE:
+        dex                             ;X/A is 253 bytes past the data of the last block.  Subtract 256
+        sta     V1541_TMP               ;to get the address that goes with offset 0 of the last block.
+        stx     V1541_TMP+1
         clc
         lda     EAL
-        sbc     $E0
+        sbc     V1541_TMP               ;A = end address - 1 - that address = offset of the last data byte
         sec
         rts
 ; ----------------------------------------------------------------------------
-L91D5:  pha
-        sta     $E1
-        stz     $E0
-        lda     #STAH
-        sta     SINNER
-        lda     #$E0
-        sta     $0360
-L91E4:  lda     STAH
+;Move the memory that is about to be saved down to the start of page A, out
+;of the way of the pages that the disk is going to grow into.  STAL/STAH and
+;EAL/EAH are changed to describe the memory at its new address.
+;
+;This does not work: see the bug noted below.
+V1541_MOVE_SAVE_DATA:
+        pha
+        sta     V1541_TMP+1
+        stz     V1541_TMP
+        lda     #STAH                   ;BUG: #STAL was meant.  With STAH,...
+        sta     SINNER                  ;...GO_RAM_LOAD_GO_KERN reads through $B7/$B8 and copies the wrong memory
+        lda     #V1541_TMP
+        sta     GO_RAM_STORE_GO_KERN_ZP ;Make GO_RAM_STORE_GO_KERN write through V1541_TMP
+L91E4_LOOP:
+        lda     STAH
         cmp     EAH
-        bne     L91F0
-        lda     $B6
+        bne     L91F0_COPY
+        lda     STAL
         cmp     EAL
-        beq     L9206
-L91F0:  ldy     #$00
+        beq     L9206_DONE
+L91F0_COPY:
+        ldy     #$00
         jsr     GO_RAM_LOAD_GO_KERN
         jsr     GO_RAM_STORE_GO_KERN
-        inc     $E0
-        bne     L91FE
-L91FC:  inc     $E1
-L91FE:  inc     $B6
-        bne     L9204
+        inc     V1541_TMP
+        bne     L91FE_NO_CARRY
+        inc     V1541_TMP+1
+L91FE_NO_CARRY:
+        inc     STAL
+        bne     L9204_NO_CARRY_2
         inc     STAH
-L9204:  bra     L91E4
-L9206:  lda     $E0
-        sta     EAL
-        lda     $E1
+L9204_NO_CARRY_2:
+        bra     L91E4_LOOP
+L9206_DONE:
+        lda     V1541_TMP
+        sta     EAL                     ;New end address + 1
+        lda     V1541_TMP+1
         sta     EAH
         pla
-        sta     STAH
+        sta     STAH                    ;New start address
         stz     STAL
         rts
 ; ----------------------------------------------------------------------------
+;CLOSE a file on the Virtual 1541.  The channel is the low 4 bits of SA.
 V1541_CLOSE:
-        jsr     L921A_V1541_INTERNAL_CLOSE
+        jsr     V1541_INTERNAL_CLOSE
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L921A_V1541_INTERNAL_CLOSE:
+V1541_INTERNAL_CLOSE:
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-        bcs     L9221 ;branch if no error
-        sec
+        bcs     L9221_IS_OPEN           ;Branch if the channel is open
+        sec                             ;Closing a channel that is not open is not an error
         rts
-L9221:  lda     V1541_DEFAULT_CHAN
+L9221_IS_OPEN:
+        lda     V1541_ACTIV_CHAN
         cmp     #doschan_15_command ;command channel?
-        beq     L9240_RTS
+        beq     L9240_DONE
         lda     V1541_ACTIV_FLAGS
         bit     #$20 ;is file open for writing?
-        beq     L9240_RTS
+        beq     L9240_DONE
         bit     #$80
-        bne     L9240_RTS
-        lda     V1541_ACTIV_E8
-        beq     L9240_RTS
-        jsr     L8DBE_UNKNOWN_CALLS_DOES_62_FILE_NOT_FOUND_ON_ERROR
-        bcc     L9240_RTS ;branch if error
-        jsr     L8D17
-        jsr     L8D5B_UNKNOWN_DIR_RELATED
-L9240_RTS:
+        bne     L9240_DONE              ;Branch if it is a special ($80) entry
+        lda     V1541_ACTIV_ID
+        beq     L9240_DONE              ;Branch if the file has no id
+        jsr     V1541_DIR_FIND_ID       ;A file that was being written: find its directory entry,
+        bcc     L9240_DONE              ;if it still has one,
+        jsr     V1541_DIR_DELETE_ENTRY  ;delete it,
+        jsr     V1541_DIR_ADD_ENTRY     ;and add it again with the new checksum and the splat flag cleared
+L9240_DONE:
         jmp     V1541_SELECT_CHANNEL_AND_CLEAR_IT
 ; ----------------------------------------------------------------------------
-L9243_OPEN_V1541:
-        jsr     L9249_V1541_INTERNAL_OPEN
+;OPEN a file on the Virtual 1541.  The channel is the low 4 bits of SA and
+;the filename is at FNADR, FNLEN.
+;
+;   "$name"     Directory listing of the files that match the name (all
+;               files if there is no name).  It is read as a BASIC program.
+;   "name"      Read.  Same as "name,R".  The checksum of the file is verified.
+;   "name,W"    Create a file and write it.  The file must not exist yet.
+;   "@name,W"   Replace: delete the file if it exists, then create and write.
+;   "name,A"    Append to the file, or create it if it does not exist.
+;   "name,M"    Read a file without verifying its checksum.  This is the only
+;               way to read a file that was never closed (a "*" splat file).
+;               Such a file keeps its "open for writing" flag in the channel,
+;               so closing the channel gives it a new checksum and makes it
+;               an ordinary file again.
+;   ",S" ",P"   File type.  A new file is SEQ unless ",P" is given.
+;
+;A file can be open for reading on several channels at once, but not while
+;it is open for writing.  Wildcards are only accepted if a mode is given.
+;
+;Opening channel 15, the command channel, performs the filename as a command.
+V1541_OPEN:
+        jsr     V1541_INTERNAL_OPEN
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L9249_V1541_INTERNAL_OPEN:
+V1541_INTERNAL_OPEN:
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-        lda     V1541_DEFAULT_CHAN
+        lda     V1541_ACTIV_CHAN
         cmp     #doschan_15_command ;command channel
-L9250:  bne     L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN
-        jmp     L9737_V1541_INTERNAL_OPEN_CMD_CHAN
+        bne     L9255_NOT_CMD_CHAN
+        jmp     V1541_OPEN_CMD_CHAN
 
         ;not the command channel
 
-L9255_V1541_INTERNAL_OPEN_NOT_CMD_CHAN:
-        jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
-        jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
+L9255_NOT_CMD_CHAN:
+        jsr     V1541_CLEAR_ACTIVE_CHANNEL ;Close the channel in case it was open
+        jsr     V1541_PARSE_FNADR
         bcc     L9287_ERROR
         bit     #$20
-        bne     L9282
-        LDX     BAD
-        beq     L928C
+        bne     L9282_SYNTAX_ERROR      ;Branch if the name is followed by "="
+        ldx     V1541_NAME_PREFIX
+        beq     L928C_NO_PREFIX         ;Branch if the filename has no prefix
         cpx     #'$'
-L9268:  bne     L927B_NOT_DOLLAR
+        bne     L927B_AT_PREFIX
         ldx     V1541_FILE_MODE
-        bne     L9287_ERROR
+        bne     L9287_ERROR             ;A mode is not allowed with "$"
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-        jsr     L9041
-        lda     #$50
+        jsr     V1541_SETUP_DIR_LISTING ;Set the pattern of the names to list
+        lda     #$50                    ;$10 = open for reading, $40 = PRG: the listing is a BASIC program
         sta     V1541_ACTIV_FLAGS
         sec
-L927A:  rts
-; ----------------------------------------------------------------------------
-L927B_NOT_DOLLAR:
-        ldy     V1541_FILE_MODE
-L927E:  cpy     #fmode_w_write
-        beq     L9289
-L9282:  lda     #doserr_33_syntax_err ;33 syntax error (invalid filename)
-        .byte   $2C ;skip next two bytes
-L9285:  lda #$21 ;33 syntax error (invalid filename)
-L9287_ERROR:  clc
         rts
 ; ----------------------------------------------------------------------------
-L9289:  stx     V1541_FILE_MODE
-L928C:  bit     #$80
-        beq     L9282
+L927B_AT_PREFIX:
+        ldy     V1541_FILE_MODE
+        cpy     #fmode_w_write
+        beq     L9289_REPLACE           ;"@" is only allowed with ",W"
+L9282_SYNTAX_ERROR:
+        lda     #doserr_33_syntax_err ;33 syntax error (invalid filename)
+        .byte   $2C ;skip next two bytes
+L9285:  lda     #$21                    ;The same error number again
+L9287_ERROR:
+        clc
+        rts
+; ----------------------------------------------------------------------------
+L9289_REPLACE:
+        stx     V1541_FILE_MODE         ;Mode "@" = replace
+L928C_NO_PREFIX:
+        bit     #$80
+        beq     L9282_SYNTAX_ERROR      ;Branch if there is no name
         ldy     #fmode_r_read
         ldx     V1541_FILE_MODE
-        bne     L929A
-        sty     V1541_FILE_MODE
-L929A:  bit     #$40
-        beq     L92A3
-        cpx     V1541_FILE_MODE
-        bne     L9285
+        bne     L929A_HAVE_MODE
+        sty     V1541_FILE_MODE         ;The default mode is "R"
+L929A_HAVE_MODE:
+        bit     #$40
+        beq     L92A3_FIND              ;Branch if the name has no wildcards
+        cpx     V1541_FILE_MODE         ;BUG: (possible) X = mode as it was given, 0 if none.  This rejects wildcards
+        bne     L9285                   ;only when no mode was given.  CPY may have been meant (Y = "R").
 
-L92A3:  jsr     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
-        bcc     L9317_DO_STUFF_WITH_FILE_TYPE_AND_MODE ;branch if error (file not found)
+L92A3_FIND:
+        jsr     V1541_DIR_FIND_NAME
+        bcc     L9317_NOT_FOUND                        ;Branch if there is no file with that name
 
-        jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
-        bcc     L92C7_ERROR
+        jsr     V1541_CHECK_FILE_TYPE
+        bcc     L92C7_ERROR             ;Branch if it is not of the type requested
 
         ldy     V1541_FILE_MODE
         lda     #doserr_63_file_exists ;63 file exists
         cpy     #fmode_w_write
-        beq     L92C7_ERROR
+        beq     L92C7_ERROR             ;"W" can't be used on a file that exists
         lda     V1541_DATA_BUF
         bit     #$80
-        beq     L92C9
+        beq     L92C9_NORMAL_FILE       ;Branch unless it is a special ($80) entry
         lda     #doserr_26_write_prot_on ;26 write protect on
-        cpy     #$40
+        cpy     #'@'                    ;A special entry can't be replaced...
         beq     L92C7_ERROR
-        cpy     #$41
-        bne     L9315
+        cpy     #fmode_a_append
+        bne     L9315_EXISTING          ;...or appended to
 L92C7_ERROR:
         clc
         rts
 ; ----------------------------------------------------------------------------
-L92C9:  lda     V1541_DATA_BUF+1
-        jsr     L8C9F
-        bcc     L92E6
+L92C9_NORMAL_FILE:
+        lda     V1541_DATA_BUF+1
+        jsr     V1541_FIND_CHANNEL_WITH_FILE ;Is the file open on another channel?
+        bcc     L92E6_NOT_OPEN          ;Branch if not
         lda     V1541_ACTIV_FLAGS
         and     #$20
-        beq     L92DB
+        beq     L92DB_OPEN_FOR_READ     ;Branch if that channel is only reading it
         lda     #doserr_60_write_file_open ;60 write file open
         bra     L92C7_ERROR
-L92DB:  ldy     V1541_FILE_MODE
+L92DB_OPEN_FOR_READ:
+        ldy     V1541_FILE_MODE
         cpy     #fmode_r_read
-        beq     L92F8
-L92E2:  lda     #doserr_60_write_file_open ;60 write file open
+        beq     L92F8_ACCESS_OK         ;A second reader is fine
+L92E2_WRITE_FILE_OPEN:
+        lda     #doserr_60_write_file_open ;60 write file open
         bra     L92C7_ERROR
-L92E6:  lda     V1541_DATA_BUF
+L92E6_NOT_OPEN:
+        lda     V1541_DATA_BUF
         bit     #$20
-        beq     L92F8
+        beq     L92F8_ACCESS_OK         ;Branch unless the file was never closed (splat)
         ldy     V1541_FILE_MODE
         cpy     #fmode_m_modify
-        beq     L92F8
-        cpy     #$40
-        bne     L92E2
-L92F8:  ldy     V1541_FILE_MODE
-        cpy     #'@' ;TODO weird for a mode maybe somehow A?
-        bne     L930C
-        jsr     L8D17 ;maybe returns cbm dos error in a
-        jsr     L89E2
+        beq     L92F8_ACCESS_OK         ;A splat file can only be opened with "M"...
+        cpy     #'@'
+        bne     L92E2_WRITE_FILE_OPEN   ;...or replaced
+L92F8_ACCESS_OK:
+        ldy     V1541_FILE_MODE
+        cpy     #'@'                    ;"@" = replace
+        bne     L930C_NOT_REPLACE
+        jsr     V1541_DIR_DELETE_ENTRY  ;Delete the directory entry of the old file...
+        jsr     V1541_DELETE_FILE_BLOCKS ;...and its blocks
         lda     #fmode_w_write
-        sta     V1541_FILE_MODE
-        bra     L9317_DO_STUFF_WITH_FILE_TYPE_AND_MODE
-L930C:  cpy     #fmode_m_modify
-        beq     L9315
-        jsr     L8E20_MAYBE_CHECKS_HEADER
-        bcc     L92C7_ERROR ;branch if error
-L9315:  bra     L9335
+        sta     V1541_FILE_MODE         ;Then carry on as if "W" had been given
+        bra     L9317_NOT_FOUND
+L930C_NOT_REPLACE:
+        cpy     #fmode_m_modify
+        beq     L9315_EXISTING          ;"M" skips the checksum
+        jsr     V1541_VERIFY_FILE_CHECKSUM
+        bcc     L92C7_ERROR             ;Branch if the file's checksum is wrong
+L9315_EXISTING:
+        bra     L9335_CHECK_MODE
 
-L9317_DO_STUFF_WITH_FILE_TYPE_AND_MODE:
+L9317_NOT_FOUND:
         ldy     V1541_FILE_MODE
         cpy     #fmode_r_read
-        beq     L9322_ERROR
+        beq     L9322_ERROR             ;The file does not exist.  That is an error for "R" and "M".
         cpy     #fmode_m_modify
-        bne     L9326
+        bne     L9326_CREATE
 L9322_ERROR:
         lda     #doserr_62_file_not_found ;62 file not found
         clc
         rts
 
-L9326:  lda     #fmode_w_write
-        sta     V1541_FILE_MODE
+L9326_CREATE:
+        lda     #fmode_w_write
+        sta     V1541_FILE_MODE         ;"A" and "@" create the file, like "W"
         lda     V1541_FILE_TYPE
-        bne     L9335
+        bne     L9335_CHECK_MODE
         lda     #ftype_s_seq
-        sta     V1541_FILE_TYPE
-L9335:  ldy     V1541_FILE_MODE
+        sta     V1541_FILE_TYPE         ;A new file is SEQ unless a type was given
+L9335_CHECK_MODE:
+        ldy     V1541_FILE_MODE
         cpy     #fmode_w_write
-        bne     L935A
-        jsr     L8B13_MAYBE_ALLOCATES_SPACE_OR_CHECKS_DISK_FULL
-        bcc     L9358_ERROR ;branch on error
-        jsr     L8FF3
-        stz     V1541_DATA_BUF
+        bne     L935A_SET_UP_CHANNEL    ;Branch unless a file is being created
+        jsr     V1541_NEW_FILE_ID
+        bcc     L9358_ERROR             ;Branch if there is no file id to give it
+        jsr     V1541_COPY_NAME_TO_ENTRY ;Put the name in the new directory entry
+        stz     V1541_DATA_BUF          ;Flags = 0 for a SEQ file...
         lda     V1541_FILE_TYPE
         cmp     #ftype_p_prg
-        bne     L9353
-        lda     #$40
+        bne     L9353_CHECK_DIR_SPACE
+        lda     #$40                    ;...or $40 for a PRG
         sta     V1541_DATA_BUF
-L9353:  jsr     L8E91
-        bcs     L935A
+L9353_CHECK_DIR_SPACE:
+        jsr     V1541_CHECK_SPACE_FOR_ENTRY
+        bcs     L935A_SET_UP_CHANNEL    ;Branch if the directory can take the entry
 L9358_ERROR:
         clc
         rts
 
-L935A:  jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-        jsr     L902D
-        lda     #$10
+L935A_SET_UP_CHANNEL:
+        jsr     V1541_SELECT_CHANNEL_GIVEN_SA
+        jsr     V1541_ENTRY_TO_CHANNEL  ;Channel gets the flags and file id from the directory entry
+        lda     #$10                    ;$10 = open for reading
         tsb     V1541_ACTIV_FLAGS
         ldy     V1541_FILE_MODE
-L9367:  cpy     #fmode_m_modify
-        beq     L9378
+L9367_CHECK_M:
+        cpy     #fmode_m_modify
+        beq     L9378_OK                ;"M": done
         cpy     #fmode_r_read
-        bne     L937A
-        lda     V1541_DEFAULT_CHAN
-        cmp     #$0E
-        bne     L9378
-        dec     LDTND
-L9378:  sec
+        bne     L937A_CHECK_APPEND      ;Branch if not "R": the file is going to be written
+        lda     V1541_ACTIV_CHAN
+        cmp     #doschan_14_cmd_app
+        bne     L9378_OK                ;Branch unless this is the command file channel
+        dec     LDTND                   ;The command file does not take up one of the KERNAL's logical files
+L9378_OK:
+        sec
         rts
 
-L937A:  cpy     #$41
-        bne     L938D
-        jsr     L8D17  ;maybe returns cbm dos error in a
-L9381:  jsr     L8B40_V1541_INTERNAL_CHRIN
-        lda     #$47
+L937A_CHECK_APPEND:
+        cpy     #fmode_a_append
+        bne     L938D_OPEN_FOR_WRITE    ;Branch if not "A"
+        jsr     V1541_DIR_DELETE_ENTRY  ;Append: delete the directory entry (it is added again below)...
+L9381_SKIP_LOOP:
+        jsr     V1541_INTERNAL_CHRIN    ;...and read to the end of the file
+        lda     #doserr_71_dir_error
         bcc     L9358_ERROR
-        bit     SXREG
-        bpl     L9381
-L938D:  jsr     V1541_SELECT_CHANNEL_GIVEN_SA
-        lda     #$20
+        bit     V1541_EOF
+        bpl     L9381_SKIP_LOOP
+L938D_OPEN_FOR_WRITE:
+        jsr     V1541_SELECT_CHANNEL_GIVEN_SA
+        lda     #$20                    ;$20 = open for writing, in the channel...
         tsb     V1541_ACTIV_FLAGS
-        tsb     V1541_DATA_BUF
-        jmp     L8D63
+        tsb     V1541_DATA_BUF          ;...and in the directory entry, which marks it as a splat file
+        jmp     V1541_DIR_APPEND_ENTRY  ;Add the directory entry
 
 ; ----------------------------------------------------------------------------
 
-L939A:  lda     V1541_02D6
-L939D:  bne     L93A2
-        sta     V1541_02D7
-L93A2:  ldx     V1541_02D7
-        beq     L93C0
-        lda     $02D8
-        beq     L941F_GET_DIRPART_ONLY
-        lda     $0217,x
+;Read the next byte of a directory listing.
+;
+;The listing is a BASIC program, produced one line at a time in
+;V1541_DATA_BUF and returned byte by byte.  V1541_DIR_STATE selects the
+;part that comes next:
+;   0  Start: continues with 2
+;   2  Load address ($1001) and header line.  Its line number is the
+;      number of blocks used by the directory itself.
+;   4  One line for each file that matches V1541_DIR_PATTERN.  The line
+;      number is the size of the file in blocks.
+;   6  "BLOCKS USED." line.  Its line number is the size of the whole disk.
+;   8  The last zero byte, with V1541_EOF set
+;
+;If something else has used V1541_DATA_BUF since the last byte was read
+;(V1541_DIR_LINE_OK = 0), the line is produced again before carrying on.
+V1541_READ_DIR_BYTE:
+        lda     V1541_DIR_STATE
+        bne     L93A2_STARTED
+        sta     V1541_DIR_LINE_POS
+L93A2_STARTED:
+        ldx     V1541_DIR_LINE_POS
+        beq     L93C0_NEW_LINE          ;Branch if a new line is needed
+        lda     V1541_DIR_LINE_OK
+        beq     L941F_MAKE_LINE         ;Branch if the line in the buffer has been lost: make it again
+        lda     V1541_DATA_BUF-1,x         ;Get the next byte of the line
         inx
         tay
-        bne     L93B8
+        bne     L93B8_RETURN            ;Branch if it is not zero
         cpx     #$0A
-        bcc     L93B8
-        tax
-L93B8:  stx     V1541_02D7
-        stz     SXREG
+        bcc     L93B8_RETURN            ;Branch if it is one of the zeros in the first 9 bytes
+        tax                             ;The zero that ends the line: next time, start a new line
+L93B8_RETURN:
+        stx     V1541_DIR_LINE_POS
+        stz     V1541_EOF
         sec
         rts
 
-L93C0:  ldx     V1541_02D6
-        jmp     (L93C6,x)
-L93C6:  .addr   L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART
-        .addr   L93E4
-        .addr   L93E9_LOOP
-        .addr   L93D0
-        .addr   L93D6
+L93C0_NEW_LINE:
+        ldx     V1541_DIR_STATE
+        jmp     (L93C6_STATE_HANDLERS,x)
+L93C6_STATE_HANDLERS:
+        .addr   L9414_NEXT_STATE                            ;State 0: start
+        .addr   L93E4_STATE_2           ;State 2: header line
+        .addr   L93E9_STATE_4           ;State 4: file lines
+        .addr   L93D0_STATE_6           ;State 6: first of the two zeros that end the program
+        .addr   L93D6_STATE_8           ;State 8: second zero
 
-L93D0:  ldx     #$08
-        lda     #$00
-        bra     L93DA
+L93D0_STATE_6:
+        ldx     #$08                    ;Next is state 8
+        lda     #$00                    ;Not the end yet
+        bra     L93DA_RETURN_ZERO
 
-L93D6:  ldx     #$00
-        lda     #$FF
-L93DA:  stx     V1541_02D6
-        sta     SXREG
+L93D6_STATE_8:
+        ldx     #$00                    ;Next is state 0
+        lda     #$FF                    ;V1541_EOF = $FF: this is the last byte
+L93DA_RETURN_ZERO:
+        stx     V1541_DIR_STATE
+        sta     V1541_EOF
         lda     #$00
         sec
         rts
 
-L93E4:  jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-        bra     L93EC
+L93E4_STATE_2:
+        jsr     V1541_DIR_FIRST
+        bra     L93EC_CHECK_ENTRY
 
-L93E9_LOOP:
-        jsr     L8CC3
-L93EC:  ldx     #$04
-        stx     V1541_02D6
-        bcc     L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART ;branch if error from L8CC3
+L93E9_STATE_4:
+        jsr     V1541_DIR_NEXT
+L93EC_CHECK_ENTRY:
+        ldx     #$04
+        stx     V1541_DIR_STATE
+        bcc     L9414_NEXT_STATE                            ;Branch if there are no more entries: state 6 comes next
 
-        lda     #<$0238
+        lda     #<V1541_DIR_PATTERN                 ;Compare the name of the entry with V1541_DIR_PATTERN
         sta     V1541_FNADR
-        lda     #>$0238
-        stz     MON_MMU_MODE
-L93FC:  sta     V1541_FNADR+1
+        lda     #>V1541_DIR_PATTERN
+        stz     V1541_NAME_START
+        sta     V1541_FNADR+1
         ldx     #$00
-L9400:  lda     $0238,x
-L9403:  beq     L940A
+L9400_LENGTH_LOOP:
+        lda     V1541_DIR_PATTERN,x
+        beq     L940A_COMPARE
         inx
         cpx     #$14
-        bne     L9400
-L940A:  stx     $03A2
-        jsr     L8FC3_COMPARE_FILENAME_INCL_WILDCARDS
-        bcc     L93E9_LOOP ;filename does not match
-        bra     L941A_STA_1_02D7_GET_DIRPART
+        bne     L9400_LENGTH_LOOP
+L940A_COMPARE:
+        stx     V1541_NAME_END
+        jsr     V1541_MATCH_NAME
+        bcc     L93E9_STATE_4           ;Branch if the name does not match: try the next entry
+        bra     L941A_START_LINE
 
-L9414_INC_02D6_TWICE_STA_1_02D7_GET_DIRPART:
-        inc     V1541_02D6
-        inc     V1541_02D6
+L9414_NEXT_STATE:
+        inc     V1541_DIR_STATE
+        inc     V1541_DIR_STATE
 
-L941A_STA_1_02D7_GET_DIRPART:
+L941A_START_LINE:
         lda     #$01
-        sta     V1541_02D7
+        sta     V1541_DIR_LINE_POS
 
-L941F_GET_DIRPART_ONLY:
-        jsr     L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-        jsr     L942B_GET_V1541_DIR_PART
-        dec     $02D8
-        jmp     L939A
+L941F_MAKE_LINE:
+        jsr     V1541_DIR_READ_AND_REWIND ;Read the directory entry (again), staying at its start
+        jsr     V1541_MAKE_DIR_LINE      ;Turn it into a line of BASIC
+        dec     V1541_DIR_LINE_OK       ;V1541_DIR_LINE_OK = $FF
+        jmp     V1541_READ_DIR_BYTE
 
-L942B_GET_V1541_DIR_PART:
-        ldx     V1541_02D6
-        jmp     (L942F_V1541_DIR_PART_HANDLERS-2,x)
-L942F_V1541_DIR_PART_HANDLERS:
-        .addr   L9457_GET_V1541_HEADER
-        .addr   L94A8_GET_V1541_FILE
-        .addr   L9488_GET_V1541_BLOCKS_USED
+V1541_MAKE_DIR_LINE:
+        ldx     V1541_DIR_STATE
+        jmp     (V1541_DIR_LINE_HANDLERS-2,x)
+V1541_DIR_LINE_HANDLERS:
+        .addr   V1541_MAKE_HEADER_LINE  ;State 2
+        .addr   V1541_MAKE_FILE_LINE    ;State 4
+        .addr   V1541_MAKE_BLOCKS_USED_LINE ;State 6
 
-L9437_V1541_HEADER:
+V1541_DIR_HEADER:
         .word $1001   ;load address
         .word $1001   ;pointer to next basic line
         .word 0       ;basic line number
@@ -3319,18 +3780,18 @@ L9437_V1541_HEADER:
 
 ;Put the start of the BASIC program and the first BASIC line
 ;with the disk header in the buffer
-L9457_GET_V1541_HEADER:
+V1541_MAKE_HEADER_LINE:
         ldx     #$1F
 L9459_LOOP:
-        lda     L9437_V1541_HEADER,x
+        lda     V1541_DIR_HEADER,x
         sta     V1541_DATA_BUF,x
         dex
         bpl     L9459_LOOP
-        jsr     L8DE4_SOMEHOW_GETS_FILE_BLOCKS_USED_2  ;sets A = blocks used
+        jsr     V1541_COUNT_DIR_BLOCKS  ;A = number of blocks used by the directory
         sta     V1541_DATA_BUF+4  ;basic line number low byte
         rts
 
-L9469_BLOCKS_USED:
+V1541_DIR_BLOCKS_USED:
         .word $1001   ;pointer to next basic line
         .word 0       ;basic line number
         .byte "BLOCKS USED.            "  ;basic line text
@@ -3338,66 +3799,73 @@ L9469_BLOCKS_USED:
         .byte 0,0     ;end of basic program
 
 ;Put a BASIC line with the "BLOCKS USED" in the buffer
-L9488_GET_V1541_BLOCKS_USED:
+V1541_MAKE_BLOCKS_USED_LINE:
         ldx     #$1E
 L948A_LOOP:
-        lda     L9469_BLOCKS_USED,x
+        lda     V1541_DIR_BLOCKS_USED,x
         sta     V1541_DATA_BUF,x
         dex
         bpl     L948A_LOOP
         cld
         sec
-        lda     $0208
-        sbc     $020A
+        lda     RAM_PAGES               ;Line number = number of pages between the bottom of the disk and the top of RAM
+        sbc     V1541_BOTTOM_PAGE
         sta     V1541_DATA_BUF+2  ;basic line number low byte
-        lda     $0209
-        sbc     $020B
+        lda     RAM_PAGES+1
+        sbc     V1541_BOTTOM_PAGE+1
         sta     V1541_DATA_BUF+3  ;basic line number high byte
         rts
 
 ;Put a BASIC line with a file in the buffer
-L94A8_GET_V1541_FILE:
-        ldx     #$04
+V1541_MAKE_FILE_LINE:
+        ldx     #$04                    ;Find the end of the filename
 L94AA_LOOP:
         inx
         lda     V1541_DATA_BUF,x
-        beq     L94B4
+        beq     L94B4_END_OF_NAME
         cpx     #$15
         bne     L94AA_LOOP
-L94B4:  lda     #'"'
-L94B6:  sta     V1541_DATA_BUF,x
+L94B4_END_OF_NAME:
+        lda     #'"'                    ;Closing quote, then pad with spaces
+L94B6_PAD_LOOP:
+        sta     V1541_DATA_BUF,x
         lda     #' '
         inx
         cpx     #' '
-        bne     L94B6
+        bne     L94B6_PAD_LOOP
 
         lda     V1541_DATA_BUF
-        bit     #$30
-        beq     L94CC
+        bit     #$30                    ;Open for writing (never closed)?
+        beq     L94CC_NOT_SPLAT
         ldx     #'*' ;splat file like "*PRG"
         stx     V1541_DATA_BUF+22
 
-L94CC:  bit     #$80
-        bne     L94D5
+L94CC_NOT_SPLAT:
+        bit     #$80
+        bne     L94D5_SPECIAL           ;Branch if it is a special ($80) entry
 
-        jsr     L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1
-        bra     L94D8
+        jsr     V1541_COUNT_FILE_BLOCKS
+        bra     L94D8_SET_SIZE
 
-L94D5:  lda     V1541_DATA_BUF+3
+L94D5_SPECIAL:
+        lda     V1541_DATA_BUF+3        ;A special entry has its size in byte 3
 
-L94D8:  sta     V1541_DATA_BUF+2  ;Set number of blocks used by file
+L94D8_SET_SIZE:
+        sta     V1541_DATA_BUF+2  ;Set number of blocks used by file
                                   ;as the line number low byte
         lda     V1541_DATA_BUF
         and     #$40
-        beq     L94EA
+        beq     L94EA_SEQ
         lda     #'P' ;ftype_p_prg
         ldx     #'R'
         ldy     #'G'
-        bra     L94F0
-L94EA:  lda     #'S' ;ftype_s_seq
+        bra     L94F0_SET_TYPE
+L94EA_SEQ:
+        lda     #'S' ;ftype_s_seq
         ldx     #'E'
         ldy     #'Q'
-L94F0:  sta     V1541_DATA_BUF+23   ;P    S
+L94F0_SET_TYPE:
+        sta     V1541_DATA_BUF+23   ;P    S
         stx     V1541_DATA_BUF+24   ;R or E
         sty     V1541_DATA_BUF+25   ;G    Q
 
@@ -3412,18 +3880,25 @@ L94F0:  sta     V1541_DATA_BUF+23   ;P    S
 
         lda     V1541_DATA_BUF+2    ;A = size of file in blocks
         cmp     #100
-        bcs     L9515 ;branch if >= 100
+        bcs     L9515_GE_100 ;branch if >= 100
         jsr     L9522_SHIFT_BASIC_TEXT_RIGHT
-L9515:  lda     V1541_DATA_BUF+2    ;A = size of file in blocks again
+L9515_GE_100:
+        lda     V1541_DATA_BUF+2    ;A = size of file in blocks again
         cmp     #10
-        bcc     L951F ;branch if < 10
+        bcc     L951F_LT_10             ;BUG: branches if < 10, the wrong way around (see below)
         jsr     L9522_SHIFT_BASIC_TEXT_RIGHT
-L951F:  jsr     L9522_SHIFT_BASIC_TEXT_RIGHT
+L951F_LT_10:
+        jsr     L9522_SHIFT_BASIC_TEXT_RIGHT
         ;Fall through
 
 ;Prepend one space to the beginning of the BASIC text.  The number of blocks
 ;is shown as the BASIC line number.  It can vary (1-3 decimal digits) so these
 ;spaces are added to the BASIC text to keep the filenames aligned.
+;
+;Between them, the code above and the fall through here shift the text 3
+;times for a size under 10, 4 times for 10-99 and 3 times for 100 and up.
+;To line the names up, a size under 10 needs 5.  So in a listing, the files
+;of fewer than 10 blocks have their names 2 columns to the left of the rest.
 L9522_SHIFT_BASIC_TEXT_RIGHT:
         lda     #' '
         ldx     #$04
@@ -3439,15 +3914,24 @@ L9526_LOOP:
         sta     V1541_DATA_BUF+31   ;end of basic line
         rts
 ; ----------------------------------------------------------------------------
+;LOAD or VERIFY.  Devices 1 (Virtual 1541) and 4-29 (IEC) are allowed.
+;
+;Call with:   A = 0 for LOAD, nonzero for VERIFY
+;             MEMUSS = where to load if the secondary address is 0
+;
+;LOAD "@name" from the Virtual 1541 moves the file into memory instead of
+;copying it: each block is deleted from the disk as soon as it has been
+;loaded, and the file is gone afterwards (see V1541_LOAD_AND_DELETE).
 LOAD__: sta     VERCHK
         stz     SATUS
         lda     FA
-        bne     L9544
+        bne     L9544_NOT_DEVICE_0
         ;Device 0
 L9541_BAD_DEVICE:
         jmp     ERROR9 ;BAD DEVICE #
 ; ----------------------------------------------------------------------------
-L9544:  cmp     #$01
+L9544_NOT_DEVICE_0:
+        cmp     #$01
         beq     L9550_LOAD_V1541_OR_IEC
         cmp     #$04
         bcc     L9541_BAD_DEVICE
@@ -3465,23 +3949,25 @@ L9558_LOAD_FNLEN_OK:
         stz     SA
         lda     FA
         dec     a
-        beq     L957A
+        beq     L957A_V1541             ;Branch if device 1
         lda     #$60
-        sta     SA
+        sta     SA                      ;Secondary address $60 = load
         jsr     OPENI
         lda     FA
         jsr     TALK__
         lda     SA
         jsr     TKSA
-        bra     L9592
+        bra     L9592_GET_LOAD_ADDRESS
 ; ----------------------------------------------------------------------------
-L957A:  phx
-        jsr     V1541_OPEN
+L957A_V1541:
+        phx
+        jsr     V1541_OPEN_FOR_LOAD
         plx
         lda     SATUS
-        bit     #$0C
-        beq     L9592
-L9585:  jmp     ERROR4 ;FILE NOT FOUND
+        bit     #$0C                    ;Error from the Virtual 1541?
+        beq     L9592_GET_LOAD_ADDRESS
+L9585_NOT_FOUND:
+        jmp     ERROR4 ;FILE NOT FOUND
 ; ----------------------------------------------------------------------------
 L9588_CLSEI_OR_ERROR16_OOM:
         lda     SA
@@ -3490,83 +3976,93 @@ L9588_CLSEI_OR_ERROR16_OOM:
 L958F_JMP_ERROR16:
         jmp     ERROR16 ;OUT OF MEMORY
 ; ----------------------------------------------------------------------------
-L9592:  jsr     L9661
+L9592_GET_LOAD_ADDRESS:
+        jsr     LOAD_GET_BYTE           ;The first two bytes of the file are its load address
         sta     EAL
         lda     #$02
         bit     SATUS
-        bne     L9585
-        jsr     L9661
+        bne     L9585_NOT_FOUND
+        jsr     LOAD_GET_BYTE
         sta     EAH
         lda     WRBASE  ;Recall SA before changes
-        bne     L95AF
-        lda     $B4
+        bne     L95AF_HAVE_ADDRESS      ;Branch if the load address in the file is to be used
+        lda     MEMUSS
         sta     EAL
-        lda     $B5
+        lda     MEMUSS+1
         sta     EAH
-L95AF:  lda     VERCHK
+L95AF_HAVE_ADDRESS:
+        lda     VERCHK
         bne     L95E4_VERIFY
         jsr     PRIMM80
         .byte   "LOADING",$0d,0
         lda     EAH
-        cmp     #>$05F8
-        bcc     L9588_CLSEI_OR_ERROR16_OOM
-        cmp     #<$05F8
-        bcs     L9588_CLSEI_OR_ERROR16_OOM
-        cmp     $020A
-        bcc     L95D4
-        lda     $020B
-        beq     L9588_CLSEI_OR_ERROR16_OOM
-L95D4:  lda     SA
-        bne     L95F0
-        LDA     BAD
+        cmp     #$05
+        bcc     L9588_CLSEI_OR_ERROR16_OOM ;Branch if loading below $0500
+        cmp     #$F8
+        bcs     L9588_CLSEI_OR_ERROR16_OOM ;Branch if loading at $F800 or above
+        cmp     V1541_BOTTOM_PAGE       ;Branch if loading inside the Virtual 1541...
+        bcc     L95D4_ADDRESS_OK
+        lda     V1541_BOTTOM_PAGE+1
+        beq     L9588_CLSEI_OR_ERROR16_OOM ;...which can only happen when it reaches down into the first 64K
+L95D4_ADDRESS_OK:
+        lda     SA
+        bne     L95F0_BYTE_LOOP_START   ;Branch if loading from IEC
+        lda     V1541_NAME_PREFIX
         cmp     #$40 ;'@'
-        bne     L95F0
-        jsr     L96D6_USED_BY_LOAD
+        bne     L95F0_BYTE_LOOP_START   ;Branch unless the filename started with "@"
+        jsr     V1541_LOAD_AND_DELETE
         bra     L9651_LOAD_OR_VERIFY_DONE
 ; ----------------------------------------------------------------------------
 L95E4_VERIFY:
         jsr     PRIMM80
         .byte   $0d,"VERIFY ",0
-L95F0:  lda     #$02
+L95F0_BYTE_LOOP_START:
+        lda     #$02
         trb     SATUS
-        jsr     LFDB9_STOP
+        jsr     STOP_FROM_KERN
         beq     L9657_STOP_PRESSED
-L95F9:  jsr     L9661
+L95F9_BYTE_LOOP:
+        jsr     LOAD_GET_BYTE
         tax
         lda     SATUS
         lsr     a
         lsr     a
-        bcs     L95F9
+        bcs     L95F9_BYTE_LOOP         ;Loop if the byte timed out
         txa
         ldy     VERCHK
-        beq     L9622
+        beq     L9622_STORE             ;Branch if loading
         ldy     #$00
         sta     WRBASE                ;save .A
         lda     #EAL
-        sta     SINNER
+        sta     SINNER                  ;Verifying: compare with the byte in RAM
         jsr     GO_RAM_LOAD_GO_KERN
         cmp     WRBASE                ;compare with old .A
-        beq     L963D
-        lda     #$10
+        beq     L963D_NEXT
+        lda     #$10                    ;$10 = verify error
         jsr     UDST
-        bra     L963D
-L9622:  ldx     #$B2
-        stx     $0360
+        bra     L963D_NEXT
+L9622_STORE:
+        ldx     #$B2
+        stx     GO_RAM_STORE_GO_KERN_ZP ;Make GO_RAM_STORE_GO_KERN write through EAL
         ldx     EAH
         cpx     #$F8
-        bcs     L9637
-        cpx     $020A
-        bcc     L963A
-        ldx     $020B
-        bne     L963A
-L9637:  jmp     L9588_CLSEI_OR_ERROR16_OOM
+        bcs     L9637_OUT_OF_MEMORY     ;Don't store at $F800 or above...
+        cpx     V1541_BOTTOM_PAGE
+        bcc     L963A_STORE_OK          ;...or inside the Virtual 1541
+        ldx     V1541_BOTTOM_PAGE+1
+        bne     L963A_STORE_OK
+L9637_OUT_OF_MEMORY:
+        jmp     L9588_CLSEI_OR_ERROR16_OOM
 ; ----------------------------------------------------------------------------
-L963A:  jsr     GO_RAM_STORE_GO_KERN
-L963D:  inc     EAL
-        bne     L9643
+L963A_STORE_OK:
+        jsr     GO_RAM_STORE_GO_KERN
+L963D_NEXT:
+        inc     EAL
+        bne     L9643_NO_CARRY
         inc     EAH
-L9643:  bit     SATUS
-        bvc     L95F9
+L9643_NO_CARRY:
+        bit     SATUS
+        bvc     L95F9_BYTE_LOOP         ;Loop until end of file
         lda     SA
         beq     L9651_LOAD_OR_VERIFY_DONE
         jsr     UNTLK
@@ -3579,39 +4075,45 @@ L9651_LOAD_OR_VERIFY_DONE:
 ; ----------------------------------------------------------------------------
 L9657_STOP_PRESSED:
         lda     SA
-        bne     L965E
+        bne     L965E_JMP_ERROR0
         jsr     CLSEI
-L965E:  jmp     ERROR0  ;OK
+L965E_JMP_ERROR0:
+        jmp     ERROR0  ;OK
 ; ----------------------------------------------------------------------------
-L9661:  lda     SA
-        beq     L9668
+;Get the next byte of the file being loaded.
+LOAD_GET_BYTE:
+        lda     SA
+        beq     L9668_V1541
         jmp     ACPTR
-L9668:  jmp     L971F
+L9668_V1541:
+        jmp     V1541_LOAD_GET_BYTE
 ; ----------------------------------------------------------------------------
-V1541_OPEN:
-        jsr     L9671_V1541_INTERNAL_OPEN
+;Open a file on the Virtual 1541 for LOAD.  Channel 17 is used.
+;The filename is at FNADR, FNLEN.  "$" loads a directory listing.
+V1541_OPEN_FOR_LOAD:
+        jsr     V1541_INTERNAL_OPEN_FOR_LOAD
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L9671_V1541_INTERNAL_OPEN:
-        jsr     L8EAF_COPY_FNADR_FNLEN_THEN_SETUP_FOR_FILE_ACCESS
-        BCC     L969A_ERROR ;branch if error
-        BIT     #$20
-        BNE     L969A_ERROR
+V1541_INTERNAL_OPEN_FOR_LOAD:
+        jsr     V1541_PARSE_FNADR
+        bcc     L969A_ERROR             ;Branch if the filename can't be parsed
+        bit     #$20
+        bne     L969A_ERROR             ;Branch if the name is followed by "="
 
-        ldx     BAD
+        ldx     V1541_NAME_PREFIX
         cpx     #'$'
-        bne     L969C_03A0_NOT_DOLLAR
+        bne     L969C_NOT_DIRECTORY
 
         ;Opening the directory
 
         ldx     V1541_FILE_MODE
-        bne     L9698_ERROR_34_SYNTAX_ERROR
+        bne     L9698_ERROR_34_SYNTAX_ERROR ;A mode is not allowed with "$"
 
-        jsr     L9041
-        jsr     L8C2A_JSR_V1541_SELECT_CHAN_17_JMP_L8C8B_CLEAR_ACTIVE_CHANNEL
-        lda     #$40
+        jsr     V1541_SETUP_DIR_LISTING ;Set the pattern of the names to list
+        jsr     V1541_SELECT_LOAD_CHANNEL_AND_CLEAR_IT
+        lda     #$40                    ;$40 = PRG: the listing is a BASIC program
         tsb     V1541_ACTIV_FLAGS
-        bra     L96C0
+        bra     L96C0_SET_READING
 
 L9692_ERROR_64_FILE_TYPE_MISMATCH:
         lda     #doserr_64_file_type_mism
@@ -3625,184 +4127,232 @@ L969A_ERROR:
         clc
         rts
 
-L969C_03A0_NOT_DOLLAR:
-        jsr     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
-        bcc     L969A_ERROR ;branch if error (file not found)
+L969C_NOT_DIRECTORY:
+        jsr     V1541_DIR_FIND_NAME
+        bcc     L969A_ERROR             ;Branch if there is no file with that name
 
         lda     V1541_DATA_BUF
         bit     #$20
-        bne     L9695_ERROR_60_WRITE_FILE_OPEN
+        bne     L9695_ERROR_60_WRITE_FILE_OPEN ;Branch if it is open for writing or was never closed
         bit     #$80
-        bne     L96B1
-        jsr     L8E20_MAYBE_CHECKS_HEADER
-        bcc     L969A_ERROR ;branch if error
-L96B1:  jsr     L9011_TEST_0218_AND_STORE_FILE_TYPE
+        bne     L96B1                   ;Branch if it is a special ($80) entry: it has no checksum
+        jsr     V1541_VERIFY_FILE_CHECKSUM
+        bcc     L969A_ERROR             ;Branch if the file's checksum is wrong
+L96B1:  jsr     V1541_CHECK_FILE_TYPE
         bcc     L969A_ERROR
         cpx     #ftype_s_seq
-        beq     L9692_ERROR_64_FILE_TYPE_MISMATCH
-        jsr     L8C2A_JSR_V1541_SELECT_CHAN_17_JMP_L8C8B_CLEAR_ACTIVE_CHANNEL
-        jsr     L902D
+        beq     L9692_ERROR_64_FILE_TYPE_MISMATCH ;Only a PRG file can be loaded
+        jsr     V1541_SELECT_LOAD_CHANNEL_AND_CLEAR_IT
+        jsr     V1541_ENTRY_TO_CHANNEL  ;Channel gets the flags and file id from the directory entry
 
-L96C0:  lda     #$10
+L96C0_SET_READING:
+        lda     #$10                    ;$10 = open for reading
         tsb     V1541_ACTIV_FLAGS
-        lda     BAD
+        lda     V1541_NAME_PREFIX
         cmp     #$40 ;'@'
-        bne     L96D1
+        bne     L96D1_NO_PREFIX         ;Forget the prefix unless it is "@"...
         lda     V1541_ACTIV_FLAGS
         and     #$80
-        beq     L96D4
-L96D1:  stz     BAD
-L96D4:  sec
+        beq     L96D4_DONE              ;...on an ordinary file, where it selects V1541_LOAD_AND_DELETE
+L96D1_NO_PREFIX:
+        stz     V1541_NAME_PREFIX
+L96D4_DONE:
+        sec
         rts
 ; ----------------------------------------------------------------------------
-;Called only from load
-L96D6_USED_BY_LOAD:
-        stz     V1541_ACTIV_E9
-        dec     V1541_ACTIV_E9
-L96DA_LOOP:
-        inc     V1541_ACTIV_E9
-        jsr     L89F9
-        bcc     L9719
-L96E1:  ldx     $020B
-        lda     $020A
+;Load a file from the Virtual 1541 by moving it: each block is deleted from
+;the disk as soon as it has been copied to memory, so the file never needs
+;space in memory and on the disk at the same time.  The file and its
+;directory entry are gone afterwards.
+;Called only from LOAD, for a filename that starts with "@".
+;
+;BUG: the bytes are stored with GO_RAM_STORE_GO_KERN, but nothing here makes it
+;write through EAL.  It only stores in the right place if the last thing to
+;set GO_RAM_STORE_GO_KERN_ZP was the byte loop of an ordinary LOAD.
+V1541_LOAD_AND_DELETE:
+        stz     V1541_ACTIV_SEQ
+        dec     V1541_ACTIV_SEQ         ;Sequence number $FF, so the loop starts with block 0
+L96DA_BLOCK_LOOP:
+        inc     V1541_ACTIV_SEQ
+        jsr     V1541_FIND_AND_DELETE_BLOCK ;Find the next block and delete it
+        bcc     L9719_DONE              ;Branch if there are no more blocks
+L96E1_COPY_BLOCK:
+        ldx     V1541_BOTTOM_PAGE+1
+        lda     V1541_BOTTOM_PAGE
         bne     L96EA
         dex
 L96EA:  dec     a
-        jsr     L8A87
+        jsr     MAP_RAM_PAGE            ;Its data is now in the page just below the disk: map that page
         ldy     #$02
-        lda     ($E4),y
-        bne     L96F5
+        lda     (MAPPED_PAGE_PTR),y
+        bne     L96F5_SET_END           ;A = offset of the last byte in use, or $FF for a full block
         dec     a
-L96F5:  sta     $E0
-        lda     V1541_ACTIV_E9
-        bne     L9703
-L96FB:  lda     V1541_ACTIV_FLAGS
+L96F5_SET_END:
+        sta     V1541_TMP
+        lda     V1541_ACTIV_SEQ
+        bne     L9703_BYTE_LOOP         ;Branch unless this is block 0
+L96FB_BLOCK_0:
+        lda     V1541_ACTIV_FLAGS
         and     #$40
-        beq     L9703
+        beq     L9703_BYTE_LOOP         ;Branch if it is not a PRG
         iny
+        iny                             ;Skip the load address
+L9703_BYTE_LOOP:
         iny
-L9703:  iny
-        lda     ($E4),y
+        lda     (MAPPED_PAGE_PTR),y
         phy
         ldy     #$00
         jsr     GO_RAM_STORE_GO_KERN
         inc     EAL
-        bne     L9712
+        bne     L9712_NO_CARRY
         inc     EAH
-L9712:  ply
-        cpy     $E0
-        bne     L9703
-        bra     L96DA_LOOP
+L9712_NO_CARRY:
+        ply
+        cpy     V1541_TMP
+        bne     L9703_BYTE_LOOP
+        bra     L96DA_BLOCK_LOOP
 ; ----------------------------------------------------------------------------
-L9719:  jsr     L89E2
-        jmp     L8D17
+L9719_DONE:
+        jsr     V1541_DELETE_FILE_BLOCKS ;Delete any blocks that are left...
+        jmp     V1541_DIR_DELETE_ENTRY  ;...and the directory entry
 
-L971F:  jsr     L9725 ;maybe returns a cbm dos error code
+;Read the next byte of the file being loaded from the Virtual 1541.
+V1541_LOAD_GET_BYTE:
+        jsr     V1541_INTERNAL_LOAD_GET_BYTE
         jmp     V1541_KERNAL_CALL_DONE
 ; ----------------------------------------------------------------------------
-L9725:  jsr     V1541_SELECT_CHAN_17 ;maybe returns a cbm dos error code
+V1541_INTERNAL_LOAD_GET_BYTE:
+        jsr     V1541_SELECT_LOAD_CHANNEL ;Select the channel used by LOAD
         bcc     L972D_RTS ;branch if error
-        jsr     L8B46 ;maybe returns a cbm dos error code
-L972D_RTS:  rts
+        jsr     V1541_READ_BYTE         ;Read a byte from it
+L972D_RTS:
+        rts
 ; ----------------------------------------------------------------------------
-;Called with Y=cmd len
-;If Y>=$3C then return carry=0 and A=32 syntax error (long line)
-;          else return carry=1 and A=32 (don't care)
-L972E_V1541_CHECK_MAX_CMD_LEN:
+;Check that there is space in V1541_CMD_BUF for another character.
+;Call with Y = number of characters in the buffer.
+;Returns carry set if Y < 60, or carry clear and A=32 if not.
+V1541_CHECK_CMD_LEN:
         lda     #doserr_32_syntax_err
-L9730:  cpy     #$3C ;if Y<3C then OK, else error 32
-L9732:  rol     a
+        cpy     #$3C                    ;Carry set if Y >= 60
+        rol     a                       ;Invert the carry without changing A
         eor     #$01
         ror     a
         rts
 ; ----------------------------------------------------------------------------
-L9737_V1541_INTERNAL_OPEN_CMD_CHAN:
+;OPEN the command channel (15).  The filename, if any, is a command.
+V1541_OPEN_CMD_CHAN:
         jsr     V1541_SELECT_CHANNEL_GIVEN_SA
         lda     #$10
-        tsb     V1541_ACTIV_FLAGS
+        tsb     V1541_ACTIV_FLAGS       ;BUG: $10 = open for reading (the status message), not for writing.  See V1541_CHROUT_CMD_CHAN.
         ldy     FNLEN
         sty     V1541_CMD_LEN
-        jsr     L972E_V1541_CHECK_MAX_CMD_LEN
-        bcs     L974A ;branch if no error
+        jsr     V1541_CHECK_CMD_LEN
+        bcs     L974A_COPY_COMMAND ;branch if no error
 L9749_RTS:
         rts
 ; ----------------------------------------------------------------------------
-L974A:  lda     #FNADR
+L974A_COPY_COMMAND:
+        lda     #FNADR
         sta     SINNER
         dey
-        bmi     L9749_RTS
-L9752:  jsr     GO_RAM_LOAD_GO_KERN
+        bmi     L9749_RTS               ;Branch if there is no command
+L9752_LOOP:
+        jsr     GO_RAM_LOAD_GO_KERN
         sta     V1541_CMD_BUF,y
         dey
-        bpl     L9752
-        bra     L9772_V1541_INTERPRET_CMD
+        bpl     L9752_LOOP
+        bra     V1541_PERFORM_CMD
 
-L975D_V1541_CHROUT_CMD_CHAN:
+;CHROUT to the command channel (15).  Characters would collect in
+;V1541_CMD_BUF until a carriage return, which performs the command.
+;
+;This is never reached, because of the bug in V1541_OPEN_CMD_CHAN: it marks
+;channel 15 as open for reading only ($10), and V1541_INTERNAL_CHROUT stops
+;with error 61, FILE NOT OPEN, for a channel that is not open for writing
+;($20).  So a command sent with PRINT# fails, and commands can only be sent
+;as the filename of an OPEN.  $30 was probably meant in V1541_OPEN_CMD_CHAN.
+;
+;BUG: (latent) if this code were reached, it would have two problems of its
+;own.  The carriage return is left in the buffer and counted, so the commands
+;that parse a filename (R and S) would reject it as a bad character and fail.
+;And the buffer is only emptied by I and by opening channel 15, so the next
+;command would be added to the end of the buffer.
+V1541_CHROUT_CMD_CHAN:
         ldy     V1541_CMD_LEN
-        jsr     L972E_V1541_CHECK_MAX_CMD_LEN
-        bcs     L9766_STORE_CHR_IF_0D_INTERP_CMD ;branch if no error
+        jsr     V1541_CHECK_CMD_LEN
+        bcs     L9766_STORE                      ;branch if no error
         rts
 ; ----------------------------------------------------------------------------
-L9766_STORE_CHR_IF_0D_INTERP_CMD:
+L9766_STORE:
         sta     V1541_CMD_BUF,Y
         inc     V1541_CMD_LEN
         cmp     #$0D ;CR?
-        beq     L9772_V1541_INTERPRET_CMD
+        beq     V1541_PERFORM_CMD
         sec
         rts
 
-L9772_V1541_INTERPRET_CMD:
+;Perform the command in V1541_CMD_BUF.  The first character selects the
+;command.  The rest is parsed as a filename before the handler is called,
+;so the handler gets the result of V1541_PARSE_NAME in A and the carry.
+V1541_PERFORM_CMD:
         lda     V1541_CMD_BUF
-L9775:  ldx     #(4*2)-1 ;4 cmds in table, two chars each
-L9777:  cmp     L978E_V1541_CMDS,x
-        beq     L9783_FOUND_CMD_IN_TABLE
+        ldx     #(4*2)-1 ;4 cmds in table, two chars each
+L9777_SEARCH_LOOP:
+        cmp     V1541_CMDS,x
+        beq     L9783_FOUND
         dex
-        bpl     L9777
+        bpl     L9777_SEARCH_LOOP
         lda     #doserr_31_invalid_cmd
         clc
         rts
 
-L9783_FOUND_CMD_IN_TABLE:
+L9783_FOUND:
         txa
-        and     #$FE
+        and     #$FE                    ;X = index of the handler (each command letter is in the table twice: uppercase and lowercase)
         pha
-        jsr     L979E
+        jsr     V1541_PARSE_CMD_ARG
         plx
-        jmp     (L9796_V1541_CMD_HANDLERS,x)
+        jmp     (V1541_CMD_HANDLERS,x)
 
-L978E_V1541_CMDS:
+V1541_CMDS:
         .byte "Ii", "Rr", "Ss", "Vv"
-L9796_V1541_CMD_HANDLERS:
-        .addr L8C6F_V1541_I_INITIALIZE
-        .addr L980E_V1541_R_RENAME
-L979A:  .addr L97D6_V1541_S_SCRATCH
-        .addr L9842_V1541_V_VALIDATE
+V1541_CMD_HANDLERS:
+        .addr V1541_I_INITIALIZE
+        .addr V1541_R_RENAME
+        .addr V1541_S_SCRATCH
+        .addr V1541_V_VALIDATE
 
-L979E:  ldy     V1541_CMD_LEN
+;Parse everything after the first character of V1541_CMD_BUF as a filename.
+V1541_PARSE_CMD_ARG:
+        ldy     V1541_CMD_LEN
         dey
-        lda     #$96 ;TODO probably an address, see L8EB6
-        ldx     #$02
-        jmp     L8EB6
+        lda     #<(V1541_CMD_BUF+1)
+        ldx     #>(V1541_CMD_BUF+1)
+        jmp     V1541_PARSE_NAME_AXY
 
-;Called twice from rename, not used anywhere else
-L97A9_USED_BY_RENAME:
-        jsr     L979E
-L97AC:  lda     (V1541_FNADR)
+;Find the old file for rename: parse the part of the command that follows
+;the "=" as a filename and look it up in the directory.
+;Returns the same as V1541_DIR_FIND_NAME, or carry clear and A=33.
+V1541_FIND_OLD_NAME:
+        jsr     V1541_PARSE_CMD_ARG
+L97AC_LOOP:
+        lda     (V1541_FNADR)
         inc     V1541_FNADR
-        bne     L97B4
+        bne     L97B4_NO_CARRY
         inc     V1541_FNADR+1
-L97B4:  dec     V1541_FNLEN
-        beq     L97D2_33_SYNTAX_ERROR
+L97B4_NO_CARRY:
+        dec     V1541_FNLEN
+        beq     L97D2_33_SYNTAX_ERROR   ;Branch if there is no "=", or nothing after it
         cmp     #'='
-        bne     L97AC
-        jsr     L8EBD_SETUP_FOR_FILE_ACCESS_AND_DO_DIR_SEARCH_STUFF
+        bne     L97AC_LOOP
+        jsr     V1541_PARSE_NAME
         bcc     L97D4_CLC_RTS
         and     #$40
         ora     V1541_FILE_TYPE
         ora     V1541_FILE_MODE
-        ora     BAD
-        bne     L97D2_33_SYNTAX_ERROR
-        jmp     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
+        ora     V1541_NAME_PREFIX
+        bne     L97D2_33_SYNTAX_ERROR   ;Branch if it has a wildcard, a type, a mode or a prefix
+        jmp     V1541_DIR_FIND_NAME
 ; ----------------------------------------------------------------------------
 
 L97D2_33_SYNTAX_ERROR:
@@ -3811,66 +4361,72 @@ L97D4_CLC_RTS:
         clc
         rts
 ; ----------------------------------------------------------------------------
-L97D6_V1541_S_SCRATCH:
-        bcs     L97DC
+;"S" command: scratch (delete) every file that matches the name.
+;The status afterwards is 01, FILES SCRATCHED, with the number of files
+;deleted as the track number.
+V1541_S_SCRATCH:
+        bcs     L97DC_PARSED_OK
 L97D8_SCRATCH_NO_FILENAME:
         lda     #doserr_34_syntax_err ;34 No file given
         clc
         rts
 
-L97DC:  bit     #$80
-        beq     L97D8_SCRATCH_NO_FILENAME
+L97DC_PARSED_OK:
+        bit     #$80
+        beq     L97D8_SCRATCH_NO_FILENAME ;Branch if there is no name
         and     #$20
         ora     V1541_FILE_TYPE
         ora     V1541_FILE_MODE
-        bne     L97D8_SCRATCH_NO_FILENAME
+        bne     L97D8_SCRATCH_NO_FILENAME ;Branch if there is an "=", a type or a mode
         lda     #$00
-        pha
-L97ED:
-        jsr     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
-        bcc     L9805_ERROR
-L97F2:  tsx
-        inc     stack+1,x
-        jsr     L8D17  ;maybe returns cbm dos error in a
+        pha                             ;Push the count of files scratched
+L97ED_LOOP:
+        jsr     V1541_DIR_FIND_NAME
+        bcc     L9805_DONE              ;Branch if there are no more files that match
+        tsx
+        inc     stack+1,x               ;Count it
+        jsr     V1541_DIR_DELETE_ENTRY  ;Delete its directory entry
         lda     V1541_DATA_BUF
         and     #$80
-        bne     L97ED
-        jsr     L89E2
-L9803:  bra     L97ED
+        bne     L97ED_LOOP              ;Branch if it is a special ($80) entry: it has no blocks
+        jsr     V1541_DELETE_FILE_BLOCKS ;Delete its blocks
+        bra     L97ED_LOOP
 
-L9805_ERROR:
-        pla
-        ldx     #$01
+L9805_DONE:
+        pla                             ;A = number of files scratched, reported as the track
+        ldx     #doserr_01_files_scratched
         ldy     #$00
         sec
-        jmp     L9964_STORE_XAY_CLEAR_0217
+        jmp     V1541_SET_STATUS
 
 ; ----------------------------------------------------------------------------
-L980E_V1541_R_RENAME:
+;"R" command: rename a file.  The command is R[0:]newname=oldname.
+V1541_R_RENAME:
         bcc     L9840_RENAME_ERROR
         bit     #$80
-        beq     L983E_RENAME_INVALID_FILENAME
+        beq     L983E_RENAME_INVALID_FILENAME ;Branch if there is no new name
         and     #$40
-        ora     BAD
+        ora     V1541_NAME_PREFIX
         ora     V1541_FILE_MODE
-        ORA     V1541_FILE_TYPE
-        bne     L983E_RENAME_INVALID_FILENAME
+        ora     V1541_FILE_TYPE
+        bne     L983E_RENAME_INVALID_FILENAME ;Branch if the new name has a wildcard, a prefix, a mode or a type
 
-        jsr     L8D9F_SELECT_DIR_CHANNEL_AND_CLEAR_IT_THEN_UNKNOWN_THEN_FILENAME_COMPARE
+        jsr     V1541_DIR_FIND_NAME     ;The new name must not be in use
         lda     #doserr_63_file_exists
         bcs     L9840_RENAME_ERROR ;branch if no error (file exists, which is an error here)
 
-        jsr     L97A9_USED_BY_RENAME
+        jsr     V1541_FIND_OLD_NAME     ;Find the old file
         bcc     L9840_RENAME_ERROR
 
-        jsr     L979E
-        jsr     L8FF3
+        jsr     V1541_PARSE_CMD_ARG     ;Parse the new name again...
+        jsr     V1541_COPY_NAME_TO_ENTRY ;...and put it in the old file's directory entry
 
-L9833:  jsr     L8D5B_UNKNOWN_DIR_RELATED
+L9833_ADD:
+        jsr     V1541_DIR_ADD_ENTRY     ;Add that entry to the directory
         bcc     L9840_RENAME_ERROR
 
-        jsr     L97A9_USED_BY_RENAME
-        jmp     L8D17 ;maybe returns cbm dos error in a
+        jsr     V1541_FIND_OLD_NAME     ;Find the old entry again...
+        jmp     V1541_DIR_DELETE_ENTRY  ;...and delete it
 
 L983E_RENAME_INVALID_FILENAME:
         lda     #doserr_33_syntax_err ;33 Invalid filename
@@ -3879,115 +4435,171 @@ L9840_RENAME_ERROR:
         rts
 
 ; ----------------------------------------------------------------------------
-L9842_V1541_V_VALIDATE:
-        jsr     L8C6F_V1541_I_INITIALIZE
-        jsr     KL_RAMTAS
-        cpx     $0209
-        beq     L985B
+;"V" command: validate.  In practice this erases the disk.
+;
+;  - If the amount of RAM has changed, or the bottom of the disk is out of
+;    bounds, the disk is made empty.
+;    BUG: the bounds check compares X, the high byte of the RAM size, with
+;    the low byte of V1541_BOTTOM_PAGE where the high byte was meant (compare
+;    V1541_CHECK_DISK_INTACT).  On a 128K machine this erases any disk that
+;    holds between 1 and 254 blocks.
+;
+;  - Otherwise four passes are made, and they have bugs of their own:
+;
+;    1. Meant to cut off a damaged end of the directory.
+;       BUG: as written, it cuts the directory off after its second entry.
+;    2. Meant to delete the entries of files that have blocks missing.
+;       BUG: for the first entry, the file id is never loaded, so the blocks
+;       of the directory itself are counted.  After that, V1541_DIR_NEXT is
+;       called on the channel that was used to check the file, so it reads
+;       that file instead of the directory.
+;    3. Meant to make a bitmap of the file ids in use, delete entries with
+;       duplicate ids, and bring the checksums and splat flags up to date.
+;       BUG: A is never loaded with the file id before it is looked up in the
+;       bitmap.  It holds 0, the id of the directory, which is always marked
+;       as in use, so every entry is taken for a duplicate and deleted.
+;    4. Deletes every block whose file id is not in the bitmap.  After
+;       pass 3 that is every block except the directory.
+;
+;  - BUG: the first passes read the directory through channel 14, which
+;    V1541_I_INITIALIZE leaves selected.  That is also the channel of a
+;    command file, so a command file that is being read continues from the
+;    wrong position.
+V1541_V_VALIDATE:
+        jsr     V1541_I_INITIALIZE      ;Close all channels but 14, which stays selected and is used by the passes below
+        jsr     KL_RAMTAS               ;A/X = number of RAM pages present
+        cpx     RAM_PAGES+1
+        beq     L985B_SAME_HIGH         ;Branch if the high byte is the same as before
 
-L984D:  stx     $0209
-        sta     $0208
-        stx     $020B
-        sta     $020A
+L984D_ERASE:
+        stx     RAM_PAGES+1
+        sta     RAM_PAGES
+        stx     V1541_BOTTOM_PAGE+1
+        sta     V1541_BOTTOM_PAGE       ;Empty disk: its bottom is the top of RAM
         sec
         rts
 
-L985B:  cmp     $0208
-        bne     L984D
-        cpx     $020A
-        bcc     L984D
-        bne     L986C
-        cmp     $020A
-        bcc     L984D
-L986C:  jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-        bne     L9890
-L9871:  jsr     L8CC3
-        bcc     L988B ;branch if error
-        jsr     L8CD1
-        jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
+L985B_SAME_HIGH:
+        cmp     RAM_PAGES
+        bne     L984D_ERASE             ;Branch if the amount of RAM has changed
+        cpx     V1541_BOTTOM_PAGE       ;BUG: should compare with V1541_BOTTOM_PAGE+1
+        bcc     L984D_ERASE
+        bne     L986C_PASS_1
+        cmp     V1541_BOTTOM_PAGE
+        bcc     L984D_ERASE
+L986C_PASS_1:
+        jsr     V1541_DIR_FIRST
+        bne     L9890_PASS_2            ;BUG: never branches, because V1541_DIR_FIRST always returns Z=1
+L9871_LOOP:
+        jsr     V1541_DIR_NEXT
+        bcc     L988B_NO_ENTRY          ;Branch if no entry was read
+        jsr     V1541_SWAP_POSITION
+        jsr     V1541_FIND_BLOCK
         ldy     #$02
-        lda     V1541_ACTIV_EA
-        sta     ($E4),y
-L9882:  inc     V1541_ACTIV_E9
-        beq     L9890
-        jsr     L89F9
-        bra     L9882
-L988B:  bit     SXREG
-        bpl     L9871
-L9890:  jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-        bcc     L98D0
-        bra     L98AB
-L9897:  jsr     L8CC3
-        BCC     L98D0 ;branch if error
-        jsr     L8C2A_JSR_V1541_SELECT_CHAN_17_JMP_L8C8B_CLEAR_ACTIVE_CHANNEL
-        LDA     V1541_DATA_BUF
+        lda     V1541_ACTIV_OFFS
+        sta     (MAPPED_PAGE_PTR),y     ;Make this the end of the directory...
+L9882_DELETE_LOOP:
+        inc     V1541_ACTIV_SEQ
+        beq     L9890_PASS_2
+        jsr     V1541_FIND_AND_DELETE_BLOCK ;...and delete all of its blocks that follow
+        bra     L9882_DELETE_LOOP
+L988B_NO_ENTRY:
+        bit     V1541_EOF
+        bpl     L9871_LOOP              ;Loop unless that was the end of the directory
+L9890_PASS_2:
+        jsr     V1541_DIR_FIRST
+        bcc     L98D0_PASS_3
+        bra     L98AB_BLOCK_LOOP
+L9897_NEXT_ENTRY:
+        jsr     V1541_DIR_NEXT
+        bcc     L98D0_PASS_3 ;branch if error
+        jsr     V1541_SELECT_LOAD_CHANNEL_AND_CLEAR_IT
+        lda     V1541_DATA_BUF
         bit     #$80
-        bne     L98B4
+        bne     L98B4_DELETE_ENTRY      ;Branch if it is a special ($80) entry: delete it
         lda     V1541_DATA_BUF+1
-        sta     V1541_ACTIV_E8
-L98AB:  jsr     L8AD5_MAYBE_READS_BLOCK_HEADER
-        bcs     L98B9 ;branch if no error
+        sta     V1541_ACTIV_ID
+L98AB_BLOCK_LOOP:
+        jsr     V1541_FIND_BLOCK
+        bcs     L98B9_BLOCK_FOUND       ;Branch if the block exists
         ;error
-        lda     V1541_ACTIV_E9
-        beq     L9897
-L98B4:  jsr     L8D17 ;maybe returns cbm dos error in a
-        bra     L9890
+        lda     V1541_ACTIV_SEQ
+        beq     L9897_NEXT_ENTRY        ;Branch if the file has no blocks at all: that is allowed
+L98B4_DELETE_ENTRY:
+        jsr     V1541_DIR_DELETE_ENTRY
+        bra     L9890_PASS_2
 
-L98B9:  inc     V1541_ACTIV_E9
+L98B9_BLOCK_FOUND:
+        inc     V1541_ACTIV_SEQ
         ldy     #$02
-        lda     ($E4),y
-        beq     L98AB
-        lda     V1541_ACTIV_E9
+        lda     (MAPPED_PAGE_PTR),y
+        beq     L98AB_BLOCK_LOOP        ;Loop if it is a full block: there should be another
+        lda     V1541_ACTIV_SEQ
         pha
-        jsr     L8DE0_SOMEHOW_GETS_FILE_BLOCKS_USED_1
-        sta     V1541_ACTIV_E9 ;store number of blocks used
+        jsr     V1541_COUNT_FILE_BLOCKS
+        sta     V1541_ACTIV_SEQ ;store number of blocks used
         pla
-        cmp     V1541_ACTIV_E9
-        BNE     L98B4
-        BRA     L9897
-L98D0:  ldx     #$3F
-L98D2:  stz     V1541_CMD_BUF,x
+        cmp     V1541_ACTIV_SEQ         ;The last block's number + 1 must be the number of blocks the file has
+        bne     L98B4_DELETE_ENTRY
+        bra     L9897_NEXT_ENTRY
+L98D0_PASS_3:
+        ldx     #$3F
+L98D2_CLEAR_LOOP:
+        stz     V1541_CMD_BUF,x         ;Clear the bitmap of file ids in use (512 bits; only 256 are needed)
         dex
-        bpl     L98D2
-        inc     V1541_CMD_BUF
-        jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-L98DE:  bcc     L9917
-        bra     L98E5
-L98E2:  jsr     L8D17 ;maybe returns cbm dos error in a
-L98E5:  jsr     L8CBB_CLEAR_ACTIVE_CHANNEL_EXCEPT_FLAGS_THEN_BRA_L8CCE_JSR_L8CE6_THEN_UPDATE_ACTIVE_CHANNEL_AND_03A7_03A6
-L98E8:  bra     L98ED
-L98EA:  jsr     L8CC3
-L98ED:  bcc     L9917 ;branch if error
-        jsr     L9932
+        bpl     L98D2_CLEAR_LOOP
+        inc     V1541_CMD_BUF           ;File 0, the directory, is in use
+        jsr     V1541_DIR_FIRST
+        bcc     L9917_PASS_4
+        bra     L98E5_FIRST
+L98E2_DELETE_DUPLICATE:
+        jsr     V1541_DIR_DELETE_ENTRY
+L98E5_FIRST:
+        jsr     V1541_DIR_FIRST
+        bra     L98ED_CHECK
+L98EA_NEXT:
+        jsr     V1541_DIR_NEXT
+L98ED_CHECK:
+        bcc     L9917_PASS_4            ;Branch if there are no more entries
+        jsr     V1541_ID_TO_BIT         ;BUG: A should be the file id (V1541_DATA_BUF+1), but it is 0
         and     V1541_CMD_BUF,y
-        bne     L98E2
+        bne     L98E2_DELETE_DUPLICATE  ;Branch if the id is already marked: delete the entry and start over
         lda     PowersOfTwo,x
         ora     V1541_CMD_BUF,y
-        sta     V1541_CMD_BUF,y
+        sta     V1541_CMD_BUF,y         ;Mark the id as in use
         lda     #$30
         trb     V1541_DATA_BUF
-        bne     L990F
+        bne     L990F_REWRITE_ENTRY     ;Branch if the file was never closed
         lda     V1541_DATA_BUF+1
-        jsr     L8E20_MAYBE_CHECKS_HEADER ;maybe returns cbm dos error code in A
-        bcs     L98EA ;branch if no error
+        jsr     V1541_VERIFY_FILE_CHECKSUM
+        bcs     L98EA_NEXT              ;Branch if the file's checksum is right
         ;error occurred
-L990F:  jsr     L8D17 ;maybe returns cbm dos error in a
-        jsr     L8D5B_UNKNOWN_DIR_RELATED
-        bra     L98D0
-L9917:  jsr     L8A81
-L991A:  beq     L9930
-L991C:  lda     ($E4)
-        jsr     L9932
+L990F_REWRITE_ENTRY:
+        jsr     V1541_DIR_DELETE_ENTRY  ;Delete the entry...
+        jsr     V1541_DIR_ADD_ENTRY     ;...and add it again with a new checksum and the splat flag cleared
+        bra     L98D0_PASS_3
+L9917_PASS_4:
+        jsr     V1541_FIRST_BLOCK
+        beq     L9930_DONE
+L991C_LOOP:
+        lda     (MAPPED_PAGE_PTR)       ;A = file id of this block
+        jsr     V1541_ID_TO_BIT
         and     V1541_CMD_BUF,y
-        bne     L992B
-        jsr     L89FF
-        bra     L9917
-L992B:  jsr     L8A61
-        bcs     L991C
-L9930:  sec
+        bne     L992B_KEEP              ;Branch if its id is in use
+        jsr     V1541_DELETE_BLOCK      ;Delete the block and start over from the bottom
+        bra     L9917_PASS_4
+L992B_KEEP:
+        jsr     V1541_NEXT_BLOCK
+        bcs     L991C_LOOP
+L9930_DONE:
+        sec
         rts
 ; ----------------------------------------------------------------------------
-L9932:  pha
+;Turn a file id into a position in the bitmap of ids.
+;Call with A = id.  Returns Y = index of the byte, X = number of the bit,
+;A = mask for the bit.
+V1541_ID_TO_BIT:
+        pha
         lsr     a
         lsr     a
         lsr     a
@@ -3996,165 +4608,257 @@ L9932:  pha
         and     #$07
         tax
         lda     PowersOfTwo,x
-L993E:  rts
+        rts
 ; ----------------------------------------------------------------------------
+;Every Virtual 1541 call made by the KERNAL (open, close, chrin, chrout,
+;save, load) ends up here to turn the result of the internal routine into
+;what the KERNAL expects.
+;
+;Call with:   Carry set = success; A = the byte that was read, if any
+;             Carry clear = failure; A = CBM DOS error number
+;Returns:     Carry clear
+;             A = the byte that was read, or a carriage return on failure
+;             SATUS = $40 if V1541_EOF was set (end of file), plus $04 on
+;                     failure, plus $08 if the failure was error 25
+;             On failure the error number, file id and block sequence
+;             number become the status message (see V1541_CHRIN_CMD_CHAN).
 V1541_KERNAL_CALL_DONE:
         tax ;Save error code in X
         lda     #$00
-        bcs     L9955 ;branch if no error
+        bcs     L9955_SET_STATUS ;branch if no error
 
         ;error occurred
-        lda     V1541_ACTIV_E8
-        ldy     V1541_ACTIV_E9
-        jsr     L9964_STORE_XAY_CLEAR_0217
+        lda     V1541_ACTIV_ID
+        ldy     V1541_ACTIV_SEQ
+        jsr     V1541_SET_STATUS           ;Error number, with the file id and sequence number as track and sector
         lda     #$04
         cpx     #doserr_25_write_err ;25 write-verify error
-        bne     L9953
+        bne     L9953_NOT_25
         ora     #$08
-L9953:  ldx     #$0D
-L9955:  bit     SXREG
-        bpl     L995C
+L9953_NOT_25:
+        ldx     #$0D                    ;Return a carriage return
+L9955_SET_STATUS:
+        bit     V1541_EOF
+        bpl     L995C_NOT_EOF
         ora     #$40 ;EOF
-L995C:  sta     SATUS
-        stz     SXREG
+L995C_NOT_EOF:
+        sta     SATUS
+        stz     V1541_EOF
         txa
-L9962:  clc
+L9962_CLC_RTS:
+        clc
         rts
 ; ----------------------------------------------------------------------------
-L9964_STORE_XAY_CLEAR_0217:
-        stx     $0210
-        sta     $0211
-        sty     $0212
+;Set the status that will be read from the command channel:
+;X = error number, A = track, Y = sector.
+V1541_SET_STATUS:
+        stx     V1541_ERR_CODE
+        sta     V1541_ERR_TRACK
+        sty     V1541_ERR_SECTOR
 
-        stz     $0217
+        stz     V1541_ERR_POS           ;The next read starts at the beginning of the message
         rts
 ; ----------------------------------------------------------------------------
+;Words used in the status messages.  Each errw_ constant is the offset of a
+;word from V1541_ERROR_WORDS-1, which is how V1541_ERROR_MSGS refers to it.
 V1541_ERROR_WORDS:
+errw_channel   = * - V1541_ERROR_WORDS + 1
         .byte   "CHANNEL",0
+errw_command   = * - V1541_ERROR_WORDS + 1
         .byte   "COMMAND",0
+errw_directory = * - V1541_ERROR_WORDS + 1
         .byte   "DIRECTORY",0
+errw_disk      = * - V1541_ERROR_WORDS + 1
         .byte   "DISK",0
+errw_dos       = * - V1541_ERROR_WORDS + 1
         .byte   "DOS",0
+errw_error     = * - V1541_ERROR_WORDS + 1
         .byte   "ERROR",0
+errw_exists    = * - V1541_ERROR_WORDS + 1
         .byte   "EXISTS",0
+errw_file      = * - V1541_ERROR_WORDS + 1
         .byte   "FILE",0
+errw_files     = * - V1541_ERROR_WORDS + 1
         .byte   "FILES",0
+errw_found     = * - V1541_ERROR_WORDS + 1
         .byte   "FOUND",0
+errw_full      = * - V1541_ERROR_WORDS + 1
         .byte   "FULL",0
+errw_illegal   = * - V1541_ERROR_WORDS + 1
         .byte   "ILLEGAL",0
+errw_invalid   = * - V1541_ERROR_WORDS + 1
         .byte   "INVALID",0
+errw_large     = * - V1541_ERROR_WORDS + 1
         .byte   "LARGE",0
+errw_line      = * - V1541_ERROR_WORDS + 1
         .byte   "LINE",0
+errw_long      = * - V1541_ERROR_WORDS + 1
         .byte   "LONG",0
+errw_mismatch  = * - V1541_ERROR_WORDS + 1
         .byte   "MISMATCH",0
+errw_no        = * - V1541_ERROR_WORDS + 1
         .byte   "NO",0
+errw_not       = * - V1541_ERROR_WORDS + 1
         .byte   "NOT",0
+errw_ok        = * - V1541_ERROR_WORDS + 1
         .byte   "OK",0
+errw_open      = * - V1541_ERROR_WORDS + 1
         .byte   "OPEN",0
+errw_protect   = * - V1541_ERROR_WORDS + 1
         .byte   "PROTECT",0
+errw_read      = * - V1541_ERROR_WORDS + 1
         .byte   "READ",0
+errw_scratched = * - V1541_ERROR_WORDS + 1
         .byte   "SCRATCHED",0
+errw_syntax    = * - V1541_ERROR_WORDS + 1
         .byte   "SYNTAX",0
+errw_system    = * - V1541_ERROR_WORDS + 1
         .byte   "SYSTEM",0
+errw_ts        = * - V1541_ERROR_WORDS + 1
         .byte   "T&S",0
+errw_too       = * - V1541_ERROR_WORDS + 1
         .byte   "TOO",0
+errw_type      = * - V1541_ERROR_WORDS + 1
         .byte   "TYPE",0
+errw_verify    = * - V1541_ERROR_WORDS + 1
         .byte   "VERIFY",0
-L9A2A := *+2
-L9A2B := *+3
+errw_write     = * - V1541_ERROR_WORDS + 1
         .byte   "WRITE",0
-        .byte   0
+
+;Status messages.  Each is an error number followed by the offsets of up to
+;three words (0 = no word).  There is no end marker.  For an error number
+;that is not here, the search in V1541_CHRIN_CMD_CHAN continues through
+;whatever follows, until a byte happens to match or its index wraps around.
+;Every error that the Virtual 1541 reports is in the table, though.
+V1541_ERROR_MSGS:
+        .byte   doserr_00_ok, errw_ok, 0, 0                                         ;00, OK
+        .byte   doserr_01_files_scratched, errw_files, errw_scratched, 0            ;01, FILES SCRATCHED
+        .byte   doserr_20_read_err, errw_illegal, errw_ts, 0                        ;20, ILLEGAL T&S
+        .byte   doserr_25_write_err, errw_write, errw_verify, errw_error            ;25, WRITE VERIFY ERROR
+        .byte   doserr_26_write_prot_on, errw_write, errw_protect, errw_error       ;26, WRITE PROTECT ERROR
+        .byte   doserr_27_read_error, errw_read, errw_error, 0                      ;27, READ ERROR
+        .byte   doserr_31_invalid_cmd, errw_invalid, errw_command, 0                ;31, INVALID COMMAND
+        .byte   doserr_32_syntax_err, errw_long, errw_line, 0                       ;32, LONG LINE
+        .byte   doserr_33_syntax_err, errw_syntax, errw_error, 0                    ;33, SYNTAX ERROR
+        .byte   doserr_33_syntax_err, errw_syntax, errw_error, 0                    ;33 again (never reached)
+        .byte   doserr_34_syntax_err, errw_syntax, errw_error, 0                    ;34, SYNTAX ERROR
+        .byte   doserr_39_syntax_err, errw_syntax, errw_error, 0                    ;39, SYNTAX ERROR
+        .byte   doserr_52_file_too_large, errw_file, errw_too, errw_large           ;52, FILE TOO LARGE
+        .byte   doserr_60_write_file_open, errw_write, errw_file, errw_open         ;60, WRITE FILE OPEN
+        .byte   doserr_61_file_not_open, errw_file, errw_not, errw_open             ;61, FILE NOT OPEN
+        .byte   doserr_62_file_not_found, errw_file, errw_not, errw_found           ;62, FILE NOT FOUND
+        .byte   doserr_63_file_exists, errw_file, errw_exists, 0                    ;63, FILE EXISTS
+        .byte   doserr_64_file_type_mism, errw_file, errw_type, errw_mismatch       ;64, FILE TYPE MISMATCH
+        .byte   doserr_67_illegal_sys_ts, errw_illegal, errw_system, errw_ts        ;67, ILLEGAL SYSTEM T&S
+        .byte   doserr_70_no_channel, errw_no, errw_channel, 0                      ;70, NO CHANNEL
+        .byte   doserr_71_dir_error, errw_directory, errw_error, 0                  ;71, DIRECTORY ERROR
+        .byte   doserr_71_dir_error, errw_directory, errw_error, 0                  ;71 again (never reached)
+        .byte   doserr_72_disk_full, errw_disk, errw_full, 0                        ;72, DISK FULL
+        .byte   doserr_73_dos_mismatch, errw_dos, errw_mismatch, errw_error         ;73, DOS MISMATCH ERROR
+
+;Positions in the status message that are not part of the words.  Positions
+;3 and up are the words.  When the words run out, the position jumps to $80.
+V1541_STATUS_POSITIONS:
+        .byte   $00,$01,$02             ;Error number and a comma
+        .byte   $80,$81,$82,$83         ;Track and a comma
+        .byte   $84,$85,$86,$87         ;Sector and the end
+        .byte   $88                     ;Never reached
+
+;What to return at each of the positions above:
+;  Bits 0-1: which number (1 = error, 2 = track, 3 = sector)
+;  Bit 7 = its ones digit, bit 6 = its tens digit, neither = its hundreds digit
+;  Bit 4 = a comma instead
+;  $00 = carriage return, end of message
+V1541_STATUS_FORMATS:
+        .byte   $41,$81,$10             ;Error number (2 digits) and a comma
+        .byte   $22,$42,$82,$10         ;Track (3 digits) and a comma
+        .byte   $23,$43,$83,$00         ;Sector (3 digits) and the end
 ; ----------------------------------------------------------------------------
-        .byte   $77,$00,$00,$01,$36,$8C,$00,$14 ; 9A2F 77 00 00 01 36 8C 00 14  w...6...
-        .byte   $47,$A4,$00,$19,$B8,$B1,$24,$1A ; 9A37 47 A4 00 19 B8 B1 24 1A  G.....$.
-        .byte   $B8,$7F,$24,$1B,$87,$24,$00,$1F ; 9A3F B8 7F 24 1B 87 24 00 1F  ..$..$..
-        .byte   $4F,$09,$00,$20,$62,$5D,$00,$21 ; 9A47 4F 09 00 20 62 5D 00 21  O.. b].!
-        .byte   $96,$24,$00,$21,$96,$24,$00,$22 ; 9A4F 96 24 00 21 96 24 00 22  .$.!.$."
-        .byte   $96,$24,$00,$27,$96,$24,$00,$34 ; 9A57 96 24 00 27 96 24 00 34  .$.'.$.4
-        .byte   $31,$A8,$57,$3C,$B8,$31,$7A,$3D ; 9A5F 31 A8 57 3C B8 31 7A 3D  1.W<.1z=
-        .byte   $31,$73,$7A                     ; 9A67 31 73 7A                 1sz
-L9A6A:  .byte   $3E,$31,$73,$3C,$3F,$31,$2A,$00 ; 9A6A 3E 31 73 3C 3F 31 2A 00  >1s<?1*.
-        .byte   $40,$31,$AC,$67,$43,$47,$9D,$A4 ; 9A72 40 31 AC 67 43 47 9D A4  @1.gCG..
-        .byte   $46,$70,$01,$00,$47,$11,$24,$00 ; 9A7A 46 70 01 00 47 11 24 00  Fp..G.$.
-        .byte   $47,$11,$24,$00,$48
-L9A87:  .byte   $1B,$42,$00,$49,$20,$67,$24
-L9A8E:  .byte   $00,$01,$02,$80,$81,$82,$83,$84 ; 9A8E 00 01 02 80 81 82 83 84  ........
-        .byte   $85,$86,$87,$88                 ; 9A96 85 86 87 88              ....
-L9A9A:  .byte   $41,$81,$10,$22,$42,$82,$10,$23 ; 9A9A 41 81 10 22 42 82 10 23  A.."B..#
-        .byte   $43,$83,$00                     ; 9AA2 43 83 00                 C..
-; ----------------------------------------------------------------------------
-L9AA5_V1541_CHRIN_CMD_CHAN:
-        lda     $0217
-        inc     $0217
+;CHRIN from the command channel (15): return the next character of the
+;status message.  The message looks like this:
+;
+;   62,FILE NOT FOUND,000,000
+;
+;The two-digit error number, the words that go with it, a three-digit track
+;and a three-digit sector, then a carriage return with V1541_EOF set.  After
+;the carriage return the status is reset to 00,OK,000,000.
+V1541_CHRIN_CMD_CHAN:
+        lda     V1541_ERR_POS
+        inc     V1541_ERR_POS
         ldy     #$0B
-L9AAD_SEARCH_L9A8E_LOOP:
-        cmp     L9A8E,y
-        beq     L9AB8_FOUND_IN_L9A8E
+L9AAD_SEARCH_LOOP:
+        cmp     V1541_STATUS_POSITIONS,y
+        beq     L9AB8_FOUND
         dey
-        bpl     L9AAD_SEARCH_L9A8E_LOOP
-        jmp     L9AE8_NOT_FOUND_IN_L9A8E
+        bpl     L9AAD_SEARCH_LOOP
+        jmp     L9AE8_WORDS              ;Branch if this position is part of the words
 ; ----------------------------------------------------------------------------
-L9AB8_FOUND_IN_L9A8E:
-        lda     L9A9A,y
-        bne     L9ACD
+L9AB8_FOUND:
+        lda     V1541_STATUS_FORMATS,y
+        bne     L9ACD_NOT_END           ;Branch unless this is the end of the message
         tax
         tay
-        JSR     L9964_STORE_XAY_CLEAR_0217
-        SEC
-        ROR     $039d
-        LDA     #$0d ;cr
+        jsr     V1541_SET_STATUS           ;Reset the status to 00,OK,000,000
+        sec
+        ror     V1541_EOF                   ;V1541_EOF bit 7 = this is the last character
+        lda     #$0d ;cr
         .byte $2c
-L9AC9:  lda     #$2C ;,
+L9AC9_COMMA:
+        lda     #$2C ;,
         sec
         rts
 ; ----------------------------------------------------------------------------
-L9ACD:  bit     #$10
-        bne     L9AC9
-        sta     $E0
-        and     #$03
-L9AD5:  tax
-L9AD6:  lda     $020F,x
+L9ACD_NOT_END:
+        bit     #$10
+        bne     L9AC9_COMMA             ;Branch if this position is a comma
+        sta     V1541_TMP
+        and     #$03                    ;X = which number: 1 = error, 2 = track, 3 = sector
+        tax
+        lda     V1541_ERR_CODE-1,x
         jsr     BIN_TO_BCD_NIBS
-        bit     $E0
-        bmi     L9AE4
+        bit     V1541_TMP
+        bmi     L9AE4_DIGIT             ;Branch if this position is the ones digit
         txa
-        bvs     L9AE4
-        tya
-L9AE4:  ora #$30
+        bvs     L9AE4_DIGIT             ;Branch if this position is the tens digit
+        tya                             ;Otherwise it is the hundreds digit
+L9AE4_DIGIT:
+        ora     #$30
         sec
         rts
 ; ----------------------------------------------------------------------------
-L9AE8_NOT_FOUND_IN_L9A8E:
-        dec     a
-        sta     $E0
+L9AE8_WORDS:
+        dec     a                       ;V1541_TMP counts down to the character wanted.  The space before the
+        sta     V1541_TMP               ;first word would be position 2, which is the comma, so it never appears.
         ldx     #$00
-        lda     $0210
-L9AF0_LOOP:
+        lda     V1541_ERR_CODE
+L9AF0_FIND_MSG_LOOP:
         inx
         inx
         inx
         inx
-        beq     L9B12
-        cmp     L9A2A,x
-        bne     L9AF0_LOOP
-L9AFB_OUTER_LOOP:
-        lda     #$20
-        ldy     L9A2B,x
-        beq     L9B12
-L9B02_INNER_LOOP:
-        dec     $E0
-        beq     L9B19
+        beq     L9B12_END_OF_WORDS      ;Branch if the error number is not in the table: no words
+        cmp     V1541_ERROR_MSGS-4,x
+        bne     L9AF0_FIND_MSG_LOOP
+L9AFB_WORD_LOOP:
+        lda     #$20                    ;Each word is preceded by a space
+        ldy     V1541_ERROR_MSGS-3,x
+        beq     L9B12_END_OF_WORDS      ;Branch if there are no more words
+L9B02_CHAR_LOOP:
+        dec     V1541_TMP
+        beq     L9B19_RETURN            ;Branch if this is the character wanted
         iny
         lda     V1541_ERROR_WORDS-2,y
-        bne     L9B02_INNER_LOOP
+        bne     L9B02_CHAR_LOOP         ;Loop until the 0 that ends the word
         inx
         txa
         and     #$03
-        bne     L9AFB_OUTER_LOOP
-L9B12:  lda     #$80
-        sta     $0217
-        lda     #$2C
-L9B19:  sec
+        bne     L9AFB_WORD_LOOP         ;Loop for up to 3 words
+L9B12_END_OF_WORDS:
+        lda     #$80                    ;Position $80 is the first digit of the track
+        sta     V1541_ERR_POS
+        lda     #$2C                    ;Return the comma that follows the words
+L9B19_RETURN:
+        sec
         rts
 ; ----------------------------------------------------------------------------
 ;Floating point math package.  This is jump table entry $FF51.
@@ -8048,19 +8752,19 @@ LB6A1:  jsr     V1541_SELECT_CHANNEL_A
         lsr     a ;Bit 0 = MOD_STOP
         bcs     LB6BD_STOP_OR_V1541_L8B46_ERROR ;Branch if STOP pressed
 
-        jsr     L8B46 ;maybe returns a cbm dos error code
+        jsr     V1541_READ_BYTE ;maybe returns a cbm dos error code
         bcc     LB6BD_STOP_OR_V1541_L8B46_ERROR
 
         bit     SXREG
         bpl     LB6BB_BRA_LD294_LD233_0A_THEN_0C
 
-        jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
+        jsr     V1541_CLEAR_ACTIVE_CHANNEL
 
 LB6BB_BRA_LD294_LD233_0A_THEN_0C:
         bra     LD294_LD233_0A_THEN_0C
 
 LB6BD_STOP_OR_V1541_L8B46_ERROR:
-        jsr     L8C8B_CLEAR_ACTIVE_CHANNEL
+        jsr     V1541_CLEAR_ACTIVE_CHANNEL
 
 LB6C0_V1541_SELECT_ERROR:
         stz     MEM_03FA
@@ -8608,7 +9312,7 @@ JX350:  txa
         bpl     JX320_NEW_DFLTN
 LB9FB_JMP_ERROR5:
         jmp     ERROR5 ;DEVICE NOT PRESENT
-LB9FE:  jsr     L9962
+LB9FE:  jsr     L9962_CLC_RTS
         bcc     JX320_NEW_DFLTN
         bra     LB9FB_JMP_ERROR5
 
@@ -8629,7 +9333,7 @@ LBA15:  cmp     #$1E
         cmp     #$02
         beq     LBA2B
         bcs     LBA25
-        jsr     L9962
+        jsr     L9962_CLC_RTS
         bcc     LBA32
         rts
 
@@ -8846,7 +9550,7 @@ LBB31_OPEN_LT_3:
 
 LBB3B_OPEN_NOT_2:
         ;Device 1 Virtual 1541
-        jmp     L9243_OPEN_V1541
+        jmp     V1541_OPEN
 
 OP175_OPEN_CLC_RTS:
         clc
@@ -8948,7 +9652,7 @@ LBBD7:  cmp     #$01   ;Virtual 1541?
         bne     LBBE1_SAVE_IEC
         ;Virtual 1541
         jsr     SAVEING ;Print SAVEING then OUTFN
-        jmp     L9085_V1541_SAVE
+        jmp     V1541_SAVE
 ; ----------------------------------------------------------------------------
 ;SAVE to IEC
 LBBE1_SAVE_IEC:
@@ -8986,7 +9690,7 @@ LBC09:  ;CMPSTE from C64 KERNAL inlined
         sta     SINNER
         jsr     GO_RAM_LOAD_GO_KERN
         jsr     CIOUT
-        jsr     LFDB9_STOP
+        jsr     STOP_FROM_KERN
         bne     LBC2B
         jsr     CLSEI
         lda     #$00
@@ -11023,7 +11727,7 @@ LC7BF:  jsr     SUB0M2
         ror     T0
         sta     T0+1
 LC7D0_LOOP:
-        jsr     LFDB9_STOP
+        jsr     STOP_FROM_KERN
         beq     LC7E2
         jsr     MON_PRINT_LINE_OF_MEMORY
         lda     #$10
@@ -11225,7 +11929,7 @@ LC922:  pha
         pla
         cmp     MSAL
         beq     LC935
-        jsr     LFDB9_STOP
+        jsr     STOP_FROM_KERN
         beq     LC94F_TRANSFER_DONE
         jsr     PUTT2
 LC935:  lda     TMPC
@@ -11279,7 +11983,7 @@ LC994:  jsr     PICK1
         inx
         cpx     V1541_FNLEN
         bne     LC994
-        jsr     LFDB9_STOP
+        jsr     STOP_FROM_KERN
         beq     LC9B3_HUNT_DONE
         jsr     PUTT2
 LC9AB:  jsr     INCT2
@@ -11718,7 +12422,7 @@ LCC99:  lda     #$14
         bne     DISA30
 LCC9F:  jsr     SUB0M2
 DISA30: jsr     CRLF
-        jsr     LFDB9_STOP
+        jsr     STOP_FROM_KERN
         beq     LCCBB
         jsr     LCCBE_DISASM_DOT_ADDR_OPCODE_MNEUMONIC
         inc     LENGTH
@@ -12159,7 +12863,7 @@ LD0D7:  sta     V1541_FILE_MODE
         jsr     MON_PRINT_HEADER_FOR_REGS
         bra     LD11C_MON_WALK_LD11C
 LD0DF:  jsr     MON_PRINT_REGS_WITHOUT_HEADER
-        jsr     LFDB9_STOP
+        jsr     STOP_FROM_KERN
         beq     LD0F9_JMP_MON_MAIN_INPUT
         dec     V1541_FILE_MODE
         bne     LD11C_MON_WALK_LD11C
@@ -12603,12 +13307,13 @@ LD3E4:  php
         ldy     MemTopHiByte
         stz     $020D
         sty     $020C
-        jsr     LD3F6
+        jsr     UPDATE_FREE_PAGES
         ldx     MemTopLoByte
         plp
         rts
 ; ----------------------------------------------------------------------------
-LD3F6:  cld
+UPDATE_FREE_PAGES:
+        cld
         sec
         lda     $020A
         sbc     $020C
@@ -12658,7 +13363,7 @@ LD437:  phx
         lda     $E5
         adc     #$F7
         ldx     #$03
-        jsr     L8A87
+        jsr     MAP_RAM_PAGE
         pla
         sta     $E4
         ply
@@ -12686,7 +13391,7 @@ LD46D:  asl     a
         bpl     LD46D
         dex
         bpl     LD461
-        jmp     L8A81
+        jmp     V1541_FIRST_BLOCK
 
 ; ----------------------------------------------------------------------------
 
@@ -13285,7 +13990,7 @@ RDTIM_: sta     MMU_MODE_KERN
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-LFDB9_STOP:
+STOP_FROM_KERN:
         sta     MMU_MODE_APPL
         jsr     LFFE1_STOP
         jmp     RTS_IN_KERN_MODE
