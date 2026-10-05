@@ -231,10 +231,10 @@ ALARM_MINS      := $0394
 ALARM_HOURS     := $0395
 UNKNOWN_SECS    := $0396
 UNKNOWN_MINS    := $0397
-MemBotLoByte    := $0398
-MemBotHiByte    := $0399
-MemTopLoByte    := $039A
-MemTopHiByte    := $039B
+MemTopLoByte    := $0398
+MemTopHiByte    := $0399
+MemBotLoByte    := $039A
+MemBotHiByte    := $039B
 V1541_BYTE_TO_WRITE := $039E
 V1541_FNLEN     := $039F
 BAD             := $03A0
@@ -1299,11 +1299,11 @@ L8685:  stz     $0200
         jsr     LFDDF_JSR_LFFE7_CLALL
         jsr     L8C6F_V1541_I_INITIALIZE
         stz     $0384
-; Set MEMBOT vector to $0FFF
+; Set MEMTOP vector to $0FFF
         ldy     #>$0FFF
         ldx     #<$0FFF
         clc
-        jmp     MEMBOT__
+        jmp     MEMTOP__
 ; ----------------------------------------------------------------------------
 KL_RAMTAS:
         php
@@ -9581,14 +9581,14 @@ LBFC9:  sta     UNKNOWN_MINS
         plp
         rts
 ; ----------------------------------------------------------------------------
-LBFCE_SETTIM:
+LBFCE_RDTIM:
         sei
         lda     TOD_HOURS
         ldx     TOD_MINS
         ldy     TOD_SECS
-        ;Fall through into LBFD8_RDTIM
+        ;Fall through into LBFD8_SETTIM
 ; ----------------------------------------------------------------------------
-LBFD8_RDTIM:
+LBFD8_SETTIM:
         sei
         sta     TOD_HOURS
         stx     TOD_MINS
@@ -12565,39 +12565,39 @@ LD3A9_CLC_JMP_LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT:
         clc
         jmp     LB6F9_MAYBE_PUT_CHAR_IN_FKEY_BAR_SLOT
 ; ----------------------------------------------------------------------------
-MEMBOT__:
+MEMTOP__:
         rol     a
         inc     a
         ror     a
         bcc     LD3E4
         phx
         lda     #$FF
-        sta     MemBotLoByte
+        sta     MemTopLoByte
         lda     #$F7
-        sta     MemBotHiByte
+        sta     MemTopHiByte
         ldx     $020B
         bne     LD3CE
         cmp     $020A
         bcc     LD3CE
         lda     $020A
         dec     a
-        sta     MemBotHiByte
+        sta     MemTopHiByte
 LD3CE:  plx
-        cpy     MemBotHiByte
+        cpy     MemTopHiByte
         bcc     LD3DD
         bne     LD3E4
-        cpx     MemBotLoByte
+        cpx     MemTopLoByte
         bcc     LD3DD
         bne     LD3E4
-LD3DD:  stx     MemBotLoByte
-        sty     MemBotHiByte
+LD3DD:  stx     MemTopLoByte
+        sty     MemTopHiByte
         clc
 LD3E4:  php
-        ldy     MemBotHiByte
+        ldy     MemTopHiByte
         stz     $020D
         sty     $020C
         jsr     LD3F6
-        ldx     MemBotLoByte
+        ldx     MemTopLoByte
         plp
         rts
 ; ----------------------------------------------------------------------------
@@ -12618,10 +12618,10 @@ LD40D:  dex
 ; ----------------------------------------------------------------------------
 LD411:  clc
         ldy     #$FF
-        jsr     MEMBOT__
+        jsr     MEMTOP__
         clc
         ldy     #$00
-MEMTOP__:
+MEMBOT__:
         bcs     LD42F
         cpy     #$10
         bcs     LD429
@@ -12631,10 +12631,10 @@ MEMTOP__:
         sec
         rts
 ; ----------------------------------------------------------------------------
-LD429:  sty     MemTopHiByte
-        stx     MemTopLoByte
-LD42F:  ldx     MemTopLoByte
-        ldy     MemTopHiByte
+LD429:  sty     MemBotHiByte
+        stx     MemBotLoByte
+LD42F:  ldx     MemBotLoByte
+        ldy     MemBotHiByte
         clc
         rts
 ; ----------------------------------------------------------------------------
@@ -13094,13 +13094,13 @@ TALKSA_:sta     MMU_MODE_KERN
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-MEMBOT_:sta     MMU_MODE_KERN
-        jsr     MEMBOT__
+MEMTOP_:sta     MMU_MODE_KERN
+        jsr     MEMTOP__
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-MEMTOP_:sta     MMU_MODE_KERN
-        jsr     MEMTOP__
+MEMBOT_:sta     MMU_MODE_KERN
+        jsr     MEMBOT__
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
@@ -13268,13 +13268,13 @@ DEFVEC_SAVE:
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-RDTIM_: sta     MMU_MODE_KERN
-        jsr     LBFD8_RDTIM
+SETTIM_:sta     MMU_MODE_KERN
+        jsr     LBFD8_SETTIM
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
-SETTIM_:sta     MMU_MODE_KERN
-        jsr     LBFCE_SETTIM
+RDTIM_: sta     MMU_MODE_KERN
+        jsr     LBFCE_RDTIM
         sta     MMU_MODE_APPL
         rts
 ; ----------------------------------------------------------------------------
@@ -13457,9 +13457,9 @@ LSTNSA: jmp     LSTNSA_                         ; FF93 4C 5A FC                 
 ; ----------------------------------------------------------------------------
 TALKSA: jmp     TALKSA_                         ; FF96 4C 64 FC                 Ld.
 ; ----------------------------------------------------------------------------
-MEMBOT: jmp     MEMBOT_                         ; FF99 4C 6E FC                 Ln.
+MEMTOP: jmp     MEMTOP_                         ; FF99 4C 6E FC                 Ln.
 ; ----------------------------------------------------------------------------
-MEMTOP: jmp     MEMTOP_                         ; FF9C 4C 78 FC                 Lx.
+MEMBOT: jmp     MEMBOT_                         ; FF9C 4C 78 FC                 Lx.
 ; ----------------------------------------------------------------------------
 KJ_SCNKEY:
         jmp     KR_SCNKEY                       ; FF9F 4C 82 FC                 L..
@@ -13531,18 +13531,18 @@ LOAD:   jmp     LOAD_                           ; FFD5 4C 6A FD                 
 ; Real address: $F5DD.
 SAVE:   jmp     SAVE_                           ; FFD8 4C 88 FD                 L..
 ; ----------------------------------------------------------------------------
-; RDTIM. Read Time of Day
+; SETTIM. Set Time of Day
 ; Input: A/X/Y = New TOD value.
 ; Output: –
 ; Used registers: –
 ; Real address: $F6E4.
-RDTIM:  jmp     RDTIM_                           ; FFDB 4C A5 FD                 L..
+SETTIM: jmp     SETTIM_                          ; FFDB 4C A5 FD                 L..
 ; ----------------------------------------------------------------------------
-; SETTIM. Set Time of Day
+; RDTIM. Read Time of Day
 ; Input: –
 ; Output: A/X/Y = Current TOD value.
 ; Used registers: A, X, Y.
-SETTIM: jmp     SETTIM_                           ; FFDE 4C AF FD                 L..
+RDTIM:  jmp     RDTIM_                            ; FFDE 4C AF FD                 L..
 ; ----------------------------------------------------------------------------
 ; STOP. Query Stop key indicator, at memory address $0091; if pressed, call
 ; CLRCHN and clear keyboard buffer.
