@@ -204,7 +204,7 @@ C128_FF7A_INDCMP  := $FF7A  ;INDCMP
 C128_FF7D_PRIMM   := $FF7D  ;PRIMM
 
 ;C128 truncated here
-;C128 948A: 83 49 0F DA A2         	; '.i{FLSHON}Z.'
+;C128 948A: 83 49 0F DA A2              ; '.i{FLSHON}Z.'
 
 ;TODO probably data
         phx                                     ; D480 DA                       .
@@ -264,7 +264,7 @@ LD4D5:  rts                                     ; D4D5 60                       
         ror     EAH,x                           ; D4D7 76 B3                    v.
         .byte   $83                             ; D4D9 83                       .
         lda     $79D3,x                         ; D4DA BD D3 79                 ..y
-        asl     LA6F4,x                         ; D4DD 1E F4 A6                 ...
+        asl     $A6F4,x                         ; D4DD 1E F4 A6                 ...
         sbc     $7B,x                           ; D4E0 F5 7B                    .{
         .byte   $83                             ; D4E2 83                       .
         .byte   $FC                             ; D4E3 FC                       .
@@ -971,12 +971,12 @@ LDA89:  inx                                     ; DA89 E8                       
         txa                                     ; DA93 8A                       .
         asl     a                               ; DA94 0A                       .
         tax                                     ; DA95 AA                       .
-        lda     L9F1C+1,x                       ; DA96 BD 1D 9F                 ...
-        ldy     L9F1C,x                         ; DA99 BC 1C 9F                 ...
+        lda     $9F1C+1,x                       ; DA96 BD 1D 9F                 ...
+        ldy     $9F1C,x                         ; DA99 BC 1C 9F                 ...
 LDA9C:  clc                                     ; DA9C 18                       .
         dec     $8E                             ; DA9D C6 8E                    ..
         bmi     LDAAD                           ; DA9F 30 0C                    0.
-        adc     L9F31,x                         ; DAA1 7D 31 9F                 }1.
+        adc     $9F31,x                         ; DAA1 7D 31 9F                 }1.
         pha                                     ; DAA4 48                       H
         tya                                     ; DAA5 98                       .
         adc     C128_9F30,x ; Conv Words Hi                        ; DAA6 7D 30 9F                 }0.
@@ -1126,7 +1126,7 @@ LDBB2:  ora     ($60,x)                         ; DBB2 01 60                    
 LDBB4:  ldx     $1147                           ; DBB4 AE 47 11                 .G.
         lda     $1146                           ; DBB7 AD 46 11                 .F.
         bmi     LDBC2                           ; DBBA 30 06                    0.
-        jsr     L9BDD                           ; DBBC 20 DD 9B                  ..
+        jsr     $9BDD                           ; DBBC 20 DD 9B                  ..
         ldx     $1148                           ; DBBF AE 48 11                 .H.
 LDBC2:  clc                                     ; DBC2 18                       .
         lda     $1145                           ; DBC3 AD 45 11                 .E.
@@ -1136,7 +1136,7 @@ LDBC2:  clc                                     ; DBC2 18                       
         adc     $1142,x                         ; DBCF 7D 42 11                 }B.
         sta     $1146                           ; DBD2 8D 46 11                 .F.
         ldx     $1148                           ; DBD5 AE 48 11                 .H.
-        jsr     L9BDD                           ; DBD8 20 DD 9B                  ..
+        jsr     $9BDD                           ; DBD8 20 DD 9B                  ..
         beq     LDB98                           ; DBDB F0 BB                    ..
         ldy     #$02                            ; DBDD A0 02                    ..
         clc                                     ; DBDF 18                       .
@@ -1175,7 +1175,7 @@ LDC0C:  jsr     C128_9D17   ;Position Pixel                         ; DC0C 20 17
         pha                                     ; DC23 48                       H
         ldx     $83                             ; DC24 A6 83                    ..
         lda     $116D                           ; DC26 AD 6D 11                 .m.
-        and     L9F18,x                         ; DC29 3D 18 9F                 =..
+        and     $9F18,x                         ; DC29 3D 18 9F                 =..
         sta     $116D                           ; DC2C 8D 6D 11                 .m.
         pla                                     ; DC2F 68                       h
 LDC30:  eor     $116D                           ; DC30 4D 6D 11                 Mm.
@@ -1563,7 +1563,7 @@ LDEA0:  jsr     C128_9AC1                           ; DEA0 20 C1 9A             
         bcc     LDEB3                           ; DEAF 90 02                    ..
         .byte   $A0                             ; DEB1 A0                       .
 LDEB2:  .byte   $02                             ; DEB2 02                       .
-LDEB3:  jsr     L9D5E                           ; DEB3 20 5E 9D                  ^.
+LDEB3:  jsr     $9D5E                           ; DEB3 20 5E 9D                  ^.
         sta     $1131,x                         ; DEB6 9D 31 11                 .1.
         tya                                     ; DEB9 98                       .
         sta     $1132,x                         ; DEBA 9D 32 11                 .2.
@@ -1590,7 +1590,7 @@ LDEE1:  dex                                     ; DEE1 CA                       
         dex                                     ; DEE2 CA                       .
         lsr     $1179                           ; DEE3 4E 79 11                 Ny.
         bcc     LDEF2                           ; DEE6 90 0A                    ..
-        jsr     L9D60     ; Add Graphics Coordinate                      ; DEE8 20 60 9D                  `.
+        jsr     $9D60     ; Add Graphics Coordinate                      ; DEE8 20 60 9D                  `.
         sta     $1131,x                         ; DEEB 9D 31 11                 .1.
         tya                                     ; DEEE 98                       .
         sta     $1132,x                         ; DEEF 9D 32 11                 .2.
@@ -1703,7 +1703,7 @@ LDF93:  dec     $24                             ; DF93 C6 24                    
 LDF9B:  dec     $26                             ; DF9B C6 26                    .&
         jsr     C128_03C0                           ; DF9D 20 C0 03                  ..
         sta     ($24),y                         ; DFA0 91 24                    .$
-        jmp     L9F85                           ; DFA2 4C 85 9F                 L..
+        jmp     $9F85                           ; DFA2 4C 85 9F                 L..
 ; ----------------------------------------------------------------------------
 LDFA5:  clc                                     ; DFA5 18                       .
         lda     $1211                           ; DFA6 AD 11 12                 ...
@@ -1749,11 +1749,11 @@ LDFF2:  ldy     #$00                            ; DFF2 A0 00                    
         cmp     #$81                            ; DFF6 C9 81                    ..
         bne     LE003                           ; DFF8 D0 09                    ..
         ldy     #$10                            ; DFFA A0 10                    ..
-        jsr     LA055                           ; DFFC 20 55 A0                  U.
+        jsr     $A055                           ; DFFC 20 55 A0                  U.
         lda     #$12                            ; DFFF A9 12                    ..
         bne     LE00A                           ; E001 D0 07                    ..
 LE003:  ldy     #$04                            ; E003 A0 04                    ..
-        jsr     LA055                           ; E005 20 55 A0                  U.
+        jsr     $A055                           ; E005 20 55 A0                  U.
         lda     #$05                            ; E008 A9 05                    ..
 LE00A:  clc                                     ; E00A 18                       .
         adc     $3F                             ; E00B 65 3F                    e?
@@ -1796,7 +1796,7 @@ LE02A:  jsr     C128_03C0     ; Index2 Indirect Fetch From RAM Bank 0           
         lda     $44                             ; E04C A5 44                    .D
         sbc     #$24                            ; E04E E9 24                    .$
         sta     $44                             ; E050 85 44                    .D
-        jmp     L9FBA                           ; E052 4C BA 9F                 L..
+        jmp     $9FBA                           ; E052 4C BA 9F                 L..
 ; ----------------------------------------------------------------------------
         lda     ($3F),y                         ; E055 B1 3F                    .?
         bit     $76     ; Graphics flag: FF = Graphics allocated                        ; E057 24 76                    $v
@@ -1840,7 +1840,7 @@ LE07D:  ldy     #$01                            ; E07D A0 01                    
 LE08C:  inx                                     ; E08C E8                       .
 
 LE08D:  txa                                     ; E08D 8A                       .
-        jsr     LA63C                           ; E08E 20 3C A6                  <.
+        jsr     $A63C                           ; E08E 20 3C A6                  <.
         lda     #$00                            ; E091 A9 00                    ..
         tax                                     ; E093 AA                       .
         jsr     L927A                           ; E094 20 7A 92                  z.
@@ -1858,7 +1858,7 @@ LE08D:  txa                                     ; E08D 8A                       
         jmp     C128_4D39                           ; E0AD 4C 39 4D                 L9M
 ; ----------------------------------------------------------------------------
 LE0B0:  ldx     #$00                            ; E0B0 A2 00                    ..
-        jsr     LA81A                           ; E0B2 20 1A A8                  ..
+        jsr     $A81A                           ; E0B2 20 1A A8                  ..
         jsr     LFFC6_CHKIN                     ; E0B5 20 C6 FF                  ..
         ldy     #$03                            ; E0B8 A0 03                    ..
 LE0BA:  sty     $1174                           ; E0BA 8C 74 11                 .t.
@@ -1901,9 +1901,9 @@ LE107:  jsr     C128_9262                           ; E107 20 62 92             
 
 ; Perform [dopen]
         lda     #$22                            ; E110 A9 22                    ."
-        jsr     LA398                           ; E112 20 98 A3                  ..
-        jsr     LA744                           ; E115 20 44 A7                  D.
-        jsr     LA14A                           ; E118 20 4A A1                  J.
+        jsr     $A398                           ; E112 20 98 A3                  ..
+        jsr     $A744                           ; E115 20 44 A7                  D.
+        jsr     $A14A                           ; E118 20 4A A1                  J.
         ldy     #$05                            ; E11B A0 05                    ..
         ldx     #$04                            ; E11D A2 04                    ..
         bit     $80                             ; E11F 24 80                    $.
@@ -1913,13 +1913,13 @@ LE107:  jsr     C128_9262                           ; E107 20 62 92             
 
 ; Perform [append]
         lda     #$E2                            ; E127 A9 E2                    ..
-        jsr     LA398                           ; E129 20 98 A3                  ..
-        jsr     LA744                           ; E12C 20 44 A7                  D.
-        jsr     LA14A                           ; E12F 20 4A A1                  J.
+        jsr     $A398                           ; E129 20 98 A3                  ..
+        jsr     $A744                           ; E12C 20 44 A7                  D.
+        jsr     $A14A                           ; E12F 20 4A A1                  J.
         ldy     #$16                            ; E132 A0 16                    ..
         ldx     #$05                            ; E134 A2 05                    ..
 LE136:  txa                                     ; E136 8A                       .
-        jsr     LA63C                           ; E137 20 3C A6                  <.
+        jsr     $A63C                           ; E137 20 3C A6                  <.
         jsr     C128_9262                           ; E13A 20 62 92                  b.
         lda     #$00                            ; E13D A9 00                    ..
         tax                                     ; E13F AA                       .
@@ -1934,7 +1934,7 @@ LE136:  txa                                     ; E136 8A                       
 LE14C:  iny                                     ; E14C C8                       .
         cpy     #$6F                            ; E14D C0 6F                    .o
         beq     LE15D                           ; E14F F0 0C                    ..
-        jsr     LA81A                           ; E151 20 1A A8                  ..
+        jsr     $A81A                           ; E151 20 1A A8                  ..
         jsr     C128_FF5C_LKUPSA                           ; E154 20 5C FF                  \.
         bcc     LE14C                           ; E157 90 F3                    ..
         sty     stack+29                        ; E159 8C 1D 01                 ...
@@ -1946,7 +1946,7 @@ LE15D:  ldx     #$01                            ; E15D A2 01                    
 
 ; Perform [dclose]
         lda     #$F3                            ; E162 A9 F3                    ..
-        jsr     LA398                           ; E164 20 98 A3                  ..
+        jsr     $A398                           ; E164 20 98 A3                  ..
         jsr     C128_A7E2                           ; E167 20 E2 A7                  ..
         lda     $80                             ; E16A A5 80                    ..
         and     #$04                            ; E16C 29 04                    ).
@@ -1955,17 +1955,17 @@ LE15D:  ldx     #$01                            ; E15D A2 01                    
         jmp     L9268                           ; E173 4C 68 92                 Lh.
 ; ----------------------------------------------------------------------------
 LE176:  lda     stack+28                        ; E176 AD 1C 01                 ...
-        jsr     LA81A                           ; E179 20 1A A8                  ..
+        jsr     $A81A                           ; E179 20 1A A8                  ..
         jmp     C128_FF4A_CLALL                           ; E17C 4C 4A FF                 LJ.
 ; ----------------------------------------------------------------------------
 
 ; Perform [dsave]
         lda     #$66                            ; E17F A9 66                    .f
-        jsr     LA398                           ; E181 20 98 A3                  ..
-        jsr     LA725                           ; E184 20 25 A7                  %.
+        jsr     $A398                           ; E181 20 98 A3                  ..
+        jsr     $A725                           ; E184 20 25 A7                  %.
         ldy     #$05                            ; E187 A0 05                    ..
         lda     #$04                            ; E189 A9 04                    ..
-        jsr     LA63C                           ; E18B 20 3C A6                  <.
+        jsr     $A63C                           ; E18B 20 3C A6                  <.
         lda     #$00                            ; E18E A9 00                    ..
         tax                                     ; E190 AA                       .
         jsr     L927A                           ; E191 20 7A 92                  z.
@@ -1980,13 +1980,13 @@ LE176:  lda     stack+28                        ; E176 AD 1C 01                 
         bit     a:$A9                           ; E199 2C A9 00                 ,..
         sta     $0C                             ; E19C 85 0C                    ..
         lda     #$E6                            ; E19E A9 E6                    ..
-        jsr     LA398                           ; E1A0 20 98 A3                  ..
-        jsr     LA725                           ; E1A3 20 25 A7                  %.
+        jsr     $A398                           ; E1A0 20 98 A3                  ..
+        jsr     $A725                           ; E1A3 20 25 A7                  %.
         lda     #$00                            ; E1A6 A9 00                    ..
         sta     stack+29                        ; E1A8 8D 1D 01                 ...
         ldy     #$05                            ; E1AB A0 05                    ..
         lda     #$04                            ; E1AD A9 04                    ..
-        jsr     LA63C                           ; E1AF 20 3C A6                  <.
+        jsr     $A63C                           ; E1AF 20 3C A6                  <.
         lda     #$00                            ; E1B2 A9 00                    ..
         tax                                     ; E1B4 AA                       .
         jsr     L927A                           ; E1B5 20 7A 92                  z.
@@ -1996,8 +1996,8 @@ LE176:  lda     stack+28                        ; E176 AD 1C 01                 
 ; Perform [bsave]
         lda     #$66                            ; E1BB A9 66                    .f
         ldx     #$F8                            ; E1BD A2 F8                    ..
-        jsr     LA39A                           ; E1BF 20 9A A3                  ..
-        jsr     LA725                           ; E1C2 20 25 A7                  %.
+        jsr     $A39A                           ; E1BF 20 9A A3                  ..
+        jsr     $A725                           ; E1C2 20 25 A7                  %.
         lda     C128_0081                       ; E1C5 A5 81                    ..
         and     #$06                            ; E1C7 29 06                    ).
         cmp     #$06                            ; E1C9 C9 06                    ..
@@ -2006,7 +2006,7 @@ LE176:  lda     stack+28                        ; E176 AD 1C 01                 
 ; ----------------------------------------------------------------------------
 LE1D0:  ldy     #$05                            ; E1D0 A0 05                    ..
         lda     #$04                            ; E1D2 A9 04                    ..
-        jsr     LA63C                           ; E1D4 20 3C A6                  <.
+        jsr     $A63C                           ; E1D4 20 3C A6                  <.
         lda     stack+31                        ; E1D7 AD 1F 01                 ...
         ldx     #$00                            ; E1DA A2 00                    ..
         jsr     L927A                           ; E1DC 20 7A 92                  z.
@@ -2023,8 +2023,8 @@ LE1D0:  ldy     #$05                            ; E1D0 A0 05                    
 ; Perform [bload]
         lda     #$E6                            ; E1F4 A9 E6                    ..
         ldx     #$FC                            ; E1F6 A2 FC                    ..
-        jsr     LA39A                           ; E1F8 20 9A A3                  ..
-        jsr     LA725                           ; E1FB 20 25 A7                  %.
+        jsr     $A39A                           ; E1F8 20 9A A3                  ..
+        jsr     $A725                           ; E1FB 20 25 A7                  %.
         ldx     stack+23                        ; E1FE AE 17 01                 ...
         ldy     stack+24                        ; E201 AC 18 01                 ...
         lda     #$00                            ; E204 A9 00                    ..
@@ -2036,7 +2036,7 @@ LE1D0:  ldy     #$05                            ; E1D0 A0 05                    
 LE210:  sta     stack+29                        ; E210 8D 1D 01                 ...
         ldy     #$05                            ; E213 A0 05                    ..
         lda     #$04                            ; E215 A9 04                    ..
-        jsr     LA63C                           ; E217 20 3C A6                  <.
+        jsr     $A63C                           ; E217 20 3C A6                  <.
         lda     stack+31                        ; E21A AD 1F 01                 ...
         ldx     #$00                            ; E21D A2 00                    ..
         jsr     L927A                           ; E21F 20 7A 92                  z.
@@ -2059,7 +2059,7 @@ LE241:  clc                                     ; E241 18                       
         rts                                     ; E242 60                       `
 ; ----------------------------------------------------------------------------
         jsr     C128_A396                           ; E243 20 96 A3                  ..
-        jsr     LA71E                           ; E246 20 1E A7                  ..
+        jsr     $A71E                           ; E246 20 1E A7                  ..
         and     #$01                            ; E249 29 01                    ).
         cmp     #$01                            ; E24B C9 01                    ..
         bne     LE2B0                           ; E24D D0 61                    .a
@@ -2090,7 +2090,7 @@ LE27C:  rts                                     ; E27C 60                       
 
 ; Perform [scratch]
         jsr     C128_A396                           ; E27D 20 96 A3                  ..
-        jsr     LA71E                           ; E280 20 1E A7                  ..
+        jsr     $A71E                           ; E280 20 1E A7                  ..
         jsr     C128_A7B6                           ; E283 20 B6 A7                  ..
         bne     LE2AF                           ; E286 D0 27                    .'
         ldy     #$37                            ; E288 A0 37                    .7
@@ -2132,7 +2132,7 @@ LE2B0:  jmp     C128_795A                           ; E2B0 4C 5A 79             
         beq     LE2F6                           ; E2D0 F0 24                    .$
         stx     stack+30                        ; E2D2 8E 1E 01                 ...
         lda     stack+27                        ; E2D5 AD 1B 01                 ...
-        jsr     LA81A                           ; E2D8 20 1A A8                  ..
+        jsr     $A81A                           ; E2D8 20 1A A8                  ..
         jsr     C128_FF59_LKUPLA                           ; E2DB 20 59 FF                  Y.
         bcs     LE2F9                           ; E2DE B0 19                    ..
         sty     $11ED                           ; E2E0 8C ED 11                 ...
@@ -2197,7 +2197,7 @@ LE338:  ldy     #$27                            ; E338 A0 27                    
 
 ; Perform [rename]
         lda     #$E4                            ; E34A A9 E4                    ..
-        jsr     LA398                           ; E34C 20 98 A3                  ..
+        jsr     $A398                           ; E34C 20 98 A3                  ..
         jsr     C128_A73B                           ; E34F 20 3B A7                  ;.
         ldy     #$2F                            ; E352 A0 2F                    ./
         lda     #$08                            ; E354 A9 08                    ..
@@ -2206,7 +2206,7 @@ LE338:  ldy     #$27                            ; E338 A0 27                    
 
 ; Perform [backup]
         lda     #$C7                            ; E358 A9 C7                    ..
-        jsr     LA398                           ; E35A 20 98 A3                  ..
+        jsr     $A398                           ; E35A 20 98 A3                  ..
         and     #$30                            ; E35D 29 30                    )0
         cmp     #$30                            ; E35F C9 30                    .0
         beq     LE366                           ; E361 F0 03                    ..
@@ -2219,7 +2219,7 @@ LE366:  jsr     C128_A7B6                           ; E366 20 B6 A7             
 LE36C:  jsr     C128_A176                           ; E36C 20 76 A1                  v.
         ldy     #$23                            ; E36F A0 23                    .#
         lda     #$04                            ; E371 A9 04                    ..
-LE373:  jsr     LA63C                           ; E373 20 3C A6                  <.
+LE373:  jsr     $A63C                           ; E373 20 3C A6                  <.
         jsr     C128_9262                           ; E376 20 62 92                  b.
         lda     #$00                            ; E379 A9 00                    ..
         tax                                     ; E37B AA                       .
@@ -2281,7 +2281,7 @@ LE3AD:  lda     C128_A38F,x      ; Default DOS Disk Unit (U8 D0)                
         bne     LE431                           ; E3C4 D0 6B                    .k
 
         pla                                     ; E3C6 68                       h
-        jsr     LA5F2                           ; E3C7 20 F2 A5                  ..
+        jsr     $A5F2                           ; E3C7 20 F2 A5                  ..
         lda     $80                             ; E3CA A5 80                    ..
         ldx     C128_0081                       ; E3CC A6 81                    ..
         rts                                     ; E3CE 60                       `
@@ -2305,7 +2305,7 @@ LE3CF:  cmp     #$23                            ; E3CF C9 23                    
         beq     LE414                           ; E3ED F0 25                    .%
         cmp     #$50                            ; E3EF C9 50                    .P
         bne     LE3F6                           ; E3F1 D0 03                    ..
-        jmp     LA48B                           ; E3F3 4C 8B A4                 L..
+        jmp     $A48B                           ; E3F3 4C 8B A4                 L..
 ; ----------------------------------------------------------------------------
 LE3F6:  cmp     #$49                            ; E3F6 C9 49                    .I
         beq     LE46F                           ; E3F8 F0 75                    .u
@@ -2315,16 +2315,16 @@ LE3F6:  cmp     #$49                            ; E3F6 C9 49                    
         beq     LE405                           ; E400 F0 03                    ..
         jmp     C128_795A                           ; E402 4C 5A 79                 LZy
 ; ----------------------------------------------------------------------------
-LE405:  jmp     LA4B3                           ; E405 4C B3 A4                 L..
+LE405:  jmp     $A4B3                           ; E405 4C B3 A4                 L..
 ; ----------------------------------------------------------------------------
 LE408:  jsr     C128_0380                           ; E408 20 80 03                  ..
-        jmp     LA4D2                           ; E40B 4C D2 A4                 L..
+        jmp     $A4D2                           ; E40B 4C D2 A4                 L..
 ; ----------------------------------------------------------------------------
 LE40E:  jsr     C128_A559                           ; E40E 20 59 A5                  Y.
 LE411:  jmp     C128_A4CE                           ; E411 4C CE A4                 L..
 ; ----------------------------------------------------------------------------
 ;get device number
-LE414:  jsr     LA564                           ; E414 20 64 A5                  d.
+LE414:  jsr     $A564                           ; E414 20 64 A5                  d.
         bne     LE411                           ; E417 D0 F8                    ..
 
 ;get bank number
@@ -2333,8 +2333,8 @@ LE419:  jsr     C128_A575                           ; E419 20 75 A5             
 
 ;get filenumber
 LE41E:  lda     #$04                            ; E41E A9 04                    ..
-        jsr     LA5F2                           ; E420 20 F2 A5                  ..
-        jsr     LA5C7                           ; E423 20 C7 A5                  ..
+        jsr     $A5F2                           ; E420 20 F2 A5                  ..
+        jsr     $A5C7                           ; E423 20 C7 A5                  ..
         cpx     #$00                            ; E426 E0 00                    ..
         beq     LE46C                           ; E428 F0 42                    .B
         stx     stack+27                        ; E42A 8E 1B 01                 ...
@@ -2345,13 +2345,13 @@ LE431:  jmp     C128_795A                           ; E431 4C 5A 79             
 ; get record length, write mode
 LE434:  tax                                     ; E434 AA                       .
         lda     #$40                            ; E435 A9 40                    .@
-        jsr     LA5F2                           ; E437 20 F2 A5                  ..
+        jsr     $A5F2                           ; E437 20 F2 A5                  ..
         cpx     #$57                            ; E43A E0 57                    .W
         bne     LE444                           ; E43C D0 06                    ..
         jsr     C128_0380                           ; E43E 20 80 03                  ..
         jmp     C128_A452                           ; E441 4C 52 A4                 LR.
 ; ----------------------------------------------------------------------------
-LE444:  jsr     LA5C7                           ; E444 20 C7 A5                  ..
+LE444:  jsr     $A5C7                           ; E444 20 C7 A5                  ..
         cpx     #$00                            ; E447 E0 00                    ..
         beq     LE46C                           ; E449 F0 21                    .!
         cpx     #$FF                            ; E44B E0 FF                    ..
@@ -2362,8 +2362,8 @@ LE444:  jsr     LA5C7                           ; E444 20 C7 A5                 
 
 ;get drive
 LE456:  lda     #$10                            ; E456 A9 10                    ..
-        jsr     LA5F2                           ; E458 20 F2 A5                  ..
-        jsr     LA5C7                           ; E45B 20 C7 A5                  ..
+        jsr     $A5F2                           ; E458 20 F2 A5                  ..
+        jsr     $A5C7                           ; E45B 20 C7 A5                  ..
         cpx     #$02                            ; E45E E0 02                    ..
         bcs     LE46C                           ; E460 B0 0A                    ..
         stx     stack+18                        ; E462 8E 12 01                 ...
@@ -2382,12 +2382,12 @@ LE46F:  lda     stack+34                        ; E46F AD 22 01                 
         lda     #$FF                            ; E480 A9 FF                    ..
         sta     stack+34                        ; E482 8D 22 01                 .".
         jsr     C128_0380                           ; E485 20 80 03                  ..
-        jmp     LA4D2                           ; E488 4C D2 A4                 L..
+        jmp     $A4D2                           ; E488 4C D2 A4                 L..
 ; ----------------------------------------------------------------------------
 ;get address
         lda     #$02                            ; E48B A9 02                    ..
-        jsr     LA5F7       ; check extented parameter                    ; E48D 20 F7 A5                  ..
-        jsr     LA5DA        ; get value                   ; E490 20 DA A5                  ..
+        jsr     $A5F7       ; check extented parameter                    ; E48D 20 F7 A5                  ..
+        jsr     $A5DA        ; get value                   ; E490 20 DA A5                  ..
         sty     stack+23     ; 16-bit address                   ; E493 8C 17 01                 ...
         sta     stack+24                        ; E496 8D 18 01                 ...
         lda     #$02        ; mark extented parameter                    ; E499 A9 02                    ..
@@ -2395,8 +2395,8 @@ LE49B:  ora     C128_0081                           ; E49B 05 81                
         sta     C128_0081                           ; E49D 85 81                    ..
         bne     LE4D2       ; continue parsing                    ; E49F D0 31                    .1
 LE4A1:  lda     #$04                            ; E4A1 A9 04                    ..
-        jsr     LA5F7       ; check extented parameter                    ; E4A3 20 F7 A5                  ..
-        jsr     LA5DA       ; get value                    ; E4A6 20 DA A5                  ..
+        jsr     $A5F7       ; check extented parameter                    ; E4A3 20 F7 A5                  ..
+        jsr     $A5DA       ; get value                    ; E4A6 20 DA A5                  ..
         sty     stack+25                        ; E4A9 8C 19 01                 ...
         sta     stack+26                        ; E4AC 8D 1A 01                 ...
         lda     #$04                            ; E4AF A9 04                    ..
@@ -2416,11 +2416,11 @@ LE4CE:  ora     $80                             ; E4CE 05 80                    
         sta     $80                             ; E4D0 85 80                    ..
 LE4D2:  jsr     DFLTO                           ; E4D2 20 86 03                  ..
         bne     LE4F0                           ; E4D5 D0 19                    ..
-LE4D7:  jmp     LA3C1                           ; E4D7 4C C1 A3                 L..
+LE4D7:  jmp     $A3C1                           ; E4D7 4C C1 A3                 L..
 ; ----------------------------------------------------------------------------
 LE4DA:  cmp     #$91                            ; E4DA C9 91                    ..
         bne     LE4E1                           ; E4DC D0 03                    ..
-        jmp     LA40E                           ; E4DE 4C 0E A4                 L..
+        jmp     $A40E                           ; E4DE 4C 0E A4                 L..
 ; ----------------------------------------------------------------------------
 LE4E1:  cmp     #$A4                            ; E4E1 C9 A4                    ..
         beq     LE4E7                           ; E4E3 F0 02                    ..
@@ -2432,7 +2432,7 @@ LE4E7:  jsr     C128_0380                           ; E4E7 20 80 03             
 LE4F0:  cmp     #$2C                            ; E4F0 C9 2C                    .,
         bne     LE4DA                           ; E4F2 D0 E6                    ..
         jsr     C128_0380                           ; E4F4 20 80 03                  ..
-        jmp     LA3CF                           ; E4F7 4C CF A3                 L..
+        jmp     $A3CF                           ; E4F7 4C CF A3                 L..
 ; ----------------------------------------------------------------------------
 LE4FA:  jsr     C128_0380                           ; E4FA 20 80 03                  ..
 
@@ -2450,8 +2450,8 @@ LE4FD:  cmp     #$44                            ; E4FD C9 44                    
 
 ;get destination drive
 LE511:  lda     #$20                            ; E511 A9 20                    .
-        jsr     LA5F2                           ; E513 20 F2 A5                  ..
-        jsr     LA5C7                           ; E516 20 C7 A5                  ..
+        jsr     $A5F2                           ; E513 20 F2 A5                  ..
+        jsr     $A5C7                           ; E516 20 C7 A5                  ..
         cpx     #$02                            ; E519 E0 02                    ..
         bcs     LE556                           ; E51B B0 39                    .9
         stx     stack+20                        ; E51D 8E 14 01                 ...
@@ -2460,7 +2460,7 @@ LE511:  lda     #$20                            ; E511 A9 20                    
 LE524:  jsr     C128_A559                           ; E524 20 59 A5                  Y.
         jmp     C128_A53F                           ; E527 4C 3F A5                 L?.
 ; ----------------------------------------------------------------------------
-LE52A:  jsr     LA564                           ; E52A 20 64 A5                  d.
+LE52A:  jsr     $A564                           ; E52A 20 64 A5                  d.
         bne     LE53F                           ; E52D D0 10                    ..
 LE52F:  lda     #$02                            ; E52F A9 02                    ..
         jsr     C128_A590                           ; E531 20 90 A5                  ..
@@ -2486,7 +2486,7 @@ LE556:  jmp     C128_7D16                           ; E556 4C 16 7D             
         beq     LE575                           ; E55E F0 15                    ..
         cmp     #$55                            ; E560 C9 55                    .U
         bne     LE58D                           ; E562 D0 29                    .)
-        jsr     LA5C7                           ; E564 20 C7 A5                  ..
+        jsr     $A5C7                           ; E564 20 C7 A5                  ..
         cpx     #$1F                            ; E567 E0 1F                    ..
         bcs     LE5BE                           ; E569 B0 53                    .S
         cpx     #$04                            ; E56B E0 04                    ..
@@ -2496,8 +2496,8 @@ LE556:  jmp     C128_7D16                           ; E556 4C 16 7D             
         rts                                     ; E574 60                       `
 ; ----------------------------------------------------------------------------
 LE575:  lda     #$01                            ; E575 A9 01                    ..
-        jsr     LA5F7                           ; E577 20 F7 A5                  ..
-        jsr     LA5C7                           ; E57A 20 C7 A5                  ..
+        jsr     $A5F7                           ; E577 20 F7 A5                  ..
+        jsr     $A5C7                           ; E57A 20 C7 A5                  ..
         cpx     #$10                            ; E57D E0 10                    ..
         bcs     LE556                           ; E57F B0 D5                    ..
         stx     stack+31                        ; E581 8E 1F 01                 ...
@@ -2511,7 +2511,7 @@ LE58D:  jmp     C128_795A                           ; E58D 4C 5A 79             
 ; ----------------------------------------------------------------------------
 
 ;get string (filename)
-        jsr     LA5F2                           ; E590 20 F2 A5                  ..
+        jsr     $A5F2                           ; E590 20 F2 A5                  ..
         jsr     $8777                           ; E593 20 77 87                  w.
         tax                                     ; E596 AA                       .
         beq     LE556                           ; E597 F0 BD                    ..
@@ -2520,7 +2520,7 @@ LE58D:  jmp     C128_795A                           ; E58D 4C 5A 79             
         cmp     #$40                            ; E59E C9 40                    .@
         bne     LE5B4                           ; E5A0 D0 12                    ..
         lda     #$80                            ; E5A2 A9 80                    ..
-        jsr     LA5F2                           ; E5A4 20 F2 A5                  ..
+        jsr     $A5F2                           ; E5A4 20 F2 A5                  ..
         lda     $80                             ; E5A7 A5 80                    ..
         ora     #$80                            ; E5A9 09 80                    ..
         sta     $80                             ; E5AB 85 80                    ..
@@ -2630,7 +2630,7 @@ LE646:  pla                                     ; E646 68                       
         iny                                     ; E64D C8                       .
         tya                                     ; E64E 98                       .
         pha                                     ; E64F 48                       H
-        lda     LA5FC,y                         ; E650 B9 FC A5                 ...
+        lda     $A5FC,y                         ; E650 B9 FC A5                 ...
         bpl     LE68C                           ; E653 10 37                    .7
         cmp     #$C2                            ; E655 C9 C2                    ..
         beq     LE6AB                           ; E657 F0 52                    .R
@@ -2729,7 +2729,7 @@ LE709:  jsr     C128_03B7                           ; E709 20 B7 03             
         bne     LE709                           ; E717 D0 F0                    ..
         .byte   $24                             ; E719 24                       $
 LE71A:  dex                                     ; E71A CA                       .
-LE71B:  jmp     LA646                           ; E71B 4C 46 A6                 LF.
+LE71B:  jmp     $A646                           ; E71B 4C 46 A6                 LF.
 ; ----------------------------------------------------------------------------
         and     #$E6                            ; E71E 29 E6                    ).
         beq     LE725                           ; E720 F0 03                    ..
@@ -2906,12 +2906,12 @@ LE842:  tya                                     ; E842 98                       
         inx                                     ; E84B E8                       .
         inx                                     ; E84C E8                       .
         iny                                     ; E84D C8                       .
-        jsr     LA9BA                           ; E84E 20 BA A9                  ..
+        jsr     $A9BA                           ; E84E 20 BA A9                  ..
         dex                                     ; E851 CA                       .
         dex                                     ; E852 CA                       .
         dey                                     ; E853 88                       .
         lda     $1180,x                         ; E854 BD 80 11                 ...
-        jsr     LA9BA                           ; E857 20 BA A9                  ..
+        jsr     $A9BA                           ; E857 20 BA A9                  ..
         php                                     ; E85A 08                       .
         tya                                     ; E85B 98                       .
         lsr     a                               ; E85C 4A                       J
@@ -3014,7 +3014,7 @@ LE8FF:  clc                                     ; E8FF 18                       
         bcs     LE978                           ; E929 B0 4D                    .M
 LE92B:  cpx     #$02                            ; E92B E0 02                    ..
         bcc     LE939                           ; E92D 90 0A                    ..
-        jsr     LA9A4                           ; E92F 20 A4 A9                  ..
+        jsr     $A9A4                           ; E92F 20 A4 A9                  ..
         lda     #$02                            ; E932 A9 02                    ..
         sta     $1294,y                         ; E934 99 94 12                 ...
         bne     LE96C                           ; E937 D0 33                    .3
@@ -3022,7 +3022,7 @@ LE939:  lda     $1288,y                         ; E939 B9 88 12                 
         sta     $129D,y                         ; E93C 99 9D 12                 ...
         lda     $128B,y                         ; E93F B9 8B 12                 ...
         sta     $12A0,y                         ; E942 99 A0 12                 ...
-        jmp     LA978                           ; E945 4C 78 A9                 Lx.
+        jmp     $A978                           ; E945 4C 78 A9                 Lx.
 ; ----------------------------------------------------------------------------
 LE948:  bcs     LE95E                           ; E948 B0 14                    ..
         lda     $12A0,y                         ; E94A B9 A0 12                 ...
@@ -3035,7 +3035,7 @@ LE948:  bcs     LE95E                           ; E948 B0 14                    
         beq     LE978                           ; E95C F0 1A                    ..
 LE95E:  cpx     #$02                            ; E95E E0 02                    ..
         bcc     LE96C                           ; E960 90 0A                    ..
-        jsr     LA9A4                           ; E962 20 A4 A9                  ..
+        jsr     $A9A4                           ; E962 20 A4 A9                  ..
         lda     #$03                            ; E965 A9 03                    ..
         sta     $1294,y                         ; E967 99 94 12                 ...
         bne     LE939                           ; E96A D0 CD                    ..
@@ -3059,7 +3059,7 @@ LE991:  dec     $1282,x                         ; E991 DE 82 12                 
         lda     #$08                            ; E999 A9 08                    ..
         ldx     $7026,y                         ; E99B BE 26 70                 .&p
         sta     C128_D404,x                         ; E99E 9D 04 D4                 ...
-LE9A1:  jmp     LA8FB                           ; E9A1 4C FB A8                 L..
+LE9A1:  jmp     $A8FB                           ; E9A1 4C FB A8                 L..
 ; ----------------------------------------------------------------------------
         lda     $1297,y                         ; E9A4 B9 97 12                 ...
         eor     #$FF                            ; E9A7 49 FF                    I.
@@ -3087,7 +3087,7 @@ LE9A1:  jmp     LA8FB                           ; E9A1 4C FB A8                 
         lda     $11D6,y                         ; E9D3 B9 D6 11                 ...
         bcs     LE9DD                           ; E9D6 B0 05                    ..
         adc     #$01                            ; E9D8 69 01                    i.
-        jmp     LA9E1                           ; E9DA 4C E1 A9                 L..
+        jmp     $A9E1                           ; E9DA 4C E1 A9                 L..
 ; ----------------------------------------------------------------------------
 LE9DD:  sbc     #$01                            ; E9DD E9 01                    ..
         cmp     #$FF                            ; E9DF C9 FF                    ..
@@ -3103,21 +3103,21 @@ LE9E4:  rts                                     ; E9E4 60                       
         lda     #$86                            ; E9EF A9 86                    ..
         pha                                     ; E9F1 48                       H
         jsr     C128_880E                           ; E9F2 20 0E 88                  ..
-        jsr     LA81A                           ; E9F5 20 1A A8                  ..
+        jsr     $A81A                           ; E9F5 20 1A A8                  ..
         sty     LDF07                           ; E9F8 8C 07 DF                 ...
         sta     LDF08                           ; E9FB 8D 08 DF                 ...
         jsr     C128_880B                           ; E9FE 20 0B 88                  ..
-        jsr     LA81A                           ; EA01 20 1A A8                  ..
+        jsr     $A81A                           ; EA01 20 1A A8                  ..
         sty     LDF02                           ; EA04 8C 02 DF                 ...
         sta     LDF03                           ; EA07 8D 03 DF                 ...
         jsr     C128_880B                           ; EA0A 20 0B 88                  ..
-        jsr     LA81A                           ; EA0D 20 1A A8                  ..
+        jsr     $A81A                           ; EA0D 20 1A A8                  ..
         sty     LDF04                           ; EA10 8C 04 DF                 ...
         sta     LDF05                           ; EA13 8D 05 DF                 ...
         jsr     C128_8805                           ; EA16 20 05 88                  ..
         cpx     #$10                            ; EA19 E0 10                    ..
         bcs     LEA2B                           ; EA1B B0 0E                    ..
-        jsr     LA81A                           ; EA1D 20 1A A8                  ..
+        jsr     $A81A                           ; EA1D 20 1A A8                  ..
         stx     LDF06                           ; EA20 8E 06 DF                 ...
         pla                                     ; EA23 68                       h
         tay                                     ; EA24 A8                       .
