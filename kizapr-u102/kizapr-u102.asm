@@ -195,10 +195,10 @@ LAT             := $02DB
 SAT             := $02F3
 FAT             := $02E7
 MEM_0300        := $0300
-IERROR        := $0300                  ;Error vector of the math package, called in APPL mode with a BASIC error number in X.  Applications must set it.
+IERROR          := $0300   ;Error vector of the math package, called in APPL mode with a BASIC error number in X.  Applications must set it.
 RAMVEC_IRQ      := $0314   ;KERNAL RAM vectors, 36 bytes: $0314-0337
 RAMVEC_BRK      := $0316
-RAMVEC_NMI      := $0318
+RAMVEC_TIMER    := $0318   ;Called at the end of every 60 Hz timer interrupt.  (This is the NMI vector on other CBM machines.)
 RAMVEC_OPEN     := $031A
 RAMVEC_CLOSE    := $031C
 RAMVEC_CHKIN    := $031E
@@ -1500,7 +1500,7 @@ InitIOhw:
         sta     VIA1_ACR
 
         lda     #%10100000  ;PCR7=1 \
-                            ;PCR6=0  CB2 Control = Pulse Output (Beeper)
+                            ;PCR6=0  CB2 Control = Pulse Output (not in effect: the shift register uses CB2 for the keyboard data)
                             ;PCR5=1 /
                             ;PCR4=0 CB1 Interrupt Control = Negative Active Edge
                             ;PCR3=0 \
@@ -7206,7 +7206,7 @@ CTRL_CODES_AND_HANDLERS:
         .addr   CODE_0D_RETURN
 
         .byte   $0E ;CHR$(14) Lowercase Mode
-        .addr   CODE_14_LOWERCASE
+        .addr   CODE_0E_LOWERCASE
 
         .byte   $11 ;CHR$(17) Cursor Down
         .addr   CODE_11_CRSR_DOWN
@@ -7294,7 +7294,7 @@ SWITCH_CHARSET:
         ;Fall through to set lowercase mode
 
 ;CHR$(14) Lowercase Mode
-CODE_14_LOWERCASE:
+CODE_0E_LOWERCASE:
         lda     #$01
         trb     SETUP_LCD_A
         bne     JmpToSetUpLcdController
@@ -13471,9 +13471,9 @@ LFA44_VIA1_T1_IRQ:
         jsr     UDTIM__
         jsr     UDBELL
         sta     MMU_MODE_APPL
-        jmp     (RAMVEC_NMI)
+        jmp     (RAMVEC_TIMER)
 ; ----------------------------------------------------------------------------
-DEFVEC_NMI:
+DEFVEC_TIMER:
         sta     MMU_MODE_KERN
         rts
 ; ----------------------------------------------------------------------------
@@ -13519,7 +13519,7 @@ LFA8A:  sta     MMU_MODE_APPL
 ; C128.
 VECTSS: .addr   DEFVEC_IRQ
         .addr   DEFVEC_BRK
-        .addr   DEFVEC_NMI
+        .addr   DEFVEC_TIMER
         .addr   DEFVEC_OPEN
         .addr   DEFVEC_CLOSE
         .addr   DEFVEC_CHKIN
@@ -14094,16 +14094,16 @@ UNUSED:
 ; ----------------------------------------------------------------------------
         jmp     LFAE7  ;draw f-key bar and wait for k-key or return   ; FF36 4C E7 FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFAF1  ;v1541, cursor key, f-key so maybe file navigation ; FF39 4C F1 FA                 L..
+        jmp     LFAF1  ;Pull-up menu above a function key ; FF39 4C F1 FA                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFAFB  ;seems to use v1541 and screen ; FF3C 4C FB FA                 L..
+        jmp     LFAFB  ;Save or restore part of the screen ; FF3C 4C FB FA                 L..
 ; ----------------------------------------------------------------------------
 ; Power off with saving the state.
         jmp     LFB05                           ; FF3F 4C 05 FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFB0F  ;possibly f-key related  ; FF42 4C 0F FB                 L..
+        jmp     LFB0F  ;Call while waiting for something  ; FF42 4C 0F FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     LFB19  ;LB09B maybe convert char for quote mode? ; FF45 4C 19 FB                 L..
+        jmp     LFB19  ;Convert a character to a screen code ; FF45 4C 19 FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     LFB23                           ; FF48 4C 23 FB                 L#.
 ; ----------------------------------------------------------------------------
@@ -14117,7 +14117,7 @@ UNUSED:
 ; ----------------------------------------------------------------------------
         jmp     KR_LB758 ;screen and LINE_INPUT_BUF related   ; FF57 4C 92 FB                 L..
 ; ----------------------------------------------------------------------------
-        jmp     KR_LD230_JMP_LD233_PLUS_X ;f-key, maybe menu related  ; FF5A 4C 9C FB                 L..
+        jmp     KR_LD230_JMP_LD233_PLUS_X ;Function key services  ; FF5A 4C 9C FB                 L..
 ; ----------------------------------------------------------------------------
         jmp     KR_LB293_SWAP_EDITOR_STATE                           ; FF5D 4C A6 FB                 L..
 ; ----------------------------------------------------------------------------
@@ -14231,7 +14231,6 @@ LFFD2_CHROUT:  jmp     (RAMVEC_CHROUT)                 ; FFD2 6C 26 03          
 ; Output: Carry: 0 = No errors, 1 = Error; A = KERNAL error code (if Carry =
 ; 1); X/Y = Address of last byte loaded/verified (if Carry = 0).
 ; Used registers: A, X, Y.
-; Real address: $F49E.
 LOAD:   jmp     LOAD_                           ; FFD5 4C 6A FD                 Lj.
 ; ----------------------------------------------------------------------------
 ; SAVE. Save file. (Must call SETLFS_ and SETNAM_ beforehand.)
@@ -14240,14 +14239,12 @@ LOAD:   jmp     LOAD_                           ; FFD5 4C 6A FD                 
 ; Output: Carry: 0 = No errors, 1 = Error; A = KERNAL error code (if Carry =
 ; 1).
 ; Used registers: A, X, Y.
-; Real address: $F5DD.
 SAVE:   jmp     SAVE_                           ; FFD8 4C 88 FD                 L..
 ; ----------------------------------------------------------------------------
 ; SETTIM. Set Time of Day
 ; Input: A/X/Y = New TOD value.
 ; Output: –
 ; Used registers: –
-; Real address: $F6E4.
 SETTIM: jmp     SETTIM_                          ; FFDB 4C A5 FD                 L..
 ; ----------------------------------------------------------------------------
 ; RDTIM. Read Time of Day
